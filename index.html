@@ -7,11 +7,8 @@
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display:flex;justify-content:center;padding:12px;min-height:100vh;}
 .app{width:100%;max-width:900px;background:#ffffff;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;}
-header{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-header h1{font-size:16px;margin:0;color:#000;}
-.controls{display:flex;gap:6px;}
-.btn{background:rgba(0,0,0,0.05);color:#000;padding:6px 10px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;}
-.btn.primary{background:#06b6d4;color:#fff;}
+.controls{display:flex;gap:6px;justify-content:center;}
+.btn{background:rgba(0,0,0,0.05);color:#000;padding:4px 10px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;height:32px;}
 .btn.secondary{background:#f59e0b;color:#fff;}
 .board{display:flex;flex-direction:column;gap:8px;background:#9acd32;padding:10px;border-radius:12px;} /* 黄緑背景 */
 .card-display{display:flex;justify-content:center;gap:12px;align-items:center;}
@@ -21,13 +18,16 @@ header h1{font-size:16px;margin:0;color:#000;}
 .card .bottom-right{bottom:6px;right:6px;transform:rotate(180deg);}
 .card .center{font-size:48px;font-weight:bold;color:black;display:flex;align-items:center;justify-content:center;flex:1;}
 .card.face-down{background:#2e7d32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;}
-.participant-areas{display:flex;gap:6px;}
+.participant-areas{display:flex;flex-direction:column;gap:6px;}
+.waiting-area{text-align:center;}
+.area-row{display:flex;gap:6px;}
 .area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;}
 .area h3{margin:0;color:#000;text-align:center;font-size:14px;}
-.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;color:#000;cursor:default;}
-.arrow-btn{background:rgba(0,0,0,0.1);border:none;padding:0 6px;border-radius:6px;color:#000;font-size:16px;cursor:pointer;}
-.result{padding:6px;border-radius:6px;text-align:center;font-weight:700;min-height:36px;color:#000;}
-.result.highlight{background:rgba(255,255,0,0.25);}
+.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:grab;user-select:none;}
+.participant.dragging{opacity:0.5;}
+.result{padding:6px;border-radius:6px;text-align:center;font-weight:700;min-height:36px;color:#000;position:relative;}
+.result .win-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-weight:bold;color:red;}
+.result.highlight{background:#ffffff;}
 .stats{padding:4px;font-size:13px;color:#000;display:flex;flex-direction:column;gap:2px;}
 footer{display:flex;justify-content:space-between;gap:6px;align-items:center;padding-top:6px;font-size:13px;color:#000;}
 
@@ -40,22 +40,21 @@ footer{display:flex;justify-content:space-between;gap:6px;align-items:center;pad
 <body>
 <div class="app">
 
-<header>
-  <h1>High & Low ディーラー版</h1>
-  <div class="controls">
-    <button class="btn" id="addParticipantBtn">＋参加者追加</button>
+<div class="controls">
     <button class="btn" id="toggleWins">勝利回数表示</button>
     <button class="btn" id="toggleStreak">連勝表示</button>
-  </div>
-</header>
+</div>
 
-<main>
-  <div class="participant-areas">
-    <div class="area" id="highArea"><h3>HIGH</h3></div>
-    <div class="area" id="waitingArea"><h3>待機</h3></div>
-    <div class="area" id="lowArea"><h3>LOW</h3></div>
-  </div>
-</main>
+<div class="participant-areas">
+    <div class="waiting-area">
+        <div style="font-size:14px;margin-bottom:4px;">ドラッグで移動</div>
+        <div class="area" id="waitingArea"><h3>待機</h3></div>
+    </div>
+    <div class="area-row">
+        <div class="area" id="highArea"><h3>HIGH</h3></div>
+        <div class="area" id="lowArea"><h3>LOW</h3></div>
+    </div>
+</div>
 
 <div class="board">
   <div class="card-display">
@@ -95,7 +94,6 @@ footer{display:flex;justify-content:space-between;gap:6px;align-items:center;pad
 const highArea=document.getElementById('highArea');
 const lowArea=document.getElementById('lowArea');
 const waitingArea=document.getElementById('waitingArea');
-const addBtn=document.getElementById('addParticipantBtn');
 const toggleWinsBtn=document.getElementById('toggleWins');
 const toggleStreakBtn=document.getElementById('toggleStreak');
 const currentCardEl=document.getElementById('currentCard');
@@ -116,11 +114,7 @@ let deck=[],current=null,nextCard=null;
 const suits=[{sym:'♠'},{sym:'♥'},{sym:'♦'},{sym:'♣'}];
 const ranks=[{r:'A',v:14},{r:'2',v:2},{r:'3',v:3},{r:'4',v:4},{r:'5',v:5},{r:'6',v:6},{r:'7',v:7},{r:'8',v:8},{r:'9',v:9},{r:'10',v:10},{r:'J',v:11},{r:'Q',v:12},{r:'K',v:13}];
 
-function buildDeck(){
-  const d=[];
-  for(const s of suits) for(const r of ranks)d.push({rank:r.r,suit:s.sym,value:r.v});
-  return d;
-}
+function buildDeck(){const d=[];for(const s of suits) for(const r of ranks)d.push({rank:r.r,suit:s.sym,value:r.v}); return d;}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
 function draw(){return deck.pop()||null;}
 function effectiveValue(card){return card?card.value:0;}
@@ -128,24 +122,22 @@ function effectiveValue(card){return card?card.value:0;}
 function createParticipantDiv(p){
   const div=document.createElement('div');
   div.className='participant';
-  const left=document.createElement('button'); left.className='arrow-btn'; left.textContent='◀️';
-  const right=document.createElement('button'); right.className='arrow-btn'; right.textContent='▶️';
-  const nameDiv=document.createElement('div'); nameDiv.textContent=p.name; 
-  if(showWins) nameDiv.textContent+=` (${p.wins})`;
-  if(showStreak) nameDiv.textContent+='\n'+`連勝:${p.currentStreak}`;
-  left.onclick=()=>moveParticipant(p,'left');
-  right.onclick=()=>moveParticipant(p,'right');
-  div.appendChild(left); div.appendChild(nameDiv); div.appendChild(right);
+  div.textContent=p.name;
+  if(showWins) div.textContent+=` (${p.wins})`;
+  if(showStreak) div.textContent+='\n'+`連勝:${p.currentStreak}`;
+  div.draggable=true;
+  div.addEventListener('dragstart',e=>{div.classList.add('dragging'); e.dataTransfer.setData('text/plain', p.name);});
+  div.addEventListener('dragend',()=>{div.classList.remove('dragging');});
+  p.dom=div;
   return div;
 }
-function moveParticipant(p,direction){
-  removeFromAreas(p);
-  if(direction==='left') {p.bet='low'; lowArea.appendChild(p.dom);}
-  else if(direction==='right') {p.bet='high'; highArea.appendChild(p.dom);}
-  else {p.bet=null; waitingArea.appendChild(p.dom);}
-}
-function removeFromAreas(p){
+
+function moveParticipant(p,targetArea){
   [highArea,lowArea,waitingArea].forEach(area=>{if(area.contains(p.dom)) area.removeChild(p.dom);});
+  targetArea.appendChild(p.dom);
+  if(targetArea===highArea) p.bet='high';
+  else if(targetArea===lowArea) p.bet='low';
+  else p.bet=null;
 }
 
 function renderParticipants(){
@@ -153,7 +145,7 @@ function renderParticipants(){
   lowArea.innerHTML='<h3>LOW</h3>';
   waitingArea.innerHTML='<h3>待機</h3>';
   participants.forEach(p=>{
-    p.dom=createParticipantDiv(p);
+    if(!p.dom) createParticipantDiv(p);
     if(p.bet==='high') highArea.appendChild(p.dom);
     else if(p.bet==='low') lowArea.appendChild(p.dom);
     else waitingArea.appendChild(p.dom);
@@ -163,40 +155,26 @@ function renderParticipants(){
 
 function updateStats(){
   statsEl.innerHTML='';
-  if(showWins){
-    let html='勝利: '+participants.map(p=>`${p.name}:${p.wins}`).join(' | ');
-    statsEl.innerHTML+=html+'<br>';
-  }
-  if(showStreak){
-    let html='連勝: '+participants.map(p=>`${p.name}:${p.currentStreak}`).join(' | ');
-    statsEl.innerHTML+=html;
-  }
+  if(showWins){statsEl.innerHTML='勝利: '+participants.map(p=>`${p.name}:${p.wins}`).join(' | ')+'<br>';}
+  if(showStreak){statsEl.innerHTML+='連勝: '+participants.map(p=>`${p.name}:${p.currentStreak}`).join(' | ');}
 }
 
-function setCurrentCard(card){
-  current=card;
-  if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}
-  curCenter.textContent=card.rank;
-  curTopLeft.textContent=card.suit;
-  curBottomRight.textContent=card.suit;
-}
+function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit;curBottomRight.textContent=card.suit;}
+function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏'; return;} nextCardEl.textContent='裏';}
 
-function setNextCard(card){
-  nextCard=card;
-  if(!card){nextCardEl.textContent='裏'; return;}
-  nextCardEl.textContent='裏';
-}
+function newRound(){deck=buildDeck(); shuffle(deck); setCurrentCard(draw()); setNextCard(draw()); participants.forEach(p=>p.bet=null); renderParticipants(); resultEl.textContent='カードをめくる前にベットを設定してください';}
 
-function newRound(){
-  deck=buildDeck(); shuffle(deck);
-  setCurrentCard(draw());
-  setNextCard(draw());
-  participants.forEach(p=>p.bet=null);
-  renderParticipants();
-  resultEl.textContent='カードをめくる前にベットを設定してください';
-}
+// ドラッグエリアの受け入れ設定
+[highArea,lowArea,waitingArea].forEach(area=>{
+  area.addEventListener('dragover',e=>e.preventDefault());
+  area.addEventListener('drop',e=>{
+    e.preventDefault();
+    const name=e.dataTransfer.getData('text/plain');
+    const p=participants.find(x=>x.name===name);
+    if(p) moveParticipant(p,area);
+  });
+});
 
-addBtn.onclick=()=>{const n=prompt('名前'); if(!n) return; const p={name:n,bet:null,wins:0,currentStreak:0,dom:null}; participants.push(p); renderParticipants();};
 toggleWinsBtn.onclick=()=>{showWins=!showWins; renderParticipants();}
 toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
 
@@ -216,7 +194,11 @@ nextCardEl.onclick=()=>{
   setNextCard(draw());
   renderParticipants();
   resultEl.textContent='結果表示中';
-  [highArea,lowArea,waitingArea].forEach(area=>area.classList.add('highlight'));
+  const winLabel=document.createElement('div'); winLabel.className='win-label'; winLabel.textContent='\\当たり/';
+  resultEl.appendChild(winLabel);
+  if(participants.some(p=>p.bet==='high' && effectiveValue(current)>effectiveValue(nextCard))) highArea.classList.add('highlight');
+  else if(participants.some(p=>p.bet==='low' && effectiveValue(current)<effectiveValue(nextCard))) lowArea.classList.add('highlight');
+  else {highArea.classList.add('highlight'); lowArea.classList.add('highlight');}
 };
 
 nextGameBtn.onclick=()=>{
@@ -226,11 +208,16 @@ nextGameBtn.onclick=()=>{
   resultEl.textContent='次ゲーム開始';
 };
 
-resetBtn.onclick=()=>{
-  participants=[]; deck=[]; current=null; nextCard=null; renderParticipants(); setCurrentCard(null); setNextCard(null); statsEl.innerHTML=''; resultEl.textContent='リセットされました';
-};
+resetBtn.onclick=()=>{participants=[]; deck=[]; current=null; nextCard=null; renderParticipants(); setCurrentCard(null); setNextCard(null); statsEl.innerHTML=''; resultEl.textContent='リセットされました';};
 
 consentBtn.onclick=()=>{consentModal.style.display='none'; newRound();};
+
+// サンプル参加者追加（任意）
+participants.push({name:'たろう',bet:null,wins:0,currentStreak:0});
+participants.push({name:'はなこ',bet:null,wins:0,currentStreak:0});
+participants.push({name:'ひろし',bet:null,wins:0,currentStreak:0});
+renderParticipants();
+
 })();
 </script>
 </body>
