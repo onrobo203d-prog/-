@@ -24,8 +24,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 .area-row{display:flex;gap:6px;}
 .area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;transition:background 0.3s;}
 .area h3{margin:0;color:#000;text-align:center;font-size:14px;}
-.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:grab;user-select:none;}
-.participant.dragging{opacity:0.5;}
+.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:pointer;user-select:none;position:relative;}
 .result{padding:6px;border-radius:6px;text-align:center;font-weight:700;min-height:36px;color:#000;position:relative;}
 .stats{padding:4px;font-size:13px;color:#000;display:flex;flex-direction:column;gap:2px;}
 .area.highlight-high { background-color: #ffff99; }
@@ -136,10 +135,6 @@ function createParticipantDiv(p){
   }
   renderName();
   p.renderName = renderName;
-  div.draggable=true;
-  div.addEventListener('mousedown',e=>{div.classList.add('dragging'); e.dataTransfer?.setData('text/plain', p.name);});
-  div.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain', p.name);});
-  div.addEventListener('dragend',()=>{div.classList.remove('dragging');});
   p.dom=div;
   return div;
 }
@@ -177,20 +172,52 @@ function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏';
 
 function newRound(){deck=buildDeck(); shuffle(deck); setCurrentCard(draw()); setNextCard(draw()); participants.forEach(p=>p.bet=null); renderParticipants(); resultEl.textContent='カードをめくる前にベットを設定してください';}
 
-// ドラッグ
-[highArea,lowArea,waitingArea].forEach(area=>{
-  area.addEventListener('dragover',e=>e.preventDefault());
-  area.addEventListener('drop',e=>{
-    e.preventDefault();
-    const name=e.dataTransfer.getData('text/plain');
-    const p=participants.find(x=>x.name===name);
-    if(p) moveParticipant(p,area);
-  });
+// ドラッグ即反応
+let dragged=null,offsetX=0,offsetY=0;
+document.addEventListener('mousemove',e=>{
+  if(dragged){dragged.style.position='absolute'; dragged.style.zIndex=1000;
+    dragged.style.left=(e.clientX-offsetX)+'px';
+    dragged.style.top=(e.clientY-offsetY)+'px';
+  }
+});
+document.addEventListener('mouseup',e=>{
+  if(dragged){
+    // ドロップ判定
+    const areas=[highArea,lowArea,waitingArea];
+    let dropped=false;
+    areas.forEach(area=>{
+      const rect=area.getBoundingClientRect();
+      if(e.clientX>rect.left && e.clientX<rect.right && e.clientY>rect.top && e.clientY<rect.bottom){
+        const p=participants.find(p=>p.dom===dragged);
+        if(p) moveParticipant(p,area);
+        dropped=true;
+      }
+    });
+    if(!dropped){
+      // 元の位置へ戻す
+      renderParticipants();
+    }
+    dragged.style.position='relative';
+    dragged.style.zIndex='auto';
+    dragged=null;
+  }
 });
 
+// ドラッグ開始
+function enableDrag(p){
+  p.dom.addEventListener('mousedown',e=>{
+    dragged=p.dom;
+    const rect=dragged.getBoundingClientRect();
+    offsetX=e.clientX-rect.left;
+    offsetY=e.clientY-rect.top;
+  });
+}
+
+// オプション
 toggleWinsBtn.onclick=()=>{showWins=!showWins; renderParticipants();}
 toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
 
+// 参加者追加
 addParticipantBtn.onclick=()=>{
   const name=participantInput.value.trim(); 
   if(!name) return; 
@@ -198,17 +225,17 @@ addParticipantBtn.onclick=()=>{
   participants.push(p);
   participantInput.value=''; 
   renderParticipants();
+  enableDrag(p);
 };
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
 
-// 次カードクリックでめくるアニメーション
+// 次カードクリックでめくる
 nextCardEl.onclick=()=>{
   if(!nextCard) nextCard=draw();
   if(!current || !nextCard) return;
   nextCardEl.classList.add('animate-flip');
   setTimeout(()=>{
     nextCardEl.classList.remove('animate-flip');
-    nextCardEl.textContent=nextCard.rank;
     nextCardEl.innerHTML=`<div class="corner top-left">${nextCard.suit}</div><div class="center">${nextCard.rank}</div><div class="corner bottom-right">${nextCard.suit}</div>`;
     
     const curVal=effectiveValue(current), nextVal=effectiveValue(nextCard);
@@ -222,14 +249,13 @@ nextCardEl.onclick=()=>{
       const lose=(nextVal>curVal && guess==='low')||(nextVal>curVal && guess==='high');
       if(win){p.wins++; p.currentStreak++;}
       if(lose){p.currentStreak=0;}
-      // ハイライト個別
       if(win && guess==='high') highArea.classList.add('highlight-high');
       if(win && guess==='low') lowArea.classList.add('highlight-low');
     });
 
     renderParticipants();
     resultEl.textContent='結果表示中';
-  }, 300);
+  }, 100);
 };
 
 // 次ゲーム
@@ -237,7 +263,6 @@ nextGameBtn.onclick=()=>{
   highArea.classList.remove('highlight-high');
   lowArea.classList.remove('highlight-low');
 
-  // カード移動アニメーション
   nextCardEl.classList.add('animate-move');
   setTimeout(()=>{
     setCurrentCard(nextCard);
@@ -252,13 +277,17 @@ nextGameBtn.onclick=()=>{
   resultEl.textContent='次ゲーム開始';
 };
 
+// リセット
 resetBtn.onclick=()=>{participants=[]; deck=[]; current=null; nextCard=null; renderParticipants(); setCurrentCard(null); setNextCard(null); statsEl.innerHTML=''; resultEl.textContent='リセットされました';};
 
 consentBtn.onclick=()=>{consentModal.style.display='none'; newRound();};
 
 // 初期参加者サンプル
-participants.push({name:'たろう',bet:null,wins:0,currentStreak:0});
-participants.push({name:'はなこ',bet:null,wins:0,currentStreak:0});
+['たろう','はなこ','ひろし'].forEach(name=>{
+  const p={name,bet:null,wins:0,currentStreak:0,dom:null};
+  participants.push(p);
+  enableDrag(p);
+});
 renderParticipants();
 
 })();
