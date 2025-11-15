@@ -284,16 +284,32 @@ function displayLog(){
   filteredLogs.forEach((entry,idx)=>{
     totalTimes += entry.times;
 
-    // 個別に天井フラグを判定してログ用テキストを作る
-    const logText = entry.results.map(r=>{
-      const nameDisplay = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
-      return `  ${nameDisplay}${r.ceiling?" (天井)":" "} ×1個`;
-    }).join("\n");
+    // 天井アイテムと通常アイテムを分ける
+    const ceilingItems = entry.results.filter(r=>r.ceiling);
+    const normalItems = entry.results.filter(r=>!r.ceiling);
 
-    // 集計用にまとめる（天井フラグは無視）
-    entry.results.forEach(r=>{
+    // 通常アイテムは同じものをまとめる
+    const normalCount = {};
+    normalItems.forEach(r=>{
+      const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
+      normalCount[key] = (normalCount[key]||0)+1;
+      totalSummary[key] = (totalSummary[key]||0)+1;
+    });
+
+    // 天井アイテムは個別表示（集計には含める）
+    ceilingItems.forEach(r=>{
       const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
       totalSummary[key] = (totalSummary[key]||0)+1;
+    });
+
+    // ログ用テキスト作成
+    let logText = '';
+    for(const [key,count] of Object.entries(normalCount)){
+      logText += `  ${key} ×${count}個\n`;
+    }
+    ceilingItems.forEach(r=>{
+      const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
+      logText += `  ${key} (天井) ×1個\n`;
     });
 
     const logBlock = {
@@ -319,7 +335,7 @@ function displayLog(){
     logDiv.appendChild(oldDiv);
   }
 
-  // 集計表示（天井フラグは反映しない）
+  // 集計表示（天井フラグは無視）
   const sumText=Object.entries(totalSummary).map(([k,v])=>`${k}: ${v}個`).join("\n");
   const sumTitle = filter==="" ? `全員(${totalTimes}回)` : `${filter}(${totalTimes}回)`;
   summaryDiv.innerHTML=`<b>集計結果（${sumTitle}）</b><br><pre>${sumText}</pre>
@@ -332,9 +348,28 @@ function clearLog(){if(confirm("全ログと登録名を削除しますか？"))
 function saveLog(){
   let all="";
   logData.forEach(entry=>{
-    const txt=entry.results.map(r=>`${r.rarity?`【${r.rarity}】${r.name}`:r.name}${r.ceiling?" (天井)":""} ×1個`).join("\n");
+    const ceilingItems = entry.results.filter(r=>r.ceiling);
+    const normalItems = entry.results.filter(r=>!r.ceiling);
+
+    // 通常はまとめて
+    const normalCount = {};
+    normalItems.forEach(r=>{
+      const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
+      normalCount[key] = (normalCount[key]||0)+1;
+    });
+
+    let txt = '';
+    for(const [key,count] of Object.entries(normalCount)){
+      txt += `${key} ×${count}個\n`;
+    }
+    ceilingItems.forEach(r=>{
+      const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
+      txt += `${key} (天井) ×1個\n`;
+    });
+
     all += `${entry.player}(${entry.times}回)\n${txt}\n\n`;
   });
+
   const blob=new Blob([all],{type:"text/plain"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a"); a.href=url; a.download="gacha_log.txt"; a.click();
