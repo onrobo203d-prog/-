@@ -182,7 +182,6 @@ document.addEventListener('mousemove',e=>{
 });
 document.addEventListener('mouseup',e=>{
   if(dragged){
-    // ドロップ判定
     const areas=[highArea,lowArea,waitingArea];
     let dropped=false;
     areas.forEach(area=>{
@@ -194,7 +193,6 @@ document.addEventListener('mouseup',e=>{
       }
     });
     if(!dropped){
-      // 元の位置へ戻す
       renderParticipants();
     }
     dragged.style.position='relative';
@@ -224,8 +222,9 @@ addParticipantBtn.onclick=()=>{
   const p={name,bet:null,wins:0,currentStreak:0,dom:null};
   participants.push(p);
   participantInput.value=''; 
-  renderParticipants();
+  createParticipantDiv(p);
   enableDrag(p);
+  renderParticipants();
 };
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
 
@@ -246,9 +245,8 @@ nextCardEl.onclick=()=>{
       if(!p.bet) return;
       const guess=p.bet;
       const win=(nextVal>curVal && guess==='high')||(nextVal<curVal && guess==='low');
-      const lose=(nextVal>curVal && guess==='low')||(nextVal>curVal && guess==='high');
       if(win){p.wins++; p.currentStreak++;}
-      if(lose){p.currentStreak=0;}
+      else p.currentStreak=0;
       if(win && guess==='high') highArea.classList.add('highlight-high');
       if(win && guess==='low') lowArea.classList.add('highlight-low');
     });
@@ -278,18 +276,29 @@ nextGameBtn.onclick=()=>{
 };
 
 // リセット
-resetBtn.onclick=()=>{participants=[]; deck=[]; current=null; nextCard=null; renderParticipants(); setCurrentCard(null); setNextCard(null); statsEl.innerHTML=''; resultEl.textContent='リセットされました';};
+resetBtn.onclick=()=>{
+  // 参加者のベット・勝利数・連勝リセット
+  participants.forEach(p=>{
+    p.bet=null;
+    p.wins=0;
+    p.currentStreak=0;
+  });
+
+  deck = buildDeck(); shuffle(deck);
+  current = draw();
+  nextCard = draw();
+  setCurrentCard(current);
+  setNextCard(nextCard);
+
+  highArea.classList.remove('highlight-high');
+  lowArea.classList.remove('highlight-low');
+
+  renderParticipants();
+  resultEl.textContent='リセットされました';
+  statsEl.innerHTML='';
+};
 
 consentBtn.onclick=()=>{consentModal.style.display='none'; newRound();};
-
-// 初期参加者サンプル
-['たろう','はなこ','ひろし'].forEach(name=>{
-  const p={name,bet:null,wins:0,currentStreak:0,dom:null};
-  participants.push(p);
-  enableDrag(p);
-});
-renderParticipants();
-
 })();
 </script>
 </body>
