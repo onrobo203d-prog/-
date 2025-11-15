@@ -7,25 +7,57 @@
 <style>
 html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
 #mainWrapper{padding:15px;}
-.section{background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 0 4px rgba(0,0,0,0.1);}
-input[type="number"],input[type="text"],select{width:95%;padding:8px;margin:5px 0;border-radius:5px;border:1px solid #aaa;font-size:14px;}
+
+.section{
+  background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;
+  box-shadow:0 0 4px rgba(0,0,0,0.1);
+}
+
+input[type="number"],input[type="text"],select{
+  width:95%;padding:8px;margin:5px 0;border-radius:5px;
+  border:1px solid #aaa;font-size:14px;
+}
+
 button{cursor:pointer;border:none;border-radius:6px;}
 .add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
+
 .gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.gacha-btns button{flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;}
-.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-.preset-grid button{padding:14px;font-size:16px;background:#7aa8ff;color:#fff;}
+.gacha-btns button{
+  flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;
+}
+
+.preset-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+.preset-grid button{
+  padding:14px;font-size:16px;background:#7aa8ff;color:#fff;
+}
+
 .copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
 .clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
 .save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
-.N{color:#00ccff;} .R{color:#0055ff;} .SR{color:#aa00ff;} .UR{color:#ff55aa;} .LR{color:#ff0000;}
-#logContainer{display:flex;flex-direction:column;gap:15px;}
-#summary, #log{background:#f8f8f8; padding:10px; border-radius:8px; max-height:500px; overflow:auto;}
+
+.N{color:#00ccff;} .R{color:#0055ff;}
+.SR{color:#aa00ff;} .UR{color:#ff55aa;}
+.LR{color:#ff0000;}
+
+#logContainer{
+  display:flex;
+  flex-direction: column; /* 縦並び */
+  gap:15px;
+}
+
+#summary, #log{
+  background:#f8f8f8; padding:10px; border-radius:8px; 
+  max-height:500px; overflow:auto;
+}
+
 .log-block{margin-bottom:10px; border-bottom:1px solid #ccc; padding-bottom:5px;}
 .old-log{display:none; font-size:0.9em; color:#333;}
 pre{white-space:pre-wrap;}
-#tenjouSettings{background:#fafafa;border:1px solid #ddd;padding:10px;border-radius:6px;}
-#tenjouRarityList span{margin-right:5px;}
 </style>
 </head>
 <body>
@@ -43,9 +75,24 @@ pre{white-space:pre-wrap;}
   </div>
 </div>
 
+<!-- 天井設定 -->
+<div class="section">
+  <label><b>天井機能</b></label><br>
+  <label><input type="checkbox" id="tenjouSwitch" onchange="toggleTenjou()"> 天井を有効にする</label><br>
+  <div id="tenjouSettings" style="display:none;margin-top:10px;">
+    <label>天井回数：</label>
+    <input type="number" id="tenjouMax" value="10" min="1"><br>
+    <label>対象レアリティ：</label>
+    <select id="tenjouRarities" multiple>
+      <option>SR</option><option>UR</option><option>LR</option>
+    </select>
+  </div>
+</div>
+
 <!-- カスタム確率 -->
 <div class="section">
   <label><b>選択中プリセット：</b> <span id="presetName">通常</span></label><br><br>
+
   <label>カスタム確率設定（%）</label><br>
   N  <input id="rateN" type="number" value="40"><br>
   R  <input id="rateR" type="number" value="30"><br>
@@ -61,37 +108,14 @@ pre{white-space:pre-wrap;}
   <button class="add-btn" onclick="addItem()">＋ 景品追加</button>
 </div>
 
-<!-- プレイヤー登録 -->
+<!-- プレイヤー登録欄 -->
 <div class="section">
   <label>ガチャを回す人：</label><br>
   <input id="playerName" type="text" placeholder="名前を入力">
   <button class="add-btn" onclick="addPlayer()">名前を追加</button><br>
+
   <label>下から選択：</label>
   <select id="playerSelect"></select>
-</div>
-
-<!-- 天井機能 -->
-<div class="section">
-  <label>
-    <input type="checkbox" id="tenjouToggle"> 天井機能を有効にする
-  </label>
-  <div id="tenjouSettings" style="display:none; margin-top:10px;">
-    <label>天井発動回数：
-      <input type="number" id="tenjouCount" value="100" min="1" style="width:80px;">
-    </label>
-    <div style="margin-top:10px;">
-      <label>天井抽選レアリティ：</label><br>
-      <select id="tenjouRaritySelect" style="width:120px;">
-        <option value="N">N</option>
-        <option value="R">R</option>
-        <option value="SR">SR</option>
-        <option value="UR">UR</option>
-        <option value="LR">LR</option>
-      </select>
-      <button id="addTenjouRarity">追加</button>
-    </div>
-    <div id="tenjouRarityList" style="margin-top:10px;"></div>
-  </div>
 </div>
 
 <!-- ガチャ実行 -->
@@ -109,60 +133,80 @@ pre{white-space:pre-wrap;}
 <!-- 結果ログ -->
 <div class="section">
   <label>ガチャ結果ログ</label><br>
+
   <label>名前で絞り込み：</label>
   <select id="logFilter" onchange="displayLog()"></select>
+
   <label>表示順：</label>
   <select id="sortOrder" onchange="displayLog()">
     <option value="desc" selected>新しい順</option>
     <option value="asc">古い順</option>
   </select>
+
   <div id="logControls">
     <button class="clear-btn" onclick="clearLog()" style="margin-right:10px;">全ログ消去</button>
     <button class="save-btn" onclick="saveLog()">ログをtxt保存</button>
   </div>
+
   <div id="logContainer">
     <div id="log"></div>
     <div id="summary"></div>
   </div>
 </div>
 
+</div>
+
 <script>
 let players = [];
 let logData = [];
+let playerRollCount = {}; // 天井用カウント
 addItem();
 
-/* ----------------- プレイヤー管理 ----------------- */
+/* 名前管理 */
 function addPlayer(){
   const name=document.getElementById("playerName").value.trim();
   if(!name || players.includes(name)) return;
   players.push(name);
+  playerRollCount[name]=0;
   updatePlayerUI();
   document.getElementById("playerName").value="";
 }
+
 function updatePlayerUI(){
   const sel=document.getElementById("playerSelect");
   const filter=document.getElementById("logFilter");
   sel.innerHTML="";
   filter.innerHTML='<option value="">全員</option>';
   players.forEach(name=>{
-    let opt=document.createElement("option"); opt.value=name; opt.text=name; sel.add(opt);
-    let opt2=document.createElement("option"); opt2.value=name; opt2.text=name; filter.add(opt2);
+    let opt=document.createElement("option");
+    opt.value=name; opt.text=name; sel.add(opt);
+    let opt2=document.createElement("option");
+    opt2.value=name; opt2.text=name; filter.add(opt2);
   });
 }
 
-/* ----------------- 景品登録 ----------------- */
+/* 景品登録 */
 function addItem(){
   const div=document.createElement("div");
   div.style.marginTop='8px';
-  div.innerHTML=`<input type="text" placeholder="景品名">
-  <select><option>N</option><option>R</option><option>SR</option><option>UR</option><option>LR</option></select>
-  <button onclick="this.parentNode.remove()">×</button>`;
+  div.innerHTML=`
+    <input type="text" placeholder="景品名">
+    <select>
+      <option>N</option><option>R</option><option>SR</option><option>UR</option><option>LR</option>
+    </select>
+    <button onclick="this.parentNode.remove()">×</button>
+  `;
   document.getElementById('items').appendChild(div);
 }
 
-/* ----------------- プリセット ----------------- */
+/* プリセット */
 function setPreset(type){
-  const preset={normal:{N:40,R:30,SR:20,UR:7,LR:3},hard:{N:60,R:25,SR:10,UR:4,LR:1},veryhard:{N:70,R:20,SR:8,UR:1.5,LR:0.5},hell:{N:79.9,R:19,SR:1,UR:0.9,LR:0.1}};
+  const preset={
+    normal:{N:40,R:30,SR:20,UR:7,LR:3},
+    hard:{N:60,R:25,SR:10,UR:4,LR:1},
+    veryhard:{N:70,R:20,SR:8,UR:1.5,LR:0.5},
+    hell:{N:79.9,R:19,SR:1,UR:0.9,LR:0.1}
+  };
   const p=preset[type];
   rateN.value=p.N; rateR.value=p.R; rateSR.value=p.SR; rateUR.value=p.UR; rateLR.value=p.LR;
   const name={normal:"通常",hard:"キツめ",veryhard:"極悪",hell:"地獄"};
@@ -170,120 +214,138 @@ function setPreset(type){
 }
 function applyCustom(){document.getElementById("presetName").textContent="カスタム"; alert("カスタム確率を適用しました");}
 
-/* ----------------- 天井機能 ----------------- */
-let tenjouRarities=[];
-document.getElementById("tenjouToggle").addEventListener("change", e=>{document.getElementById("tenjouSettings").style.display=e.target.checked?"block":"none";});
-document.getElementById("addTenjouRarity").addEventListener("click", ()=>{
-  const r=document.getElementById("tenjouRaritySelect").value;
-  if(!tenjouRarities.includes(r)){tenjouRarities.push(r); updateTenjouRarityList();}
-});
-function updateTenjouRarityList(){
-  const box=document.getElementById("tenjouRarityList"); box.innerHTML="";
-  tenjouRarities.forEach(r=>{
-    const span=document.createElement("span"); span.textContent=r;
-    const btn=document.createElement("button"); btn.textContent="×"; btn.onclick=()=>{tenjouRarities=tenjouRarities.filter(x=>x!==r); updateTenjouRarityList();}
-    box.appendChild(span); box.appendChild(btn);
-  });
+/* 天井切替 */
+function toggleTenjou(){
+  document.getElementById("tenjouSettings").style.display=document.getElementById("tenjouSwitch").checked?"block":"none";
 }
 
-/* ----------------- ガチャ本体 ----------------- */
+/* ガチャ本体 */
 function roll(times){
   const player=document.getElementById("playerSelect").value;
   if(!player){alert("名前を選択してください");return;}
-  const results=rollWithTenjou(player,times);
-  addLog(player,results,times);
-}
-function rollCustom(){const n=parseInt(document.getElementById("customRoll").value); if(n>0) roll(n);}
-
-/* 天井対応抽選 */
-function rollWithTenjou(player,times){
-  const items=Array.from(document.querySelectorAll("#items > div"));
+  const results=[];
+  const items=document.querySelectorAll("#items > div");
   const pool={N:[],R:[],SR:[],UR:[],LR:[]};
   items.forEach(n=>{
-    const name=n.querySelector("input").value.trim();
-    const rarity=n.querySelector("select").value;
+    let name=n.querySelector("input").value.trim();
+    let rarity=n.querySelector("select").value;
     if(name) pool[rarity].push(name);
   });
-  const results=[];
-  const tenjouOn=document.getElementById("tenjouToggle").checked;
-  const tenjouMax=Number(document.getElementById("tenjouCount").value);
-  const playerCount=getPlayerTotalRolls(player);
-
-  for(let i=0;i<times;i++){
-    const isTenjou=tenjouOn && (playerCount + i + 1 === tenjouMax);
-    if(isTenjou){
-      let tenPool=[];
-      tenjouRarities.forEach(r=>{if(pool[r]) tenPool=tenPool.concat(pool[r]);});
-      if(tenPool.length===0){alert("指定レアリティの景品が見当たりません"); results.push(randomNormal(pool));}
-      else{
-        const pick=tenPool[Math.floor(Math.random()*tenPool.length)];
-        const rarity=Object.keys(pool).find(r=>pool[r].includes(pick));
-        results.push({name:pick,rarity:rarity});
-      }
-    }else{results.push(randomNormal(pool));}
-  }
-  return results;
-}
-
-function randomNormal(pool){
   const rates={N:parseFloat(rateN.value),R:parseFloat(rateR.value),SR:parseFloat(rateSR.value),UR:parseFloat(rateUR.value),LR:parseFloat(rateLR.value)};
   let keys=[],weights=[];
-  for(let r in rates){if(pool[r].length>0){keys.push(r); weights.push(rates[r]);}}
-  const pickR=randomChoice(keys,weights);
-  const pickName=pool[pickR][Math.floor(Math.random()*pool[pickR].length)];
-  return {name:pickName,rarity:pickR};
+  for(let r in rates){if(pool[r].length>0){keys.push(r);weights.push(rates[r]);}}
+
+  let tenjouActive = document.getElementById("tenjouSwitch").checked;
+  let tenjouMax = parseInt(document.getElementById("tenjouMax").value);
+  let tenjouRarities = Array.from(document.getElementById("tenjouRarities").selectedOptions).map(o=>o.value);
+
+  for(let i=0;i<times;i++){
+    let useTenjou=false;
+    if(tenjouActive && playerRollCount[player]+1 >= tenjouMax && tenjouRarities.length>0){
+      useTenjou=true;
+    }
+
+    let pick, itemName;
+    if(useTenjou){
+      let tenPool=[];
+      tenjouRarities.forEach(r=>{
+        if(pool[r]) tenPool = tenPool.concat(pool[r]);
+      });
+      if(tenPool.length===0){
+        alert("指定レアリティの景品が見当たりません");
+        pick=keys[Math.floor(Math.random()*keys.length)];
+        itemName=pool[pick][Math.floor(Math.random()*pool[pick].length)];
+      }else{
+        itemName=tenPool[Math.floor(Math.random()*tenPool.length)];
+        pick="天井";
+      }
+      playerRollCount[player]=0; // 天井発動でリセット
+    }else{
+      pick=randomChoice(keys,weights);
+      itemName=pool[pick][Math.floor(Math.random()*pool[pick].length)];
+      playerRollCount[player]++;
+    }
+
+    results.push({name:itemName,rarity:pick});
+  }
+  addLog(player,results,times);
 }
 
-function randomChoice(keys,weights){
-  const sum=weights.reduce((a,b)=>a+b,0);
-  let r=Math.random()*sum;
-  for(let i=0;i<keys.length;i++){if(r<weights[i])return keys[i]; r-=weights[i];}
+function rollCustom(){const n=parseInt(document.getElementById("customRoll").value); if(n>0) roll(n);}
+function randomChoice(keys,weights){const sum=weights.reduce((a,b)=>a+b,0); let r=Math.random()*sum; for(let i=0;i<keys.length;i++){if(r<weights[i]) return keys[i]; r-=weights[i];}}
+
+/* ログ表示 */
+function addLog(player,results,times){
+  logData.push({player,results,times});
+  displayLog();
 }
 
-/* ----------------- ログ表示 ----------------- */
-function addLog(player,results,times){logData.push({player,results,times}); displayLog();}
 function displayLog(){
   const filter=document.getElementById("logFilter").value;
   const sortOrder=document.getElementById("sortOrder").value;
   const summaryDiv=document.getElementById("summary");
   const logDiv=document.getElementById("log");
   summaryDiv.innerHTML=""; logDiv.innerHTML="";
-  let filteredLogs=logData.filter(entry=>filter===""||entry.player===filter);
-  if(sortOrder==="desc") filteredLogs=filteredLogs.slice().reverse();
-  let totalSummary={},totalTimes=0;
-  let latestLogs=[],oldLogs=[];
+
+  let filteredLogs = logData.filter(entry=>filter===""||entry.player===filter);
+  if(sortOrder==="desc") filteredLogs = filteredLogs.slice().reverse();
+
+  let totalSummary={}, totalTimes=0;
+  let latestLogs=[], oldLogs=[];
+
   filteredLogs.forEach((entry,idx)=>{
-    totalTimes+=entry.times;
+    totalTimes += entry.times;
     const countMap={};
-    entry.results.forEach(r=>{const key=`【${r.rarity}】${r.name}`; countMap[key]=(countMap[key]||0)+1; totalSummary[key]=(totalSummary[key]||0)+1;});
+    entry.results.forEach(r=>{
+      const key=r.rarity==="天井"?`【天井】${r.name}`:`【${r.rarity}】${r.name}`;
+      countMap[key]=(countMap[key]||0)+1;
+      totalSummary[key]=(totalSummary[key]||0)+1;
+    });
     const logText=Object.entries(countMap).map(([k,v])=>`  ${k} ×${v}個`).join("\n");
-    const logBlock={html:`<div class="log-block"><b>${entry.player}（${entry.times}回）</b><pre>${logText}</pre><button class="copy-btn" onclick='navigator.clipboard.writeText(\`${entry.player}(${entry.times}回)\n${logText}\`)'>コピー</button></div>`};
-    if(sortOrder==="desc"?idx<3:idx>=filteredLogs.length-3){latestLogs.push(logBlock);}else{oldLogs.push(logBlock);}
+    const logBlock={
+      html:`<div class="log-block"><b>${entry.player}（${entry.times}回）</b><pre>${logText}</pre><button class="copy-btn" onclick='navigator.clipboard.writeText(\`${entry.player}(${entry.times}回)\n${logText}\`)'>コピー</button></div>`
+    };
+    if(sortOrder==="desc" ? idx<3 : idx>=filteredLogs.length-3){
+      latestLogs.push(logBlock);
+    }else{
+      oldLogs.push(logBlock);
+    }
   });
 
+  // ログ表示（上）
   latestLogs.forEach(l=>{logDiv.innerHTML+=l.html;});
   if(oldLogs.length>0){
-    const oldDiv=document.createElement("div"); oldDiv.className="old-log"; oldLogs.forEach(l=>{oldDiv.innerHTML+=l.html;});
-    const toggleBtn=document.createElement("button"); toggleBtn.textContent="古いログを展開";
+    const oldDiv=document.createElement("div");
+    oldDiv.className="old-log";
+    oldLogs.forEach(l=>{oldDiv.innerHTML+=l.html;});
+    const toggleBtn=document.createElement("button");
+    toggleBtn.textContent="古いログを展開";
     toggleBtn.onclick=()=>{oldDiv.style.display=(oldDiv.style.display==="none"?"block":"none");};
-    logDiv.appendChild(toggleBtn); logDiv.appendChild(oldDiv);
+    logDiv.appendChild(toggleBtn);
+    logDiv.appendChild(oldDiv);
   }
 
+  // 集計表示（下）
   const sumText=Object.entries(totalSummary).map(([k,v])=>`${k}: ${v}個`).join("\n");
-  const sumTitle=filter===""?`全員(${totalTimes}回)`:`${filter}(${totalTimes}回)`;
+  const sumTitle = filter==="" ? `全員(${totalTimes}回)` : `${filter}(${totalTimes}回)`;
   summaryDiv.innerHTML=`<b>集計結果（${sumTitle}）</b><br><pre>${sumText}</pre>
-  <button class="copy-btn" onclick='navigator.clipboard.writeText(\`${sumTitle}\n${sumText}\`)'>コピー</button>
-  <button class="save-btn" onclick='saveSummary(\`${sumTitle}\n${sumText}\`)'>txt保存</button>`;
+    <button class="copy-btn" onclick='navigator.clipboard.writeText(\`${sumTitle}\n${sumText}\`)'>コピー</button>
+    <button class="save-btn" onclick='saveSummary(\`${sumTitle}\n${sumText}\`)'>txt保存</button>`;
 }
 
-/* ----------------- 集計補助 ----------------- */
-function getPlayerTotalRolls(player){let total=0; logData.forEach(entry=>{if(entry.player===player) total+=entry.results.length;}); return total;}
-
-/* ----------------- クリア・保存 ----------------- */
-function clearLog(){if(confirm("全ログと登録名を削除しますか？")){logData=[];players=[];updatePlayerUI();displayLog();}}
-function saveLog(){let all=""; logData.forEach(entry=>{const txt=entry.results.map(r=>`  【${r.rarity}】${r.name} ×1個`).join("\n"); all+=`${entry.player}(${entry.times}回)\n${txt}\n\n`;});
-  const blob=new Blob([all],{type:"text/plain"}); const url=URL.createObjectURL(blob);
-  const a=document.createElement("a"); a.href=url; a.download="gacha_log.txt"; a.click(); URL.revokeObjectURL(url);}
+/* フィルター・消去・保存 */
+function clearLog(){if(confirm("全ログと登録名を削除しますか？")){logData=[];players=[];playerRollCount={};updatePlayerUI();displayLog();}}
+function saveLog(){
+  let all="";
+  logData.forEach(entry=>{
+    const txt=entry.results.map(r=>`  ${r.rarity==="天井"?`【天井】${r.name}`:`【${r.rarity}】${r.name}`} ×1個`).join("\n");
+    all += `${entry.player}(${entry.times}回)\n${txt}\n\n`;
+  });
+  const blob=new Blob([all],{type:"text/plain"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="gacha_log.txt"; a.click();
+  URL.revokeObjectURL(url);
+}
 function saveSummary(text){const blob=new Blob([text],{type:"text/plain"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="gacha_summary.txt"; a.click(); URL.revokeObjectURL(url);}
 </script>
 </body>
