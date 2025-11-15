@@ -7,7 +7,8 @@
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display:flex;justify-content:center;padding:12px;min-height:100vh;}
 .app{width:100%;max-width:900px;background:#ffffff;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;}
-.controls{display:flex;gap:6px;justify-content:center;}
+.controls{display:flex;gap:6px;justify-content:center;align-items:center;}
+.controls input{flex:1;padding:4px 6px;border-radius:6px;border:1px solid #ccc;font-size:14px;}
 .btn{background:rgba(0,0,0,0.05);color:#000;padding:4px 10px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;height:32px;}
 .btn.secondary{background:#f59e0b;color:#fff;}
 .board{display:flex;flex-direction:column;gap:8px;background:#9acd32;padding:10px;border-radius:12px;} /* 黄緑背景 */
@@ -43,6 +44,11 @@ footer{display:flex;justify-content:space-between;gap:6px;align-items:center;pad
 <div class="controls">
     <button class="btn" id="toggleWins">勝利回数表示</button>
     <button class="btn" id="toggleStreak">連勝表示</button>
+</div>
+
+<div class="controls">
+    <input type="text" id="participantInput" placeholder="参加者を記入">
+    <button class="btn secondary" id="addParticipantBtn">追加</button>
 </div>
 
 <div class="participant-areas">
@@ -96,6 +102,8 @@ const lowArea=document.getElementById('lowArea');
 const waitingArea=document.getElementById('waitingArea');
 const toggleWinsBtn=document.getElementById('toggleWins');
 const toggleStreakBtn=document.getElementById('toggleStreak');
+const participantInput=document.getElementById('participantInput');
+const addParticipantBtn=document.getElementById('addParticipantBtn');
 const currentCardEl=document.getElementById('currentCard');
 const curCenter=document.getElementById('curCenter');
 const curTopLeft=document.getElementById('curTopLeft');
@@ -178,6 +186,9 @@ function newRound(){deck=buildDeck(); shuffle(deck); setCurrentCard(draw()); set
 toggleWinsBtn.onclick=()=>{showWins=!showWins; renderParticipants();}
 toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
 
+addParticipantBtn.onclick=()=>{const name=participantInput.value.trim(); if(!name) return; const p={name,bet:null,wins:0,currentStreak:0,dom:null}; participants.push(p); participantInput.value=''; renderParticipants();};
+participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
+
 nextCardEl.onclick=()=>{
   if(!nextCard) nextCard=draw();
   if(!current || !nextCard) return;
@@ -196,9 +207,7 @@ nextCardEl.onclick=()=>{
   resultEl.textContent='結果表示中';
   const winLabel=document.createElement('div'); winLabel.className='win-label'; winLabel.textContent='\\当たり/';
   resultEl.appendChild(winLabel);
-  if(participants.some(p=>p.bet==='high' && effectiveValue(current)>effectiveValue(nextCard))) highArea.classList.add('highlight');
-  else if(participants.some(p=>p.bet==='low' && effectiveValue(current)<effectiveValue(nextCard))) lowArea.classList.add('highlight');
-  else {highArea.classList.add('highlight'); lowArea.classList.add('highlight');}
+  highArea.classList.add('highlight'); lowArea.classList.add('highlight');
 };
 
 nextGameBtn.onclick=()=>{
@@ -211,12 +220,6 @@ nextGameBtn.onclick=()=>{
 resetBtn.onclick=()=>{participants=[]; deck=[]; current=null; nextCard=null; renderParticipants(); setCurrentCard(null); setNextCard(null); statsEl.innerHTML=''; resultEl.textContent='リセットされました';};
 
 consentBtn.onclick=()=>{consentModal.style.display='none'; newRound();};
-
-// サンプル参加者追加（任意）
-participants.push({name:'たろう',bet:null,wins:0,currentStreak:0});
-participants.push({name:'はなこ',bet:null,wins:0,currentStreak:0});
-participants.push({name:'ひろし',bet:null,wins:0,currentStreak:0});
-renderParticipants();
 
 })();
 </script>
