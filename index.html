@@ -7,8 +7,9 @@
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display:flex;justify-content:center;padding:12px;min-height:100vh;}
 .app{width:100%;max-width:900px;background:#fff;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;}
-.controls{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;}
-.controls input{flex:1;padding:4px 6px;border-radius:6px;border:1px solid #ccc;font-size:14px;}
+.top-controls{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
+.bottom-controls{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
+.bottom-controls input{flex:1;padding:4px 6px;border-radius:6px;border:1px solid #ccc;font-size:14px;}
 .btn{background:rgba(0,0,0,0.05);color:#000;padding:4px 10px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;height:32px;}
 .btn.secondary{background:#f59e0b;color:#fff;}
 .board{display:flex;flex-direction:column;gap:8px;background:#adff2f;padding:10px;border-radius:12px;}
@@ -22,6 +23,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 .participant-list{max-height:250px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;}
 .participant{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:6px;background:rgba(0,0,0,0.05);cursor:pointer;user-select:none;}
 .participant-name{flex:1;}
+.remove-btn{margin-left:6px;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:0 6px;cursor:pointer;}
 .bet-circle{width:20px;height:20px;border-radius:50%;margin-left:6px;background:transparent;transition:background 0.3s;}
 .bet-H{background:#f87171;}
 .bet-L{background:#60a5fa;}
@@ -38,11 +40,16 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 <body>
 <div class="app">
 
-<div class="controls">
-    <input type="text" id="participantInput" placeholder="参加者を記入">
-    <button class="btn secondary" id="addParticipantBtn">追加</button>
+<!-- ページ最上部に操作説明とルールボタン -->
+<div class="top-controls">
     <button class="btn" id="showInstructionsBtn">操作説明</button>
     <button class="btn" id="showRulesBtn">ルール</button>
+</div>
+
+<!-- 名前入力と追加ボタン -->
+<div class="bottom-controls">
+    <input type="text" id="participantInput" placeholder="参加者を記入">
+    <button class="btn secondary" id="addParticipantBtn">追加</button>
 </div>
 
 <div class="participant-list" id="participantList"></div>
@@ -64,8 +71,6 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 
 <div style="margin-top:6px;">
   <button class="btn" id="resetAllBtn">全てリセット</button>
-</div>
-
 </div>
 
 <!-- 操作説明モーダル -->
@@ -146,8 +151,15 @@ function createParticipant(name){
   nameSpan.textContent = name;
   const circle = document.createElement('div');
   circle.className='bet-circle';
+  const removeBtn = document.createElement('button');
+  removeBtn.className='remove-btn';
+  removeBtn.textContent='×';
+  removeBtn.onclick=(e)=>{e.stopPropagation(); participantList.removeChild(div); participants = participants.filter(x=>x!==p); renderStats();};
+  
   div.appendChild(nameSpan);
   div.appendChild(circle);
+  div.appendChild(removeBtn);
+
   p.dom = div;
   p.nameSpan = nameSpan;
   p.circle = circle;
@@ -173,7 +185,7 @@ addParticipantBtn.onclick=()=>{
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
 
 // カード
-function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit;curBottomRight.textContent=card.suit;}
+function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit; curBottomRight.textContent=card.suit;}
 function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏'; return;} nextCardEl.textContent='裏';}
 
 // ラウンド開始
