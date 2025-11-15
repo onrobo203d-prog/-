@@ -19,16 +19,14 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 .card .bottom-right{bottom:6px;right:6px;transform:rotate(180deg);}
 .card .center{font-size:48px;font-weight:bold;color:black;display:flex;align-items:center;justify-content:center;flex:1;}
 .card.face-down{background:#2e7d32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;user-select:none;}
-.participant-areas{display:flex;flex-direction:column;gap:6px;}
-.waiting-area{text-align:center;}
-.area-row{display:flex;gap:6px;}
-.area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;transition:background 0.3s;position:relative;}
-.area h3{margin:0;color:#000;text-align:center;font-size:14px;}
-.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:pointer;user-select:none;position:absolute;}
+.participant-list{max-height:250px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;}
+.participant{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:6px;background:rgba(0,0,0,0.05);cursor:pointer;user-select:none;}
+.participant-name{flex:1;}
+.bet-circle{width:20px;height:20px;border-radius:50%;margin-left:6px;background:transparent;transition:background 0.3s;}
+.bet-H{background:#f87171;}
+.bet-L{background:#60a5fa;}
 .result{padding:6px;border-radius:6px;text-align:center;font-weight:700;min-height:36px;color:#000;position:relative;}
 .stats{padding:4px;font-size:13px;color:#000;display:flex;flex-direction:column;gap:2px;}
-.area.highlight-high { background-color: #ffff99; }
-.area.highlight-low  { background-color: #99ccff; }
 .card.animate-flip { transform: rotateY(180deg); transition: transform 0.6s; }
 .card.animate-move { transition: transform 0.5s ease-in-out; position: relative; }
 /* モーダル */
@@ -50,16 +48,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
     <button class="btn secondary" id="addParticipantBtn">追加</button>
 </div>
 
-<div class="participant-areas">
-    <div class="waiting-area">
-        <div style="font-size:14px;margin-bottom:4px;">ドラッグで移動</div>
-        <div class="area" id="waitingArea"><h3>待機</h3></div>
-    </div>
-    <div class="area-row">
-        <div class="area" id="highArea"><h3>HIGH</h3></div>
-        <div class="area" id="lowArea"><h3>LOW</h3></div>
-    </div>
-</div>
+<div class="participant-list" id="participantList"></div>
 
 <div class="board">
   <div class="card-display">
@@ -95,28 +84,26 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 
 <script>
 (function(){
-const highArea=document.getElementById('highArea');
-const lowArea=document.getElementById('lowArea');
-const waitingArea=document.getElementById('waitingArea');
-const toggleWinsBtn=document.getElementById('toggleWins');
-const toggleStreakBtn=document.getElementById('toggleStreak');
-const participantInput=document.getElementById('participantInput');
-const addParticipantBtn=document.getElementById('addParticipantBtn');
-const currentCardEl=document.getElementById('currentCard');
-const curCenter=document.getElementById('curCenter');
-const curTopLeft=document.getElementById('curTopLeft');
-const curBottomRight=document.getElementById('curBottomRight');
-const nextCardEl=document.getElementById('nextCard');
-const nextGameBtn=document.getElementById('nextGameBtn');
-const resultEl=document.getElementById('result');
-const statsEl=document.getElementById('stats');
-const resetBtn=document.getElementById('resetAllBtn');
-const consentModal=document.getElementById('consentModal');
-const consentBtn=document.getElementById('consentBtn');
+const participantList = document.getElementById('participantList');
+const toggleWinsBtn = document.getElementById('toggleWins');
+const toggleStreakBtn = document.getElementById('toggleStreak');
+const participantInput = document.getElementById('participantInput');
+const addParticipantBtn = document.getElementById('addParticipantBtn');
+const currentCardEl = document.getElementById('currentCard');
+const curCenter = document.getElementById('curCenter');
+const curTopLeft = document.getElementById('curTopLeft');
+const curBottomRight = document.getElementById('curBottomRight');
+const nextCardEl = document.getElementById('nextCard');
+const nextGameBtn = document.getElementById('nextGameBtn');
+const resultEl = document.getElementById('result');
+const statsEl = document.getElementById('stats');
+const resetBtn = document.getElementById('resetAllBtn');
+const consentModal = document.getElementById('consentModal');
+const consentBtn = document.getElementById('consentBtn');
 
 let participants=[];
-let showWins=false,showStreak=false;
-let deck=[],current=null,nextCard=null;
+let showWins=false, showStreak=false;
+let deck=[], current=null, nextCard=null;
 const suits=[{sym:'♠'},{sym:'♥'},{sym:'♦'},{sym:'♣'}];
 const ranks=[{r:'A',v:14},{r:'2',v:2},{r:'3',v:3},{r:'4',v:4},{r:'5',v:5},{r:'6',v:6},{r:'7',v:7},{r:'8',v:8},{r:'9',v:9},{r:'10',v:10},{r:'J',v:11},{r:'Q',v:12},{r:'K',v:13}];
 
@@ -127,80 +114,48 @@ function effectiveValue(card){return card?card.value:0;}
 
 // 参加者作成
 function createParticipant(name){
-  const p={name,bet:null,wins:0,currentStreak:0,dom:null,dragEnabled:false,x:0,y:0};
-  const div=document.createElement('div');
+  const p = {name, bet:null, wins:0, currentStreak:0};
+  const div = document.createElement('div');
   div.className='participant';
-  div.textContent=name;
-  div.style.left='0px';
-  div.style.top='0px';
-  p.dom=div;
+  const nameSpan = document.createElement('span');
+  nameSpan.className='participant-name';
+  nameSpan.textContent = name;
+  const circle = document.createElement('div');
+  circle.className='bet-circle';
+  div.appendChild(nameSpan);
+  div.appendChild(circle);
+  p.dom = div;
+  p.nameSpan = nameSpan;
+  p.circle = circle;
+
+  // タップでHIGH⇄LOW切替
+  div.addEventListener('click',()=>{
+    if(p.bet==='high'){p.bet='low'; nameSpan.textContent='(L) '+p.name; nameSpan.style.color='#60a5fa';}
+    else{p.bet='high'; nameSpan.textContent='(H) '+p.name; nameSpan.style.color='#f87171';}
+    renderStats();
+  });
+
   participants.push(p);
-  enableDrag(p);
-  waitingArea.appendChild(div);
+  participantList.appendChild(div);
+  renderStats();
   return p;
 }
 
-// ドラッグ
-let dragged=null,offsetX=0,offsetY=0;
-function enableDrag(p){
-  if(p.dragEnabled) return;
-  p.dom.addEventListener('mousedown', e=>{
-    dragged=p;
-    offsetX = e.clientX - p.dom.offsetLeft;
-    offsetY = e.clientY - p.dom.offsetTop;
-    p.dom.style.zIndex=1000;
-  });
-  p.dragEnabled=true;
-}
-document.addEventListener('mousemove', e=>{
-  if(dragged){
-    dragged.x = e.clientX - offsetX;
-    dragged.y = e.clientY - offsetY;
-    dragged.dom.style.left = dragged.x + 'px';
-    dragged.dom.style.top = dragged.y + 'px';
-  }
-});
-document.addEventListener('mouseup', e=>{
-  if(dragged){
-    // ドロップ判定
-    let placed=false;
-    [[highArea,'high'],[lowArea,'low'],[waitingArea,null]].forEach(([area,bet])=>{
-      const rect=area.getBoundingClientRect();
-      if(e.clientX>rect.left && e.clientX<rect.right && e.clientY>rect.top && e.clientY<rect.bottom){
-        dragged.bet=bet;
-        area.appendChild(dragged.dom);
-        dragged.x=0; dragged.y=0; dragged.dom.style.left='0px'; dragged.dom.style.top='0px';
-        placed=true;
-      }
-    });
-    if(!placed){
-      // 元に戻す
-      dragged.x=0; dragged.y=0; dragged.dom.style.left='0px'; dragged.dom.style.top='0px';
-      waitingArea.appendChild(dragged.dom);
-      dragged.bet=null;
-    }
-    dragged.dom.style.zIndex='auto';
-    dragged=null;
-    renderParticipants();
-  }
-});
-
 // オプション
-toggleWinsBtn.onclick=()=>{showWins=!showWins; renderParticipants();}
-toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
+toggleWinsBtn.onclick=()=>{showWins=!showWins; renderStats();}
+toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderStats();}
 
 // 参加者追加
 addParticipantBtn.onclick=()=>{
-  const name=participantInput.value.trim();
+  const name = participantInput.value.trim();
   if(!name) return;
   createParticipant(name);
   participantInput.value='';
-  renderParticipants();
 };
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
 
 // カード
-function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit;curBottomRight.textContent=card.suit;}
+function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit; curBottomRight.textContent=card.suit;}
 function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏'; return;} nextCardEl.textContent='裏';}
 
 // ラウンド開始
@@ -208,9 +163,8 @@ function newRound(){
   deck=buildDeck(); shuffle(deck);
   setCurrentCard(draw());
   setNextCard(draw());
-  participants.forEach(p=>p.bet=null);
-  renderParticipants();
-  resultEl.textContent='カードをめくる前にベットを設定してください';
+  participants.forEach(p=>{p.bet=null; p.circle.style.background='transparent'; p.nameSpan.style.color='#000'; p.nameSpan.textContent=p.name;});
+  resultEl.textContent='カードをめくる前にベットしてください';
 }
 
 // 次カードめくり
@@ -222,79 +176,44 @@ nextCardEl.onclick=()=>{
     nextCardEl.classList.remove('animate-flip');
     nextCardEl.innerHTML=`<div class="corner top-left">${nextCard.suit}</div><div class="center">${nextCard.rank}</div><div class="corner bottom-right">${nextCard.suit}</div>`;
     
-    const curVal=effectiveValue(current), nextVal=effectiveValue(nextCard);
-    highArea.classList.remove('highlight-high'); 
-    lowArea.classList.remove('highlight-low');
-
+    const curVal = effectiveValue(current), nextVal = effectiveValue(nextCard);
     participants.forEach(p=>{
       if(!p.bet) return;
-      const guess=p.bet;
-      const win=(nextVal>curVal && guess==='high')||(nextVal<curVal && guess==='low');
-      if(win){p.wins++; p.currentStreak++;}
-      else p.currentStreak=0;
-      if(win && guess==='high') highArea.classList.add('highlight-high');
-      if(win && guess==='low') lowArea.classList.add('highlight-low');
+      const win = (nextVal>curVal && p.bet==='high')||(nextVal<curVal && p.bet==='low');
+      if(win){p.wins++; p.currentStreak++; p.circle.style.background='#fdd835';} 
+      else {p.currentStreak=0; p.circle.style.background='transparent';}
     });
-
-    renderParticipants();
+    renderStats();
     resultEl.textContent='結果表示中';
-  }, 100);
+  },100);
 };
 
 // 次ゲーム
 nextGameBtn.onclick=()=>{
-  highArea.classList.remove('highlight-high');
-  lowArea.classList.remove('highlight-low');
-  nextCardEl.classList.add('animate-move');
-  setTimeout(()=>{
-    setCurrentCard(nextCard);
-    nextCardEl.textContent='裏';
-    nextCardEl.innerHTML='';
-    nextCardEl.classList.remove('animate-move');
-    nextCard=draw();
-  },500);
-  participants.forEach(p=>p.bet=null);
-  renderParticipants();
+  participants.forEach(p=>{p.circle.style.background='transparent';});
+  setCurrentCard(nextCard);
+  nextCardEl.textContent='裏'; nextCardEl.innerHTML='';
+  nextCard=draw();
+  participants.forEach(p=>{p.bet=null; p.nameSpan.style.color='#000'; p.nameSpan.textContent=p.name;});
   resultEl.textContent='次ゲーム開始';
+  renderStats();
 };
 
 // リセット
 resetBtn.onclick=()=>{
   participants.forEach(p=>{
-    p.bet=null;
-    p.wins=0;
-    p.currentStreak=0;
-    p.x=0; p.y=0;
-    p.dom.style.left='0px';
-    p.dom.style.top='0px';
-    waitingArea.appendChild(p.dom);
+    p.bet=null; p.wins=0; p.currentStreak=0; p.circle.style.background='transparent';
+    p.nameSpan.style.color='#000'; p.nameSpan.textContent=p.name;
   });
-  deck = buildDeck(); shuffle(deck);
-  current = draw();
-  nextCard = draw();
-  setCurrentCard(current);
-  setNextCard(nextCard);
-
-  highArea.classList.remove('highlight-high');
-  lowArea.classList.remove('highlight-low');
-
-  renderParticipants();
+  deck=buildDeck(); shuffle(deck);
+  setCurrentCard(draw());
+  setNextCard(draw());
   resultEl.textContent='リセットされました';
-  statsEl.innerHTML='';
+  renderStats();
 };
 
-// 参加者描画
-function renderParticipants(){
-  participants.forEach(p=>{
-    p.renderName = ()=>{
-      let txt=p.name;
-      if(showWins) txt+=' ('+p.wins+')';
-      if(showStreak) txt+=' 連勝:'+p.currentStreak;
-      p.dom.textContent=txt;
-    };
-    p.renderName();
-  });
-  // stats
+// スタッツ表示
+function renderStats(){
   statsEl.innerHTML='';
   if(showWins){statsEl.innerHTML='勝利: '+participants.map(p=>`${p.name}:${p.wins}`).join(' | ')+'<br>';}
   if(showStreak){statsEl.innerHTML+='連勝: '+participants.map(p=>`${p.name}:${p.currentStreak}`).join(' | ');}
