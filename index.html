@@ -7,27 +7,14 @@
 <style>
 html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
 #mainWrapper{padding:15px;}
-.section{
-  background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;
-  box-shadow:0 0 4px rgba(0,0,0,0.1);
-}
-input[type="number"],input[type="text"],select{
-  width:95%;padding:8px;margin:5px 0;border-radius:5px;
-  border:1px solid #aaa;font-size:14px;
-}
+.section{background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 0 4px rgba(0,0,0,0.1);}
+input[type="number"],input[type="text"],select{width:95%;padding:8px;margin:5px 0;border-radius:5px;border:1px solid #aaa;font-size:14px;}
 button{cursor:pointer;border:none;border-radius:6px;}
 .add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
 .gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .gacha-btns button{flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;}
-.preset-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-top:10px;
-}
-.preset-grid button{
-  padding:14px;font-size:16px;background:#7aa8ff;color:#fff;
-}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.preset-grid button{padding:14px;font-size:16px;background:#7aa8ff;color:#fff;}
 .copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
 .clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
 .save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
@@ -130,14 +117,14 @@ pre{white-space:pre-wrap;}
 
 </div>
 <script>
-let players=[], logData=[], ceilingCounter={};
+let players=[], logData=[], ceilingCounter={}, ceilingHits={};
 addItem();
 
 /* プレイヤー管理 */
 function addPlayer(){
   const name=document.getElementById("playerName").value.trim();
   if(!name || players.includes(name)) return;
-  players.push(name); ceilingCounter[name]=0;
+  players.push(name); ceilingCounter[name]=0; ceilingHits[name]=0;
   updatePlayerUI(); document.getElementById("playerName").value="";
 }
 function updatePlayerUI(){
@@ -185,9 +172,10 @@ function roll(times){
   const ceilingLimit=parseInt(document.getElementById("ceilingLimit").value);
   const ceilingRarities=[...document.getElementById("ceilingRarities").selectedOptions].map(o=>o.value);
   if(ceilingOn && ceilingRarities.length===0) ceilingRarities.push("N","R","SR","UR","LR");
+
   for(let i=0;i<times;i++){
     let isCeiling=false, remainingCeiling=0;
-    if(ceilingOn){remainingCeiling=ceilingLimit-ceilingCounter[player]; if(remainingCeiling<=1){isCeiling=true; ceilingCounter[player]=0;} else{ceilingCounter[player]++;}}
+    if(ceilingOn){remainingCeiling=ceilingLimit-ceilingCounter[player]; if(remainingCeiling<=1){isCeiling=true; ceilingCounter[player]=0; ceilingHits[player]++;} else{ceilingCounter[player]++;}}
     let pick;
     if(isCeiling){
       const ceilingPool=[]; ceilingRarities.forEach(r=>{if(pool[r].length>0) ceilingPool.push(...pool[r].map(n=>({name:n,rarity:r})));});
@@ -213,9 +201,12 @@ function displayLog(){
   const logDiv=document.getElementById("log"); summaryDiv.innerHTML=""; logDiv.innerHTML="";
   let filteredLogs = logData.filter(entry=>filter===""||entry.player===filter);
   if(sortOrder==="desc") filteredLogs=filteredLogs.slice().reverse();
-  let totalSummary={}, totalTimes=0, latestLogs=[], oldLogs=[];
+
+  let totalSummary={}, totalTimes=0, totalCeilingHits=0;
+  let latestLogs=[], oldLogs=[];
   filteredLogs.forEach((entry,idx)=>{
-    totalTimes+=entry.times; const countMap={};
+    totalTimes+=entry.times; totalCeilingHits+=ceilingHits[entry.player]||0;
+    const countMap={};
     entry.results.forEach(r=>{
       const key=`【${r.rarity}】${r.name}`;
       countMap[key]=(countMap[key]||0)+1;
@@ -241,14 +232,14 @@ function displayLog(){
   }
 
   const sumText=Object.entries(totalSummary).map(([k,v])=>`${k}: ${v}個`).join("\n");
-  const sumTitle=filter===""?`全員(${totalTimes}回)`:`${filter}(${totalTimes}回)`;
+  const sumTitle=filter===""?`全員(${totalTimes}回, 天井発動:${totalCeilingHits}回)`:`${filter}(${totalTimes}回, 天井発動:${ceilingHits[filter]||0}回)`;
   summaryDiv.innerHTML=`<b>集計結果（${sumTitle}）</b><br><pre>${sumText}</pre>
     <button class="copy-btn" onclick='navigator.clipboard.writeText(\`${sumTitle}\n${sumText}\`)'>コピー</button>
     <button class="save-btn" onclick='saveSummary(\`${sumTitle}\n${sumText}\`)'>txt保存</button>`;
 }
 
 /* 消去・保存 */
-function clearLog(){if(confirm("全ログと登録名を削除しますか？")){logData=[];players=[];ceilingCounter={};updatePlayerUI();displayLog();}}
+function clearLog(){if(confirm("全ログと登録名を削除しますか？")){logData=[];players=[];ceilingCounter={};ceilingHits={};updatePlayerUI();displayLog();}}
 function saveLog(){
   let all=""; logData.forEach(entry=>{
     const txt=entry.results.map(r=>`  【${r.rarity}】${r.name}${r.ceiling?" (天井)":""} ×1個${r.remainingCeiling>0?` (あと${r.remainingCeiling}回で天井)`:''}`).join("\n");
