@@ -11,10 +11,10 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 .controls input{flex:1;padding:4px 6px;border-radius:6px;border:1px solid #ccc;font-size:14px;}
 .btn{background:rgba(0,0,0,0.05);color:#000;padding:4px 10px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;height:32px;}
 .btn.secondary{background:#f59e0b;color:#fff;}
-.board{display:flex;flex-direction:column;gap:8px;background:#9acd32;padding:10px;border-radius:12px;}
+.board{display:flex;flex-direction:column;gap:8px;background:#adff2f;padding:10px;border-radius:12px;}
 .card-display{display:flex;justify-content:center;gap:12px;align-items:center;position:relative;}
 .card{width:32vw;max-width:150px;height:46vw;max-height:220px;background:#fff;border-radius:12px;display:flex;flex-direction:column;padding:6px;justify-content:space-between;box-shadow:0 6px 18px rgba(0,0,0,0.25);position:relative;text-align:center;transition:transform 0.5s ease;}
-.card .corner{font-size:20px;position:absolute;color:black;}
+.card .corner{font-size:24px;position:absolute;color:black;}
 .card .top-left{top:6px;left:6px;}
 .card .bottom-right{bottom:6px;right:6px;transform:rotate(180deg);}
 .card .center{font-size:48px;font-weight:bold;color:black;display:flex;align-items:center;justify-content:center;flex:1;}
@@ -136,6 +136,7 @@ function createParticipantDiv(p){
   renderName();
   p.renderName = renderName;
   p.dom=div;
+  enableDrag(p);
   return div;
 }
 
@@ -153,6 +154,7 @@ function renderParticipants(){
   waitingArea.innerHTML='<h3>待機</h3>';
   participants.forEach(p=>{
     if(!p.dom) createParticipantDiv(p);
+    enableDrag(p); // 常にドラッグ可能
     if(p.bet==='high') highArea.appendChild(p.dom);
     else if(p.bet==='low') lowArea.appendChild(p.dom);
     else waitingArea.appendChild(p.dom);
@@ -203,12 +205,14 @@ document.addEventListener('mouseup',e=>{
 
 // ドラッグ開始
 function enableDrag(p){
-  p.dom.addEventListener('mousedown',e=>{
+  if(p.dragEnabled) return;
+  p.dom.addEventListener('mousedown', e => {
     dragged=p.dom;
-    const rect=dragged.getBoundingClientRect();
-    offsetX=e.clientX-rect.left;
-    offsetY=e.clientY-rect.top;
+    const rect = dragged.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
   });
+  p.dragEnabled=true;
 }
 
 // オプション
@@ -219,11 +223,10 @@ toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
 addParticipantBtn.onclick=()=>{
   const name=participantInput.value.trim(); 
   if(!name) return; 
-  const p={name,bet:null,wins:0,currentStreak:0,dom:null};
+  const p={name,bet:null,wins:0,currentStreak:0,dom:null,dragEnabled:false};
   participants.push(p);
-  participantInput.value=''; 
   createParticipantDiv(p);
-  enableDrag(p);
+  participantInput.value=''; 
   renderParticipants();
 };
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
@@ -277,7 +280,6 @@ nextGameBtn.onclick=()=>{
 
 // リセット
 resetBtn.onclick=()=>{
-  // 参加者のベット・勝利数・連勝リセット
   participants.forEach(p=>{
     p.bet=null;
     p.wins=0;
