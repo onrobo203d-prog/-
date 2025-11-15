@@ -6,32 +6,32 @@
 <title>High & Low ディーラー版</title>
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display:flex;justify-content:center;padding:12px;min-height:100vh;}
-.app{width:100%;max-width:900px;background:#ffffff;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;}
+.app{width:100%;max-width:900px;background:#fff;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;}
 .controls{display:flex;gap:6px;justify-content:center;align-items:center;}
 .controls input{flex:1;padding:4px 6px;border-radius:6px;border:1px solid #ccc;font-size:14px;}
 .btn{background:rgba(0,0,0,0.05);color:#000;padding:4px 10px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;height:32px;}
 .btn.secondary{background:#f59e0b;color:#fff;}
-.board{display:flex;flex-direction:column;gap:8px;background:#9acd32;padding:10px;border-radius:12px;} /* 黄緑背景 */
-.card-display{display:flex;justify-content:center;gap:12px;align-items:center;}
-.card{width:32vw;max-width:150px;height:46vw;max-height:220px;background:#fff;border-radius:12px;display:flex;flex-direction:column;padding:6px;justify-content:space-between;box-shadow:0 6px 18px rgba(0,0,0,0.25);position:relative;text-align:center;}
-.card .corner{font-size:20px;position:absolute;color:black;} /* 図柄大きめ */
+.board{display:flex;flex-direction:column;gap:8px;background:#9acd32;padding:10px;border-radius:12px;}
+.card-display{display:flex;justify-content:center;gap:12px;align-items:center;position:relative;}
+.card{width:32vw;max-width:150px;height:46vw;max-height:220px;background:#fff;border-radius:12px;display:flex;flex-direction:column;padding:6px;justify-content:space-between;box-shadow:0 6px 18px rgba(0,0,0,0.25);position:relative;text-align:center;transition:transform 0.5s ease;}
+.card .corner{font-size:20px;position:absolute;color:black;}
 .card .top-left{top:6px;left:6px;}
 .card .bottom-right{bottom:6px;right:6px;transform:rotate(180deg);}
 .card .center{font-size:48px;font-weight:bold;color:black;display:flex;align-items:center;justify-content:center;flex:1;}
-.card.face-down{background:#2e7d32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.card.face-down{background:#2e7d32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;user-select:none;}
 .participant-areas{display:flex;flex-direction:column;gap:6px;}
 .waiting-area{text-align:center;}
 .area-row{display:flex;gap:6px;}
-.area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;}
+.area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;transition:background 0.3s;}
 .area h3{margin:0;color:#000;text-align:center;font-size:14px;}
 .participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:grab;user-select:none;}
 .participant.dragging{opacity:0.5;}
 .result{padding:6px;border-radius:6px;text-align:center;font-weight:700;min-height:36px;color:#000;position:relative;}
-.result .win-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-weight:bold;color:red;}
-.result.highlight{background:#ffffff;}
 .stats{padding:4px;font-size:13px;color:#000;display:flex;flex-direction:column;gap:2px;}
-footer{display:flex;justify-content:space-between;gap:6px;align-items:center;padding-top:6px;font-size:13px;color:#000;}
-
+.area.highlight-high { background-color: #ffff99; }
+.area.highlight-low  { background-color: #99ccff; }
+.card.animate-flip { transform: rotateY(180deg); transition: transform 0.6s; }
+.card.animate-move { transition: transform 0.5s ease-in-out; position: relative; }
 /* モーダル */
 .modal{position: fixed;top:0;left:0;width:100%;height:100%;background: rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;}
 .modal-content{background:#fff;padding:20px;border-radius:12px;max-width:400px;text-align:center;color:#000;}
@@ -83,7 +83,6 @@ footer{display:flex;justify-content:space-between;gap:6px;align-items:center;pad
 
 </div>
 
-<!-- 注意喚起モーダル -->
 <div id="consentModal" class="modal">
   <div class="modal-content">
     <h2>⚠ 注意 ⚠</h2>
@@ -130,11 +129,16 @@ function effectiveValue(card){return card?card.value:0;}
 function createParticipantDiv(p){
   const div=document.createElement('div');
   div.className='participant';
-  div.textContent=p.name;
-  if(showWins) div.textContent+=` (${p.wins})`;
-  if(showStreak) div.textContent+='\n'+`連勝:${p.currentStreak}`;
+  function renderName(){
+    div.textContent=p.name;
+    if(showWins) div.textContent+=' ('+p.wins+')';
+    if(showStreak) div.textContent+=' 連勝:'+p.currentStreak;
+  }
+  renderName();
+  p.renderName = renderName;
   div.draggable=true;
-  div.addEventListener('dragstart',e=>{div.classList.add('dragging'); e.dataTransfer.setData('text/plain', p.name);});
+  div.addEventListener('mousedown',e=>{div.classList.add('dragging'); e.dataTransfer?.setData('text/plain', p.name);});
+  div.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain', p.name);});
   div.addEventListener('dragend',()=>{div.classList.remove('dragging');});
   p.dom=div;
   return div;
@@ -157,6 +161,7 @@ function renderParticipants(){
     if(p.bet==='high') highArea.appendChild(p.dom);
     else if(p.bet==='low') lowArea.appendChild(p.dom);
     else waitingArea.appendChild(p.dom);
+    p.renderName();
   });
   updateStats();
 }
@@ -172,7 +177,7 @@ function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏';
 
 function newRound(){deck=buildDeck(); shuffle(deck); setCurrentCard(draw()); setNextCard(draw()); participants.forEach(p=>p.bet=null); renderParticipants(); resultEl.textContent='カードをめくる前にベットを設定してください';}
 
-// ドラッグエリアの受け入れ設定
+// ドラッグ
 [highArea,lowArea,waitingArea].forEach(area=>{
   area.addEventListener('dragover',e=>e.preventDefault());
   area.addEventListener('drop',e=>{
@@ -186,32 +191,62 @@ function newRound(){deck=buildDeck(); shuffle(deck); setCurrentCard(draw()); set
 toggleWinsBtn.onclick=()=>{showWins=!showWins; renderParticipants();}
 toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
 
-addParticipantBtn.onclick=()=>{const name=participantInput.value.trim(); if(!name) return; const p={name,bet:null,wins:0,currentStreak:0,dom:null}; participants.push(p); participantInput.value=''; renderParticipants();};
+addParticipantBtn.onclick=()=>{
+  const name=participantInput.value.trim(); 
+  if(!name) return; 
+  const p={name,bet:null,wins:0,currentStreak:0,dom:null};
+  participants.push(p);
+  participantInput.value=''; 
+  renderParticipants();
+};
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
 
+// 次カードクリックでめくるアニメーション
 nextCardEl.onclick=()=>{
   if(!nextCard) nextCard=draw();
   if(!current || !nextCard) return;
-  const curVal=effectiveValue(current), nextVal=effectiveValue(nextCard);
-  participants.forEach(p=>{
-    if(!p.bet) return;
-    const guess=p.bet;
-    const win=(nextVal>curVal && guess==='high')||(nextVal<curVal && guess==='low');
-    const lose=(nextVal>curVal && guess==='low')||(nextVal<curVal && guess==='high');
-    if(win){p.wins++; p.currentStreak++; if(p.currentStreak>p.maxStreak)p.maxStreak=p.currentStreak;}
-    if(lose){p.currentStreak=0;}
-  });
-  setCurrentCard(nextCard);
-  setNextCard(draw());
-  renderParticipants();
-  resultEl.textContent='結果表示中';
-  const winLabel=document.createElement('div'); winLabel.className='win-label'; winLabel.textContent='\\当たり/';
-  resultEl.appendChild(winLabel);
-  highArea.classList.add('highlight'); lowArea.classList.add('highlight');
+  nextCardEl.classList.add('animate-flip');
+  setTimeout(()=>{
+    nextCardEl.classList.remove('animate-flip');
+    nextCardEl.textContent=nextCard.rank;
+    nextCardEl.innerHTML=`<div class="corner top-left">${nextCard.suit}</div><div class="center">${nextCard.rank}</div><div class="corner bottom-right">${nextCard.suit}</div>`;
+    
+    const curVal=effectiveValue(current), nextVal=effectiveValue(nextCard);
+    highArea.classList.remove('highlight-high'); 
+    lowArea.classList.remove('highlight-low');
+
+    participants.forEach(p=>{
+      if(!p.bet) return;
+      const guess=p.bet;
+      const win=(nextVal>curVal && guess==='high')||(nextVal<curVal && guess==='low');
+      const lose=(nextVal>curVal && guess==='low')||(nextVal>curVal && guess==='high');
+      if(win){p.wins++; p.currentStreak++;}
+      if(lose){p.currentStreak=0;}
+      // ハイライト個別
+      if(win && guess==='high') highArea.classList.add('highlight-high');
+      if(win && guess==='low') lowArea.classList.add('highlight-low');
+    });
+
+    renderParticipants();
+    resultEl.textContent='結果表示中';
+  }, 300);
 };
 
+// 次ゲーム
 nextGameBtn.onclick=()=>{
-  [highArea,lowArea,waitingArea].forEach(area=>area.classList.remove('highlight'));
+  highArea.classList.remove('highlight-high');
+  lowArea.classList.remove('highlight-low');
+
+  // カード移動アニメーション
+  nextCardEl.classList.add('animate-move');
+  setTimeout(()=>{
+    setCurrentCard(nextCard);
+    nextCardEl.textContent='裏';
+    nextCardEl.innerHTML='';
+    nextCardEl.classList.remove('animate-move');
+    nextCard=draw();
+  },500);
+
   participants.forEach(p=>p.bet=null);
   renderParticipants();
   resultEl.textContent='次ゲーム開始';
@@ -220,6 +255,11 @@ nextGameBtn.onclick=()=>{
 resetBtn.onclick=()=>{participants=[]; deck=[]; current=null; nextCard=null; renderParticipants(); setCurrentCard(null); setNextCard(null); statsEl.innerHTML=''; resultEl.textContent='リセットされました';};
 
 consentBtn.onclick=()=>{consentModal.style.display='none'; newRound();};
+
+// 初期参加者サンプル
+participants.push({name:'たろう',bet:null,wins:0,currentStreak:0});
+participants.push({name:'はなこ',bet:null,wins:0,currentStreak:0});
+renderParticipants();
 
 })();
 </script>
