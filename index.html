@@ -22,9 +22,9 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#000;display
 .participant-areas{display:flex;flex-direction:column;gap:6px;}
 .waiting-area{text-align:center;}
 .area-row{display:flex;gap:6px;}
-.area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;transition:background 0.3s;}
+.area{flex:1;background:rgba(0,0,0,0.05);padding:6px;border-radius:8px;min-height:80px;display:flex;flex-direction:column;gap:4px;transition:background 0.3s;position:relative;}
 .area h3{margin:0;color:#000;text-align:center;font-size:14px;}
-.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:pointer;user-select:none;position:relative;}
+.participant{background:rgba(0,0,0,0.05);padding:4px 6px;border-radius:6px;display:flex;align-items:center;color:#000;cursor:pointer;user-select:none;position:absolute;}
 .result{padding:6px;border-radius:6px;text-align:center;font-weight:700;min-height:36px;color:#000;position:relative;}
 .stats{padding:4px;font-size:13px;color:#000;display:flex;flex-direction:column;gap:2px;}
 .area.highlight-high { background-color: #ffff99; }
@@ -125,95 +125,65 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function draw(){return deck.pop()||null;}
 function effectiveValue(card){return card?card.value:0;}
 
-function createParticipantDiv(p){
+// 参加者作成
+function createParticipant(name){
+  const p={name,bet:null,wins:0,currentStreak:0,dom:null,dragEnabled:false,x:0,y:0};
   const div=document.createElement('div');
   div.className='participant';
-  function renderName(){
-    div.textContent=p.name;
-    if(showWins) div.textContent+=' ('+p.wins+')';
-    if(showStreak) div.textContent+=' 連勝:'+p.currentStreak;
-  }
-  renderName();
-  p.renderName = renderName;
+  div.textContent=name;
+  div.style.left='0px';
+  div.style.top='0px';
   p.dom=div;
+  participants.push(p);
   enableDrag(p);
-  return div;
+  waitingArea.appendChild(div);
+  return p;
 }
 
-function moveParticipant(p,targetArea){
-  [highArea,lowArea,waitingArea].forEach(area=>{if(area.contains(p.dom)) area.removeChild(p.dom);});
-  targetArea.appendChild(p.dom);
-  if(targetArea===highArea) p.bet='high';
-  else if(targetArea===lowArea) p.bet='low';
-  else p.bet=null;
-}
-
-function renderParticipants(){
-  highArea.innerHTML='<h3>HIGH</h3>';
-  lowArea.innerHTML='<h3>LOW</h3>';
-  waitingArea.innerHTML='<h3>待機</h3>';
-  participants.forEach(p=>{
-    if(!p.dom) createParticipantDiv(p);
-    enableDrag(p); // 常にドラッグ可能
-    if(p.bet==='high') highArea.appendChild(p.dom);
-    else if(p.bet==='low') lowArea.appendChild(p.dom);
-    else waitingArea.appendChild(p.dom);
-    p.renderName();
-  });
-  updateStats();
-}
-
-function updateStats(){
-  statsEl.innerHTML='';
-  if(showWins){statsEl.innerHTML='勝利: '+participants.map(p=>`${p.name}:${p.wins}`).join(' | ')+'<br>';}
-  if(showStreak){statsEl.innerHTML+='連勝: '+participants.map(p=>`${p.name}:${p.currentStreak}`).join(' | ');}
-}
-
-function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit;curBottomRight.textContent=card.suit;}
-function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏'; return;} nextCardEl.textContent='裏';}
-
-function newRound(){deck=buildDeck(); shuffle(deck); setCurrentCard(draw()); setNextCard(draw()); participants.forEach(p=>p.bet=null); renderParticipants(); resultEl.textContent='カードをめくる前にベットを設定してください';}
-
-// ドラッグ即反応
+// ドラッグ
 let dragged=null,offsetX=0,offsetY=0;
-document.addEventListener('mousemove',e=>{
-  if(dragged){dragged.style.position='absolute'; dragged.style.zIndex=1000;
-    dragged.style.left=(e.clientX-offsetX)+'px';
-    dragged.style.top=(e.clientY-offsetY)+'px';
-  }
-});
-document.addEventListener('mouseup',e=>{
-  if(dragged){
-    const areas=[highArea,lowArea,waitingArea];
-    let dropped=false;
-    areas.forEach(area=>{
-      const rect=area.getBoundingClientRect();
-      if(e.clientX>rect.left && e.clientX<rect.right && e.clientY>rect.top && e.clientY<rect.bottom){
-        const p=participants.find(p=>p.dom===dragged);
-        if(p) moveParticipant(p,area);
-        dropped=true;
-      }
-    });
-    if(!dropped){
-      renderParticipants();
-    }
-    dragged.style.position='relative';
-    dragged.style.zIndex='auto';
-    dragged=null;
-  }
-});
-
-// ドラッグ開始
 function enableDrag(p){
   if(p.dragEnabled) return;
-  p.dom.addEventListener('mousedown', e => {
-    dragged=p.dom;
-    const rect = dragged.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-    offsetY = e.clientY - rect.top;
+  p.dom.addEventListener('mousedown', e=>{
+    dragged=p;
+    offsetX = e.clientX - p.dom.offsetLeft;
+    offsetY = e.clientY - p.dom.offsetTop;
+    p.dom.style.zIndex=1000;
   });
   p.dragEnabled=true;
 }
+document.addEventListener('mousemove', e=>{
+  if(dragged){
+    dragged.x = e.clientX - offsetX;
+    dragged.y = e.clientY - offsetY;
+    dragged.dom.style.left = dragged.x + 'px';
+    dragged.dom.style.top = dragged.y + 'px';
+  }
+});
+document.addEventListener('mouseup', e=>{
+  if(dragged){
+    // ドロップ判定
+    let placed=false;
+    [[highArea,'high'],[lowArea,'low'],[waitingArea,null]].forEach(([area,bet])=>{
+      const rect=area.getBoundingClientRect();
+      if(e.clientX>rect.left && e.clientX<rect.right && e.clientY>rect.top && e.clientY<rect.bottom){
+        dragged.bet=bet;
+        area.appendChild(dragged.dom);
+        dragged.x=0; dragged.y=0; dragged.dom.style.left='0px'; dragged.dom.style.top='0px';
+        placed=true;
+      }
+    });
+    if(!placed){
+      // 元に戻す
+      dragged.x=0; dragged.y=0; dragged.dom.style.left='0px'; dragged.dom.style.top='0px';
+      waitingArea.appendChild(dragged.dom);
+      dragged.bet=null;
+    }
+    dragged.dom.style.zIndex='auto';
+    dragged=null;
+    renderParticipants();
+  }
+});
 
 // オプション
 toggleWinsBtn.onclick=()=>{showWins=!showWins; renderParticipants();}
@@ -221,17 +191,29 @@ toggleStreakBtn.onclick=()=>{showStreak=!showStreak; renderParticipants();}
 
 // 参加者追加
 addParticipantBtn.onclick=()=>{
-  const name=participantInput.value.trim(); 
-  if(!name) return; 
-  const p={name,bet:null,wins:0,currentStreak:0,dom:null,dragEnabled:false};
-  participants.push(p);
-  createParticipantDiv(p);
-  participantInput.value=''; 
+  const name=participantInput.value.trim();
+  if(!name) return;
+  createParticipant(name);
+  participantInput.value='';
   renderParticipants();
 };
 participantInput.addEventListener('keydown',e=>{if(e.key==='Enter') addParticipantBtn.click();});
 
-// 次カードクリックでめくる
+// カード
+function setCurrentCard(card){current=card;if(!card){curCenter.textContent='?'; curTopLeft.textContent='♦'; curBottomRight.textContent='♦'; return;}curCenter.textContent=card.rank;curTopLeft.textContent=card.suit;curBottomRight.textContent=card.suit;}
+function setNextCard(card){nextCard=card;if(!card){nextCardEl.textContent='裏'; return;} nextCardEl.textContent='裏';}
+
+// ラウンド開始
+function newRound(){
+  deck=buildDeck(); shuffle(deck);
+  setCurrentCard(draw());
+  setNextCard(draw());
+  participants.forEach(p=>p.bet=null);
+  renderParticipants();
+  resultEl.textContent='カードをめくる前にベットを設定してください';
+}
+
+// 次カードめくり
 nextCardEl.onclick=()=>{
   if(!nextCard) nextCard=draw();
   if(!current || !nextCard) return;
@@ -263,7 +245,6 @@ nextCardEl.onclick=()=>{
 nextGameBtn.onclick=()=>{
   highArea.classList.remove('highlight-high');
   lowArea.classList.remove('highlight-low');
-
   nextCardEl.classList.add('animate-move');
   setTimeout(()=>{
     setCurrentCard(nextCard);
@@ -272,7 +253,6 @@ nextGameBtn.onclick=()=>{
     nextCardEl.classList.remove('animate-move');
     nextCard=draw();
   },500);
-
   participants.forEach(p=>p.bet=null);
   renderParticipants();
   resultEl.textContent='次ゲーム開始';
@@ -284,8 +264,11 @@ resetBtn.onclick=()=>{
     p.bet=null;
     p.wins=0;
     p.currentStreak=0;
+    p.x=0; p.y=0;
+    p.dom.style.left='0px';
+    p.dom.style.top='0px';
+    waitingArea.appendChild(p.dom);
   });
-
   deck = buildDeck(); shuffle(deck);
   current = draw();
   nextCard = draw();
@@ -299,6 +282,23 @@ resetBtn.onclick=()=>{
   resultEl.textContent='リセットされました';
   statsEl.innerHTML='';
 };
+
+// 参加者描画
+function renderParticipants(){
+  participants.forEach(p=>{
+    p.renderName = ()=>{
+      let txt=p.name;
+      if(showWins) txt+=' ('+p.wins+')';
+      if(showStreak) txt+=' 連勝:'+p.currentStreak;
+      p.dom.textContent=txt;
+    };
+    p.renderName();
+  });
+  // stats
+  statsEl.innerHTML='';
+  if(showWins){statsEl.innerHTML='勝利: '+participants.map(p=>`${p.name}:${p.wins}`).join(' | ')+'<br>';}
+  if(showStreak){statsEl.innerHTML+='連勝: '+participants.map(p=>`${p.name}:${p.currentStreak}`).join(' | ');}
+}
 
 consentBtn.onclick=()=>{consentModal.style.display='none'; newRound();};
 })();
