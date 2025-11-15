@@ -283,16 +283,23 @@ function displayLog(){
 
   filteredLogs.forEach((entry,idx)=>{
     totalTimes += entry.times;
-    const countMap={};
+
+    // 個別に天井フラグを判定してログ用テキストを作る
+    const logText = entry.results.map(r=>{
+      const nameDisplay = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
+      return `  ${nameDisplay}${r.ceiling?" (天井)":" "} ×1個`;
+    }).join("\n");
+
+    // 集計用にまとめる（天井フラグは無視）
     entry.results.forEach(r=>{
-      const key=r.rarity?`【${r.rarity}】${r.name}`:r.name;
-      countMap[key]=(countMap[key]||0)+1;
-      totalSummary[key]=(totalSummary[key]||0)+1;
+      const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
+      totalSummary[key] = (totalSummary[key]||0)+1;
     });
-    const logText=Object.entries(countMap).map(([k,v])=>`  ${k}${entry.results.find(x=>x.name===k.replace(/【.*】/,""))?.ceiling?" (天井)":" "} ×${v}個`).join("\n");
-    const logBlock={
+
+    const logBlock = {
       html:`<div class="log-block"><b>${entry.player}（${entry.times}回）</b><pre>${logText}</pre><button class="copy-btn" onclick='navigator.clipboard.writeText(\`${entry.player}(${entry.times}回)\n${logText}\`)'>コピー</button></div>`
     };
+
     if(sortOrder==="desc" ? idx<3 : idx>=filteredLogs.length-3){
       latestLogs.push(logBlock);
     }else{
@@ -312,7 +319,7 @@ function displayLog(){
     logDiv.appendChild(oldDiv);
   }
 
-  // 集計表示
+  // 集計表示（天井フラグは反映しない）
   const sumText=Object.entries(totalSummary).map(([k,v])=>`${k}: ${v}個`).join("\n");
   const sumTitle = filter==="" ? `全員(${totalTimes}回)` : `${filter}(${totalTimes}回)`;
   summaryDiv.innerHTML=`<b>集計結果（${sumTitle}）</b><br><pre>${sumText}</pre>
