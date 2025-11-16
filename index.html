@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ガチャツール 完全版</title>
+<title>ガチャツール 完全版（カスタム1/2対応）</title>
 <style>
 html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
 #mainWrapper{padding:15px;}
@@ -17,6 +17,7 @@ html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
 input[type="number"],input[type="text"],select{
   width:95%;padding:8px;margin:5px 0;border-radius:5px;
   border:1px solid #aaa;font-size:14px;
+  box-sizing:border-box;
 }
 
 button{cursor:pointer;border:none;border-radius:6px;}
@@ -34,7 +35,19 @@ button{cursor:pointer;border:none;border-radius:6px;}
   margin-top:10px;
 }
 .preset-grid button{
-  padding:14px;font-size:16px;background:#7aa8ff;color:#fff;
+  padding:14px;font-size:16px;background:#7aa8ff;color:#fff;width:100%;text-align:center;
+}
+
+/* カスタム保存ボタン群の配置 */
+.custom-save-wrap{
+  position:absolute;
+  top:8px;
+  right:8px;
+  display:flex;
+  gap:8px;
+}
+.custom-save-wrap button{
+  padding:6px 10px;font-size:12px;background:#6666ff;color:#fff;border-radius:6px;
 }
 
 .copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
@@ -58,7 +71,7 @@ button{cursor:pointer;border:none;border-radius:6px;}
 
 .log-block{margin-bottom:10px; border-bottom:1px solid #ccc; padding-bottom:5px;}
 .old-log{display:none; font-size:0.9em; color:#333;}
-pre{white-space:pre-wrap;}
+pre{white-space:pre-wrap; word-break:keep-all;}
 </style>
 </head>
 <body>
@@ -67,11 +80,14 @@ pre{white-space:pre-wrap;}
 <!-- プリセット -->
 <div class="section">
   <label>確率プリセット</label>
-  <div class="preset-grid">
+  <div class="preset-grid" id="presetGrid">
     <button onclick="setPreset('normal')">通常</button>
     <button onclick="setPreset('hard')">キツめ</button>
     <button onclick="setPreset('veryhard')">極悪</button>
     <button onclick="setPreset('hell')">地獄</button>
+    <!-- カスタム1 / カスタム2 をプリセットと同じ枠に並べる -->
+    <button id="loadCustom1Btn" onclick="loadCustom(1)">カスタム1</button>
+    <button id="loadCustom2Btn" onclick="loadCustom(2)">カスタム2</button>
   </div>
 </div>
 
@@ -94,7 +110,13 @@ pre{white-space:pre-wrap;}
 <!-- カスタム確率 -->
 <div class="section" style="position:relative;">
   <label><b>選択中プリセット：</b> <span id="presetName">通常</span></label>
-  <button id="saveCustomBtn" style="position:absolute; top:5px; right:5px; padding:5px 10px; font-size:12px;">カスタム保存</button>
+
+  <!-- カスタム保存ボタンを2つ、ここに配置 -->
+  <div class="custom-save-wrap">
+    <button id="saveCustom1Btn" title="現在の確率をカスタム1に保存">カスタム保存1</button>
+    <button id="saveCustom2Btn" title="現在の確率をカスタム2に保存">カスタム保存2</button>
+  </div>
+
   <br><br>
   <label>カスタム確率設定（%）</label><br>
   N  <input id="rateN" type="number" value="40"><br>
@@ -162,15 +184,24 @@ pre{white-space:pre-wrap;}
 </div>
 
 <script>
-let players=[], logData=[], ceilingCounter={}, customRates=null;
+/* ---------- 状態変数 ---------- */
+let players=[],
+    logData=[],
+    ceilingCounter={},
+    customRates1 = null,
+    customRates2 = null;
+
+/* 初期1個の景品入力を作る */
 addItem();
 
 /* ---------- プレイヤー管理 ---------- */
 function addPlayer(){
   const name=document.getElementById("playerName").value.trim();
   if(!name || players.includes(name)) return;
-  players.push(name); ceilingCounter[name]=0;
-  updatePlayerUI(); document.getElementById("playerName").value="";
+  players.push(name);
+  ceilingCounter[name]=0;
+  updatePlayerUI();
+  document.getElementById("playerName").value="";
 }
 function updatePlayerUI(){
   const sel=document.getElementById("playerSelect");
@@ -195,11 +226,14 @@ function addItem(){
   `;
   document.getElementById('items').appendChild(div);
 
-  // Enterキーで次の操作
-  const input=div.querySelector("input");
-  const select=div.querySelector("select");
-  input.addEventListener("keydown",e=>{
-    if(e.key==="Enter") select.focus();
+  // Enterキーでレアリティ選択に移動
+  const input = div.querySelector("input");
+  const select = div.querySelector("select");
+  input.addEventListener("keydown", e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      select.focus();
+    }
   });
 }
 
@@ -212,29 +246,63 @@ function setPreset(type){
     hell:{N:79.9,R:19,SR:1,UR:0.9,LR:0.1}
   };
   const p=preset[type];
-  rateN.value=p.N; rateR.value=p.R; rateSR.value=p.SR; rateUR.value=p.UR; rateLR.value=p.LR;
-  const name={normal:"通常",hard:"キツめ",veryhard:"極悪",hell:"地獄"};
-  document.getElementById("presetName").textContent=name[type];
+  if(!p) return;
+  document.getElementById('rateN').value = p.N;
+  document.getElementById('rateR').value = p.R;
+  document.getElementById('rateSR').value = p.SR;
+  document.getElementById('rateUR').value = p.UR;
+  document.getElementById('rateLR').value = p.LR;
+  document.getElementById("presetName").textContent = ({normal:"通常",hard:"キツめ",veryhard:"極悪",hell:"地獄"})[type] || "プリセット";
 }
 
-/* ---------- カスタム確率 ---------- */
-document.getElementById("saveCustomBtn").addEventListener("click", ()=>{
-  customRates={
-    N:parseFloat(rateN.value),R:parseFloat(rateR.value),
-    SR:parseFloat(rateSR.value),UR:parseFloat(rateUR.value),
-    LR:parseFloat(rateLR.value)
+/* ---------- カスタム保存 / 読み込み ---------- */
+document.getElementById("saveCustom1Btn").addEventListener("click", ()=>{
+  customRates1 = {
+    N: parseFloat(document.getElementById('rateN').value),
+    R: parseFloat(document.getElementById('rateR').value),
+    SR: parseFloat(document.getElementById('rateSR').value),
+    UR: parseFloat(document.getElementById('rateUR').value),
+    LR: parseFloat(document.getElementById('rateLR').value)
   };
-  alert("カスタム確率を保存しました");
-  document.getElementById("presetName").textContent="カスタム";
+  document.getElementById("presetName").textContent="カスタム1";
+  alert("カスタム1に保存しました");
+});
+document.getElementById("saveCustom2Btn").addEventListener("click", ()=>{
+  customRates2 = {
+    N: parseFloat(document.getElementById('rateN').value),
+    R: parseFloat(document.getElementById('rateR').value),
+    SR: parseFloat(document.getElementById('rateSR').value),
+    UR: parseFloat(document.getElementById('rateUR').value),
+    LR: parseFloat(document.getElementById('rateLR').value)
+  };
+  document.getElementById("presetName").textContent="カスタム2";
+  alert("カスタム2に保存しました");
 });
 
+function loadCustom(num){
+  const rates = (num===1 ? customRates1 : customRates2);
+  if(!rates){
+    alert("保存されたカスタム" + num + "がありません");
+    return;
+  }
+  document.getElementById('rateN').value = rates.N;
+  document.getElementById('rateR').value = rates.R;
+  document.getElementById('rateSR').value = rates.SR;
+  document.getElementById('rateUR').value = rates.UR;
+  document.getElementById('rateLR').value = rates.LR;
+  document.getElementById("presetName").textContent = "カスタム" + num;
+}
+
+/* 既存の「カスタム」ボタン（画面に残してあるもの）は
+   従来の単体カスタム機能として customRates1 をロードするようにしておく */
 document.getElementById("customBtn").addEventListener("click", ()=>{
-  if(customRates){
-    rateN.value=customRates.N; rateR.value=customRates.R;
-    rateSR.value=customRates.SR; rateUR.value=customRates.UR; rateLR.value=customRates.LR;
-    document.getElementById("presetName").textContent="カスタム";
+  if(customRates1){
+    loadCustom(1);
+  }else if(customRates2){
+    // もし1が無ければ2を使う
+    loadCustom(2);
   }else{
-    alert("保存されたカスタム確率がありません");
+    alert("保存されたカスタムがありません（カスタム保存1 または 2 を使ってください）");
   }
 });
 
@@ -243,32 +311,44 @@ function toggleCeiling(){
   document.getElementById("ceilingSettings").style.display=document.getElementById("ceilingSwitch").checked?"block":"none";
 }
 
-/* ---------- ガチャ ---------- */
+/* ---------- ガチャ本体 ---------- */
 function roll(times){
   const player=document.getElementById("playerSelect").value;
   if(!player){alert("名前を選択してください");return;}
-  const results=[], items=document.querySelectorAll("#items > div");
+  const results=[];
+  const items=document.querySelectorAll("#items > div");
   const pool={N:[],R:[],SR:[],UR:[],LR:[]};
   items.forEach(n=>{
     let name=n.querySelector("input").value.trim();
     let rarity=n.querySelector("select").value;
     if(name) pool[rarity].push(name);
   });
-  const rates={N:parseFloat(rateN.value),R:parseFloat(rateR.value),SR:parseFloat(rateSR.value),
-               UR:parseFloat(rateUR.value),LR:parseFloat(rateLR.value)};
+  const rates={
+    N: parseFloat(document.getElementById('rateN').value) || 0,
+    R: parseFloat(document.getElementById('rateR').value) || 0,
+    SR: parseFloat(document.getElementById('rateSR').value) || 0,
+    UR: parseFloat(document.getElementById('rateUR').value) || 0,
+    LR: parseFloat(document.getElementById('rateLR').value) || 0
+  };
   const ceilingOn=document.getElementById("ceilingSwitch").checked;
-  const ceilingLimit=parseInt(document.getElementById("ceilingCount").value);
+  const ceilingLimit=parseInt(document.getElementById("ceilingCount").value) || 0;
   const ceilingRarities=[...document.getElementById("ceilingRarity").selectedOptions].map(o=>o.value);
 
   for(let i=0;i<times;i++){
     let isCeiling=false;
-    if(ceilingOn && ceilingCounter[player]+1>=ceilingLimit){
-      isCeiling=true; ceilingCounter[player]=0;
-    }else{ceilingCounter[player]++;}
+    if(ceilingOn && ceilingCounter[ player ]+1>=ceilingLimit){
+      isCeiling=true;
+      ceilingCounter[player]=0;
+    }else{
+      ceilingCounter[player] = (ceilingCounter[player] || 0) + 1;
+    }
+
     let pick;
     if(isCeiling){
       const ceilingPool=[];
-      ceilingRarities.forEach(r=>{if(pool[r].length>0) ceilingPool.push(...pool[r].map(n=>({name:n,rarity:r})));});
+      ceilingRarities.forEach(r=>{
+        if(pool[r] && pool[r].length>0) ceilingPool.push(...pool[r].map(n=>({name:n,rarity:r})));
+      });
       if(ceilingPool.length===0){
         results.push({name:"指定レアリティの景品が見当たりません", rarity:"", ceiling:true});
         continue;
@@ -277,7 +357,11 @@ function roll(times){
       pick.ceiling=true;
     }else{
       let keys=[],weights=[];
-      for(let r in rates){if(pool[r].length>0){keys.push(r);weights.push(rates[r]);}}
+      for(let r in rates){ if(pool[r] && pool[r].length>0){ keys.push(r); weights.push(rates[r]); } }
+      if(keys.length===0){
+        results.push({name:"景品が登録されていません", rarity:"", ceiling:false});
+        continue;
+      }
       const rKey=randomChoice(keys,weights);
       pick={name:pool[rKey][Math.floor(Math.random()*pool[rKey].length)], rarity:rKey};
     }
@@ -287,10 +371,11 @@ function roll(times){
 }
 
 function rollCustom(){const n=parseInt(document.getElementById("customRoll").value); if(n>0) roll(n);}
-function randomChoice(keys,weights){const sum=weights.reduce((a,b)=>a+b,0); let r=Math.random()*sum; for(let i=0;i<keys.length;i++){if(r<weights[i]) return keys[i]; r-=weights[i];}}
+function randomChoice(keys,weights){const sum=weights.reduce((a,b)=>a+b,0); let r=Math.random()*sum; for(let i=0;i<keys.length;i++){ if(r<weights[i]) return keys[i]; r-=weights[i]; }}
 
-/* ---------- ログ ---------- */
-function addLog(player,results,times){logData.push({player,results,times}); displayLog();}
+/* ---------- ログ表示 ---------- */
+function addLog(player,results,times){ logData.push({player,results,times}); displayLog(); }
+
 function displayLog(){
   const filter=document.getElementById("logFilter").value;
   const sortOrder=document.getElementById("sortOrder").value;
@@ -349,7 +434,7 @@ function displayLog(){
     oldLogs.forEach(l=>{oldDiv.innerHTML+=l.html;});
     const toggleBtn=document.createElement("button");
     toggleBtn.textContent="古いログを展開";
-    toggleBtn.onclick=()=>{oldDiv.style.display=(oldDiv.style.display==="none"?"block":"none");};
+    toggleBtn.onclick=()=>{ oldDiv.style.display = (oldDiv.style.display==="none"?"block":"none"); };
     logDiv.appendChild(toggleBtn);
     logDiv.appendChild(oldDiv);
   }
@@ -363,6 +448,7 @@ function displayLog(){
 
 /* ---------- フィルター・消去・保存 ---------- */
 function clearLog(){if(confirm("全ログと登録名を削除しますか？")){logData=[];players=[];ceilingCounter={};updatePlayerUI();displayLog();}}
+
 function saveLog(){
   let all="";
   logData.forEach(entry=>{
@@ -372,9 +458,12 @@ function saveLog(){
     normalItems.forEach(r=>{const key=r.rarity?`【${r.rarity}】${r.name}`:r.name; normalCount[key]=(normalCount[key]||0)+1;});
     const rarityOrder=["N","R","SR","UR","LR"];
     let txt="";
-    rarityOrder.forEach(r=>{for(const [key,count] of Object.entries(normalCount)){
-      if(key.startsWith(`【${r}】`)||(r==="N"&&!key.startsWith("【"))) txt+=`${key} ×${count}個\n`;}});
-    ceilingItems.forEach(r=>{const key=r.rarity?r.rarity+r.name:r.name; const key2=r.rarity?`【${r.rarity}】${r.name}`:r.name; txt+=`${key2} (天井) ×1個\n`;});
+    rarityOrder.forEach(r=>{
+      for(const [key,count] of Object.entries(normalCount)){
+        if(key.startsWith(`【${r}】`)||(r==="N"&&!key.startsWith("【"))) txt+=`${key} ×${count}個\n`;
+      }
+    });
+    ceilingItems.forEach(r=>{const key2=r.rarity?`【${r.rarity}】${r.name}`:r.name; txt+=`${key2} (天井) ×1個\n`;});
     all+=`${entry.player}(${entry.times}回)\n${txt}\n\n`;
   });
   const blob=new Blob([all],{type:"text/plain"});
@@ -384,20 +473,32 @@ function saveLog(){
 }
 function saveSummary(text){const blob=new Blob([text],{type:"text/plain"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="gacha_summary.txt"; a.click(); URL.revokeObjectURL(url);}
 
-/* ---------- 設定保存・読み込み ---------- */
+/* ---------- 設定保存・読み込み（カスタム1/2も含む） ---------- */
 function saveSettings(){
   const settings={
-    rates:{N:rateN.value,R:rateR.value,SR:rateSR.value,UR:rateUR.value,LR:rateLR.value},
+    rates:{
+      N: document.getElementById('rateN').value,
+      R: document.getElementById('rateR').value,
+      SR: document.getElementById('rateSR').value,
+      UR: document.getElementById('rateUR').value,
+      LR: document.getElementById('rateLR').value
+    },
     items:[],
-    players,
-    customRates
+    players: players,
+    customRates1: customRates1,
+    customRates2: customRates2,
+    ceiling:{
+      enabled: document.getElementById('ceilingSwitch').checked,
+      count: document.getElementById('ceilingCount').value,
+      rarities: [...document.getElementById('ceilingRarity').selectedOptions].map(o=>o.value)
+    }
   };
   document.querySelectorAll("#items > div").forEach(d=>{
     const name=d.querySelector("input").value.trim();
     const rarity=d.querySelector("select").value;
     if(name) settings.items.push({name,rarity});
   });
-  const blob=new Blob([JSON.stringify(settings)],{type:"text/plain"});
+  const blob=new Blob([JSON.stringify(settings, null, 2) ],{type:"text/plain"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a"); a.href=url; a.download="gacha_settings.txt"; a.click();
   URL.revokeObjectURL(url);
@@ -409,23 +510,51 @@ function loadSettings(files){
   reader.onload=e=>{
     try{
       const settings=JSON.parse(e.target.result);
-      rateN.value=settings.rates.N; rateR.value=settings.rates.R; rateSR.value=settings.rates.SR;
-      rateUR.value=settings.rates.UR; rateLR.value=settings.rates.LR;
 
-      document.getElementById("items").innerHTML="";
-      settings.items.forEach(it=>{addItem(); const last=document.querySelector("#items > div:last-child");
-        last.querySelector("input").value=it.name; last.querySelector("select").value=it.rarity;
+      // 確率
+      if(settings.rates){
+        document.getElementById('rateN').value = settings.rates.N ?? document.getElementById('rateN').value;
+        document.getElementById('rateR').value = settings.rates.R ?? document.getElementById('rateR').value;
+        document.getElementById('rateSR').value = settings.rates.SR ?? document.getElementById('rateSR').value;
+        document.getElementById('rateUR').value = settings.rates.UR ?? document.getElementById('rateUR').value;
+        document.getElementById('rateLR').value = settings.rates.LR ?? document.getElementById('rateLR').value;
+      }
+
+      // 景品
+      document.getElementById("items").innerHTML = "";
+      (settings.items || []).forEach(it=>{
+        addItem();
+        const last=document.querySelector("#items > div:last-child");
+        last.querySelector("input").value = it.name;
+        last.querySelector("select").value = it.rarity;
       });
 
-      players=settings.players||[];
-      players.forEach(p=>ceilingCounter[p]=0);
+      // プレイヤー
+      players = settings.players || [];
+      players.forEach(p => ceilingCounter[p] = 0);
       updatePlayerUI();
 
-      if(settings.customRates) customRates=settings.customRates;
+      // カスタム1/2
+      if(settings.customRates1) customRates1 = settings.customRates1;
+      if(settings.customRates2) customRates2 = settings.customRates2;
+
+      // 天井
+      if(settings.ceiling){
+        document.getElementById('ceilingSwitch').checked = !!settings.ceiling.enabled;
+        toggleCeiling();
+        if(settings.ceiling.count) document.getElementById('ceilingCount').value = settings.ceiling.count;
+        if(Array.isArray(settings.ceiling.rarities)){
+          const sel = document.getElementById('ceilingRarity');
+          for(let i=0;i<sel.options.length;i++){
+            sel.options[i].selected = settings.ceiling.rarities.includes(sel.options[i].value);
+          }
+        }
+      }
 
       displayLog();
       alert("設定を読み込みました");
     }catch(err){
+      console.error(err);
       alert("設定の読み込みに失敗しました");
     }
   };
@@ -433,7 +562,13 @@ function loadSettings(files){
 }
 
 /* ---------- プレイヤー入力 Enter ---------- */
-document.getElementById("playerName").addEventListener("keydown",e=>{if(e.key==="Enter") addPlayer();});
+document.getElementById("playerName").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){ e.preventDefault(); addPlayer(); }
+});
+
+/* ---------- 初期UI更新 ---------- */
+updatePlayerUI();
+displayLog();
 </script>
 </body>
 </html>
