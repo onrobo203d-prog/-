@@ -3,24 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ガチャツール</title>
+<title>ガチャツール 完全版</title>
 <style>
 html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
 #mainWrapper{padding:15px;}
+
 .section{
   background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;
   box-shadow:0 0 4px rgba(0,0,0,0.1);
+  position:relative;
 }
+
 input[type="number"],input[type="text"],select{
   width:95%;padding:8px;margin:5px 0;border-radius:5px;
   border:1px solid #aaa;font-size:14px;
 }
+
 button{cursor:pointer;border:none;border-radius:6px;}
 .add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
+
 .gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .gacha-btns button{
   flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;
 }
+
 .preset-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -30,14 +36,26 @@ button{cursor:pointer;border:none;border-radius:6px;}
 .preset-grid button{
   padding:14px;font-size:16px;background:#7aa8ff;color:#fff;
 }
+
 .copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
 .clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
 .save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
+
 .N{color:#00ccff;} .R{color:#0055ff;}
 .SR{color:#aa00ff;} .UR{color:#ff55aa;}
 .LR{color:#ff0000;}
-#logContainer{display:flex;flex-direction: column;gap:15px;}
-#summary, #log{background:#f8f8f8; padding:10px; border-radius:8px; max-height:500px; overflow:auto;}
+
+#logContainer{
+  display:flex;
+  flex-direction: column;
+  gap:15px;
+}
+
+#summary, #log{
+  background:#f8f8f8; padding:10px; border-radius:8px; 
+  max-height:500px; overflow:auto;
+}
+
 .log-block{margin-bottom:10px; border-bottom:1px solid #ccc; padding-bottom:5px;}
 .old-log{display:none; font-size:0.9em; color:#333;}
 pre{white-space:pre-wrap;}
@@ -54,7 +72,6 @@ pre{white-space:pre-wrap;}
     <button onclick="setPreset('hard')">キツめ</button>
     <button onclick="setPreset('veryhard')">極悪</button>
     <button onclick="setPreset('hell')">地獄</button>
-    <button onclick="applyCustom()">カスタム適用</button>
   </div>
 </div>
 
@@ -75,14 +92,17 @@ pre{white-space:pre-wrap;}
 </div>
 
 <!-- カスタム確率 -->
-<div class="section">
-  <label><b>選択中プリセット：</b> <span id="presetName">通常</span></label><br><br>
+<div class="section" style="position:relative;">
+  <label><b>選択中プリセット：</b> <span id="presetName">通常</span></label>
+  <button id="saveCustomBtn" style="position:absolute; top:5px; right:5px; padding:5px 10px; font-size:12px;">カスタム保存</button>
+  <br><br>
   <label>カスタム確率設定（%）</label><br>
   N  <input id="rateN" type="number" value="40"><br>
   R  <input id="rateR" type="number" value="30"><br>
   SR <input id="rateSR" type="number" value="20"><br>
   UR <input id="rateUR" type="number" value="7"><br>
   LR <input id="rateLR" type="number" value="3"><br>
+  <button id="customBtn" style="margin-top:10px;">カスタム</button>
 </div>
 
 <!-- 景品登録 -->
@@ -133,21 +153,19 @@ pre{white-space:pre-wrap;}
   </div>
 </div>
 
-<!-- 設定保存・読み込み（ページ最下部に配置） -->
+<!-- 設定保存/読み込み -->
 <div class="section">
-  <label>設定の保存・読み込み</label><br>
   <button class="save-btn" onclick="saveSettings()">設定を保存</button>
-  <input type="file" id="loadSettingsFile" style="display:none;" onchange="loadSettings(this.files)">
-  <button class="add-btn" onclick="document.getElementById('loadSettingsFile').click()">設定を読み込む</button>
+  <input type="file" id="loadSettingsFile" style="margin-top:10px;" onchange="loadSettings(this.files)">
 </div>
 
 </div>
 
 <script>
-let players=[], logData=[], ceilingCounter={};
+let players=[], logData=[], ceilingCounter={}, customRates=null;
 addItem();
 
-/* プレイヤー管理 */
+/* ---------- プレイヤー管理 ---------- */
 function addPlayer(){
   const name=document.getElementById("playerName").value.trim();
   if(!name || players.includes(name)) return;
@@ -164,12 +182,7 @@ function updatePlayerUI(){
   });
 }
 
-/* プレイヤー名Enterキーで登録 */
-document.getElementById("playerName").addEventListener("keydown", e=>{
-  if(e.key === "Enter"){ e.preventDefault(); addPlayer(); }
-});
-
-/* 景品登録 */
+/* ---------- 景品登録 ---------- */
 function addItem(){
   const div=document.createElement("div");
   div.style.marginTop='8px';
@@ -180,15 +193,17 @@ function addItem(){
     </select>
     <button onclick="this.parentNode.remove()">×</button>
   `;
-  const input = div.querySelector("input");
-  const select = div.querySelector("select");
-  input.addEventListener("keydown", e=>{
-    if(e.key==="Enter"){ e.preventDefault(); select.focus(); }
-  });
   document.getElementById('items').appendChild(div);
+
+  // Enterキーで次の操作
+  const input=div.querySelector("input");
+  const select=div.querySelector("select");
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter") select.focus();
+  });
 }
 
-/* プリセット */
+/* ---------- プリセット ---------- */
 function setPreset(type){
   const preset={
     normal:{N:40,R:30,SR:20,UR:7,LR:3},
@@ -201,17 +216,37 @@ function setPreset(type){
   const name={normal:"通常",hard:"キツめ",veryhard:"極悪",hell:"地獄"};
   document.getElementById("presetName").textContent=name[type];
 }
-function applyCustom(){document.getElementById("presetName").textContent="カスタム"; alert("カスタム確率を適用しました");}
 
-/* 天井表示切替 */
+/* ---------- カスタム確率 ---------- */
+document.getElementById("saveCustomBtn").addEventListener("click", ()=>{
+  customRates={
+    N:parseFloat(rateN.value),R:parseFloat(rateR.value),
+    SR:parseFloat(rateSR.value),UR:parseFloat(rateUR.value),
+    LR:parseFloat(rateLR.value)
+  };
+  alert("カスタム確率を保存しました");
+  document.getElementById("presetName").textContent="カスタム";
+});
+
+document.getElementById("customBtn").addEventListener("click", ()=>{
+  if(customRates){
+    rateN.value=customRates.N; rateR.value=customRates.R;
+    rateSR.value=customRates.SR; rateUR.value=customRates.UR; rateLR.value=customRates.LR;
+    document.getElementById("presetName").textContent="カスタム";
+  }else{
+    alert("保存されたカスタム確率がありません");
+  }
+});
+
+/* ---------- 天井 ---------- */
 function toggleCeiling(){
   document.getElementById("ceilingSettings").style.display=document.getElementById("ceilingSwitch").checked?"block":"none";
 }
 
-/* ---------- ガチャ本体 ---------- */
+/* ---------- ガチャ ---------- */
 function roll(times){
   const player=document.getElementById("playerSelect").value;
-  if(!player){alert("名前を選択してください"); return;}
+  if(!player){alert("名前を選択してください");return;}
   const results=[], items=document.querySelectorAll("#items > div");
   const pool={N:[],R:[],SR:[],UR:[],LR:[]};
   items.forEach(n=>{
@@ -219,7 +254,8 @@ function roll(times){
     let rarity=n.querySelector("select").value;
     if(name) pool[rarity].push(name);
   });
-  const rates={N:parseFloat(rateN.value),R:parseFloat(rateR.value),SR:parseFloat(rateSR.value),UR:parseFloat(rateUR.value),LR:parseFloat(rateLR.value)};
+  const rates={N:parseFloat(rateN.value),R:parseFloat(rateR.value),SR:parseFloat(rateSR.value),
+               UR:parseFloat(rateUR.value),LR:parseFloat(rateLR.value)};
   const ceilingOn=document.getElementById("ceilingSwitch").checked;
   const ceilingLimit=parseInt(document.getElementById("ceilingCount").value);
   const ceilingRarities=[...document.getElementById("ceilingRarity").selectedOptions].map(o=>o.value);
@@ -227,10 +263,8 @@ function roll(times){
   for(let i=0;i<times;i++){
     let isCeiling=false;
     if(ceilingOn && ceilingCounter[player]+1>=ceilingLimit){
-      isCeiling=true;
-      ceilingCounter[player]=0;
-    }else{ ceilingCounter[player]++; }
-
+      isCeiling=true; ceilingCounter[player]=0;
+    }else{ceilingCounter[player]++;}
     let pick;
     if(isCeiling){
       const ceilingPool=[];
@@ -251,15 +285,17 @@ function roll(times){
   }
   addLog(player,results,times);
 }
+
 function rollCustom(){const n=parseInt(document.getElementById("customRoll").value); if(n>0) roll(n);}
 function randomChoice(keys,weights){const sum=weights.reduce((a,b)=>a+b,0); let r=Math.random()*sum; for(let i=0;i<keys.length;i++){if(r<weights[i]) return keys[i]; r-=weights[i];}}
 
-/* ---------- ログ表示 ---------- */
+/* ---------- ログ ---------- */
 function addLog(player,results,times){logData.push({player,results,times}); displayLog();}
 function displayLog(){
   const filter=document.getElementById("logFilter").value;
   const sortOrder=document.getElementById("sortOrder").value;
-  const summaryDiv=document.getElementById("summary"); const logDiv=document.getElementById("log");
+  const summaryDiv=document.getElementById("summary");
+  const logDiv=document.getElementById("log");
   summaryDiv.innerHTML=""; logDiv.innerHTML="";
 
   let filteredLogs = logData.filter(entry=>filter===""||entry.player===filter);
@@ -270,6 +306,7 @@ function displayLog(){
 
   filteredLogs.forEach((entry,idx)=>{
     totalTimes += entry.times;
+
     const ceilingItems = entry.results.filter(r=>r.ceiling);
     const normalItems = entry.results.filter(r=>!r.ceiling);
 
@@ -279,6 +316,7 @@ function displayLog(){
       normalCount[key] = (normalCount[key]||0)+1;
       totalSummary[key] = (totalSummary[key]||0)+1;
     });
+
     ceilingItems.forEach(r=>{
       const key = r.rarity ? `【${r.rarity}】${r.name}` : r.name;
       totalSummary[key] = (totalSummary[key]||0)+1;
@@ -300,17 +338,20 @@ function displayLog(){
       html:`<div class="log-block"><b>${entry.player}（${entry.times}回）</b><pre>${logText}</pre><button class="copy-btn" onclick='navigator.clipboard.writeText(\`${entry.player}(${entry.times}回)\n${logText}\`)'>コピー</button></div>`
     };
 
-    if(sortOrder==="desc" ? idx<3 : idx>=filteredLogs.length-3){ latestLogs.push(logBlock); }
-    else{ oldLogs.push(logBlock); }
+    if(sortOrder==="desc"?idx<3:idx>=filteredLogs.length-3) latestLogs.push(logBlock);
+    else oldLogs.push(logBlock);
   });
 
   latestLogs.forEach(l=>{logDiv.innerHTML+=l.html;});
   if(oldLogs.length>0){
-    const oldDiv=document.createElement("div"); oldDiv.className="old-log";
+    const oldDiv=document.createElement("div");
+    oldDiv.className="old-log";
     oldLogs.forEach(l=>{oldDiv.innerHTML+=l.html;});
-    const toggleBtn=document.createElement("button"); toggleBtn.textContent="古いログを展開";
+    const toggleBtn=document.createElement("button");
+    toggleBtn.textContent="古いログを展開";
     toggleBtn.onclick=()=>{oldDiv.style.display=(oldDiv.style.display==="none"?"block":"none");};
-    logDiv.appendChild(toggleBtn); logDiv.appendChild(oldDiv);
+    logDiv.appendChild(toggleBtn);
+    logDiv.appendChild(oldDiv);
   }
 
   const sumText=Object.entries(totalSummary).map(([k,v])=>`${k}: ${v}個`).join("\n");
@@ -320,7 +361,7 @@ function displayLog(){
     <button class="save-btn" onclick='saveSummary(\`${sumTitle}\n${sumText}\`)'>txt保存</button>`;
 }
 
-/* ---------- ログ保存・消去 ---------- */
+/* ---------- フィルター・消去・保存 ---------- */
 function clearLog(){if(confirm("全ログと登録名を削除しますか？")){logData=[];players=[];ceilingCounter={};updatePlayerUI();displayLog();}}
 function saveLog(){
   let all="";
@@ -330,8 +371,10 @@ function saveLog(){
     const normalCount = {};
     normalItems.forEach(r=>{const key=r.rarity?`【${r.rarity}】${r.name}`:r.name; normalCount[key]=(normalCount[key]||0)+1;});
     const rarityOrder=["N","R","SR","UR","LR"];
-    let txt=""; rarityOrder.forEach(r=>{for(const [key,count] of Object.entries(normalCount)){if(key.startsWith(`【${r}】`) || (r==="N" && !key.startsWith("【"))) txt+=`${key} ×${count}個\n`; }});
-    ceilingItems.forEach(r=>{const key=r.rarity?`【${r.rarity}】${r.name}`:r.name; txt+=`${key} (天井) ×1個\n`;});
+    let txt="";
+    rarityOrder.forEach(r=>{for(const [key,count] of Object.entries(normalCount)){
+      if(key.startsWith(`【${r}】`)||(r==="N"&&!key.startsWith("【"))) txt+=`${key} ×${count}個\n`;}});
+    ceilingItems.forEach(r=>{const key=r.rarity?r.rarity+r.name:r.name; const key2=r.rarity?`【${r.rarity}】${r.name}`:r.name; txt+=`${key2} (天井) ×1個\n`;});
     all+=`${entry.player}(${entry.times}回)\n${txt}\n\n`;
   });
   const blob=new Blob([all],{type:"text/plain"});
@@ -343,7 +386,12 @@ function saveSummary(text){const blob=new Blob([text],{type:"text/plain"}); cons
 
 /* ---------- 設定保存・読み込み ---------- */
 function saveSettings(){
-  const settings={rates:{N:rateN.value,R:rateR.value,SR:rateSR.value,UR:rateUR.value,LR:rateLR.value},items:[],players};
+  const settings={
+    rates:{N:rateN.value,R:rateR.value,SR:rateSR.value,UR:rateUR.value,LR:rateLR.value},
+    items:[],
+    players,
+    customRates
+  };
   document.querySelectorAll("#items > div").forEach(d=>{
     const name=d.querySelector("input").value.trim();
     const rarity=d.querySelector("select").value;
@@ -354,24 +402,38 @@ function saveSettings(){
   const a=document.createElement("a"); a.href=url; a.download="gacha_settings.txt"; a.click();
   URL.revokeObjectURL(url);
 }
+
 function loadSettings(files){
   if(!files || files.length===0) return;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
       const settings=JSON.parse(e.target.result);
-      rateN.value=settings.rates.N; rateR.value=settings.rates.R; rateSR.value=settings.rates.SR; rateUR.value=settings.rates.UR; rateLR.value=settings.rates.LR;
-      document.getElementById("items").innerHTML=""; settings.items.forEach(it=>{
-        addItem(); const last=document.querySelector("#items > div:last-child");
+      rateN.value=settings.rates.N; rateR.value=settings.rates.R; rateSR.value=settings.rates.SR;
+      rateUR.value=settings.rates.UR; rateLR.value=settings.rates.LR;
+
+      document.getElementById("items").innerHTML="";
+      settings.items.forEach(it=>{addItem(); const last=document.querySelector("#items > div:last-child");
         last.querySelector("input").value=it.name; last.querySelector("select").value=it.rarity;
       });
-      players=settings.players||[]; players.forEach(p=>ceilingCounter[p]=0);
-      updatePlayerUI(); displayLog();
+
+      players=settings.players||[];
+      players.forEach(p=>ceilingCounter[p]=0);
+      updatePlayerUI();
+
+      if(settings.customRates) customRates=settings.customRates;
+
+      displayLog();
       alert("設定を読み込みました");
-    }catch(err){alert("設定の読み込みに失敗しました");}
+    }catch(err){
+      alert("設定の読み込みに失敗しました");
+    }
   };
   reader.readAsText(files[0]);
 }
+
+/* ---------- プレイヤー入力 Enter ---------- */
+document.getElementById("playerName").addEventListener("keydown",e=>{if(e.key==="Enter") addPlayer();});
 </script>
 </body>
 </html>
