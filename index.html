@@ -440,7 +440,15 @@ function displayLog(){
     logDiv.appendChild(oldDiv);
   }
 
-  const sumText=Object.entries(totalSummary).map(([k,v])=>`${k}: ${v}個`).join("\n");
+  const rarityOrder = ["N","R","SR","UR","LR"];
+let sumText = "";
+rarityOrder.forEach(r => {
+  Object.entries(totalSummary).forEach(([k,v])=>{
+    if(k.startsWith(`【${r}】`) || (r==="N" && !k.startsWith("【"))) {
+      sumText += `${k}: ${v}個\n`;
+    }
+  });
+});
   const sumTitle = filter==="" ? `全員(${totalTimes}回)` : `${filter}(${totalTimes}回)`;
   summaryDiv.innerHTML=`<b>集計結果（${sumTitle}）</b><br><pre>${sumText}</pre>
     <button class="copy-btn" onclick='navigator.clipboard.writeText(\`${sumTitle}\n${sumText}\`)'>コピー</button>
