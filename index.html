@@ -131,6 +131,14 @@ pre{white-space:pre-wrap;}
   <button style="margin-top:10px;width:100%;padding:10px;" onclick="rollCustom()">この回数で回す</button>
 </div>
 
+<!-- 設定保存・読み込み -->
+<div class="section">
+  <label>設定の保存・読み込み</label><br>
+  <button class="save-btn" onclick="saveSettings()">設定を保存</button>
+  <input type="file" id="loadSettingsFile" style="display:none;" onchange="loadSettings(this.files)">
+  <button class="add-btn" onclick="document.getElementById('loadSettingsFile').click()">設定を読み込む</button>
+</div>
+
 <!-- 結果ログ -->
 <div class="section">
   <label>ガチャ結果ログ</label><br>
@@ -384,6 +392,92 @@ function saveLog(){
   URL.revokeObjectURL(url);
 }
 function saveSummary(text){const blob=new Blob([text],{type:"text/plain"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="gacha_summary.txt"; a.click(); URL.revokeObjectURL(url);}
+
+/* 設定保存・読み込み */
+function saveSettings(){
+  const items = [];
+  document.querySelectorAll("#items > div").forEach(div=>{
+    const name = div.querySelector("input").value.trim();
+    const rarity = div.querySelector("select").value;
+    if(name) items.push({name, rarity});
+  });
+
+  const settings = {
+    rates: {
+      N: parseFloat(rateN.value),
+      R: parseFloat(rateR.value),
+      SR: parseFloat(rateSR.value),
+      UR: parseFloat(rateUR.value),
+      LR: parseFloat(rateLR.value)
+    },
+    items: items,
+    ceiling: {
+      enabled: document.getElementById("ceilingSwitch").checked,
+      count: parseInt(document.getElementById("ceilingCount").value),
+      rarities: [...document.getElementById("ceilingRarity").selectedOptions].map(o=>o.value)
+    },
+    presetName: document.getElementById("presetName").textContent
+  };
+
+  const blob = new Blob([JSON.stringify(settings, null, 2)], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gacha_settings.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadSettings(files){
+  if(!files.length) return;
+  const file = files[0];
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const settings = JSON.parse(e.target.result);
+
+      // 確率設定
+      rateN.value = settings.rates.N;
+      rateR.value = settings.rates.R;
+      rateSR.value = settings.rates.SR;
+      rateUR.value = settings.rates.UR;
+      rateLR.value = settings.rates.LR;
+      document.getElementById("presetName").textContent = settings.presetName || "カスタム";
+
+      // 景品設定
+      const itemsDiv = document.getElementById("items");
+      itemsDiv.innerHTML = "";
+      settings.items.forEach(it=>{
+        const div = document.createElement("div");
+        div.style.marginTop='8px';
+        div.innerHTML = `<input type="text" value="${it.name}"><select>
+          <option ${it.rarity==="N"?"selected":""}>N</option>
+          <option ${it.rarity==="R"?"selected":""}>R</option>
+          <option ${it.rarity==="SR"?"selected":""}>SR</option>
+          <option ${it.rarity==="UR"?"selected":""}>UR</option>
+          <option ${it.rarity==="LR"?"selected":""}>LR</option>
+        </select>
+        <button onclick="this.parentNode.remove()">×</button>`;
+        itemsDiv.appendChild(div);
+      });
+
+      // 天井設定
+      document.getElementById("ceilingSwitch").checked = settings.ceiling.enabled;
+      toggleCeiling();
+      document.getElementById("ceilingCount").value = settings.ceiling.count;
+      const ceilingR = document.getElementById("ceilingRarity");
+      for(let i=0;i<ceilingR.options.length;i++){
+        ceilingR.options[i].selected = settings.ceiling.rarities.includes(ceilingR.options[i].value);
+      }
+
+      alert("設定を読み込みました！");
+    }catch(err){
+      alert("設定ファイルの読み込みに失敗しました");
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+}
 </script>
 </body>
 </html>
