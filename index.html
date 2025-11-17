@@ -3,94 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ガチャツール</title>
+<title>プリセットテスト</title>
 <style>
-html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
-#mainWrapper{padding:15px;}
-
-.section{
-  background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;
-  box-shadow:0 0 4px rgba(0,0,0,0.1);
-  position:relative;
-}
-
-input[type="number"],input[type="text"],select{
-  width:95%;padding:8px;margin:5px 0;border-radius:5px;
-  border:1px solid #aaa;font-size:14px;
-  box-sizing:border-box;
-}
-
-button{cursor:pointer;border:none;border-radius:6px;}
-.add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
-
-.gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.gacha-btns button{
-  flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;
-}
-
-.preset-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-top:10px;
-}
-.preset-grid button{
-  padding:14px;font-size:16px;background:#7aa8ff;color:#fff;width:100%;text-align:center;
-}
-
-/* カスタム保存ボタン群の配置 */
-.custom-save-wrap{
-  position:absolute;
-  top:8px;
-  right:8px;
-  display:flex;
-  flex-direction: column;
-  gap:8px;
-}
-.custom-save-wrap button{
-  padding:6px 10px;font-size:12px;background:#6666ff;color:#fff;border-radius:6px;
-}
-
-.copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
-.clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
-.save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
-
-.N{color:#00ccff;} .R{color:#0055ff;}
-.SR{color:#aa00ff;} .UR{color:#ff55aa;}
-.LR{color:#ff0000;}
-
-#logContainer{
-  display:flex;
-  flex-direction: column;
-  gap:15px;
-}
-
-#summary, #log{
-  background:#f8f8f8; padding:10px; border-radius:8px; 
-  max-height:500px; overflow:auto;
-}
-
-.log-block{margin-bottom:10px; border-bottom:1px solid #ccc; padding-bottom:5px;}
-.old-log{display:none; font-size:0.9em; color:#333;}
-pre{white-space:pre-wrap; word-break:keep-all;}
+body{font-family:Arial,sans-serif;padding:20px;background:#fafafa;}
+.section{background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 0 4px rgba(0,0,0,0.1);}
+button{cursor:pointer;border:none;border-radius:6px;padding:6px 12px;margin:2px;background:#66ccff;color:#fff;}
+input[type="number"]{width:60px;margin:2px;padding:5px;border-radius:4px;border:1px solid #aaa;}
+.custom-save-wrap button{background:#6666ff;color:#fff;}
 </style>
 </head>
 <body>
-<div id="mainWrapper">
 
-<!-- プリセット -->
 <div class="section">
-  <label>確率プリセット</label>
-  <div class="preset-grid" id="presetGrid">
-    <button onclick="setPreset('normal')">優しい</button>
-    <button onclick="setPreset('hard')">通常</button>
-    <button onclick="setPreset('veryhard')">闇ガチャ</button>
-    <button onclick="setPreset('hell')">地獄ガチャ</button>
-    <!-- カスタム1 / カスタム2 をプリセットと同じ枠に並べる -->
-    <button id="loadCustom1Btn" onclick="loadCustom(1)">カスタム1</button>
-    <button id="loadCustom2Btn" onclick="loadCustom(2)">カスタム2</button>
+  <label>確率プリセット</label><br>
+  <button onclick="setPreset('hope')">希望</button>
+  <button onclick="setPreset('dark')">闇</button>
+  <button onclick="setPreset('hell')">地獄</button>
+  <button onclick="setPreset('depress')">鬱</button>
+  <button onclick="setPreset('abyss')">深淵</button>
+  <button onclick="setPreset('god')">GOD</button>
+  <button onclick="loadCustom(1)">カスタム1</button>
+  <button onclick="loadCustom(2)">カスタム2</button>
+  <p>選択中プリセット：<b id="presetName">通常</b></p>
+</div>
+
+<div class="section">
+  <label>カスタム確率設定（%）</label><br>
+  N: <input id="rateN" type="number" value="40">
+  R: <input id="rateR" type="number" value="30">
+  SR: <input id="rateSR" type="number" value="20">
+  UR: <input id="rateUR" type="number" value="7">
+  LR: <input id="rateLR" type="number" value="3"><br>
+  <div class="custom-save-wrap">
+    <button id="saveCustom1Btn">カスタム保存1</button>
+    <button id="saveCustom2Btn">カスタム保存2</button>
   </div>
 </div>
+
+<script>
+let customRates1=null, customRates2=null;
+
+/* プリセット選択 */
+function setPreset(type){
+  const preset={
+    hope:   {N:60,R:25,SR:10,UR:4,LR:1},
+    dark:   {N:70,R:20,SR:8,UR:1.5,LR:0.5},
+    hell:   {N:80,R:13,SR:6,UR:0.9,LR:0.1},
+    depress:{N:83.36,R:12,SR:4,UR:0.6,LR:0.04},
+    abyss:  {N:85.57,R:11,SR:3,UR:0.4,LR:0.03},
+    god:    {N:88,R:10,SR:1.8,UR:0.18,LR:0.02}
+  };
+  const names = {hope:"希望",dark:"闇",hell:"地獄",depress:"鬱",abyss:"深淵",god:"GOD"};
+  const p=preset[type];
+  if(!p) return;
+  document.getElementById('rateN').value=p.N;
+  document.getElementById('rateR').value=p.R;
+  document.getElementById('rateSR').value=p.SR;
+  document.getElementById('rateUR').value=p.UR;
+  document.getElementById('rateLR').value=p.LR;
+  document.getElementById("presetName").textContent=names[type]||"プリセット";
+}
+
+/* カスタム保存 */
+document.getElementById("saveCustom1Btn").addEventListener("click", ()=>{
+  customRates1=getCurrentRates();
+  document.getElementById("presetName").textContent="カスタム1";
+  alert("カスタム1に保存しました");
+});
+document.getElementById("saveCustom2Btn").addEventListener("click", ()=>{
+  customRates2=getCurrentRates();
+  document.getElementById("presetName").textContent="カスタム2";
+  alert("カスタム2に保存しました");
+});
+
+/* カスタム呼び出し */
+function loadCustom(num){
+  const rates=(num===1?customRates1:customRates2);
+  if(!rates){ alert("保存されたカスタム"+num+"がありません"); return; }
+  document.getElementById('rateN').value=rates.N;
+  document.getElementById('rateR').value=rates.R;
+  document.getElementById('rateSR').value=rates.SR;
+  document.getElementById('rateUR').value=rates.UR;
+  document.getElementById('rateLR').value=rates.LR;
+  document.getElementById("presetName").textContent="カスタム"+num;
+}
+
+/* 現在の確率取得 */
+function getCurrentRates(){
+  return {
+    N: parseFloat(document.getElementById('rateN').value),
+    R: parseFloat(document.getElementById('rateR').value),
+    SR: parseFloat(document.getElementById('rateSR').value),
+    UR: parseFloat(document.getElementById('rateUR').value),
+    LR: parseFloat(document.getElementById('rateLR').value)
+  };
+}
+</script>
+
+</body>
+</html>
 
 <!-- 天井設定 -->
 <div class="section">
@@ -106,25 +117,6 @@ pre{white-space:pre-wrap; word-break:keep-all;}
       <option value="LR" selected>LR</option>
     </select>
   </div>
-</div>
-
-<!-- カスタム確率 -->
-<div class="section" style="position:relative;">
-  <label><b>選択中プリセット：</b> <span id="presetName">通常</span></label>
-
-  <!-- カスタム保存ボタンを2つ、ここに配置 -->
-  <div class="custom-save-wrap">
-    <button id="saveCustom1Btn" title="現在の確率をカスタム1に保存">カスタム保存1</button>
-    <button id="saveCustom2Btn" title="現在の確率をカスタム2に保存">カスタム保存2</button>
-  </div>
-
-  <br><br>
-  <label>カスタム確率設定（%）</label><br>
-  N  <input id="rateN" type="number" value="40"><br>
-  R  <input id="rateR" type="number" value="30"><br>
-  SR <input id="rateSR" type="number" value="20"><br>
-  UR <input id="rateUR" type="number" value="7"><br>
-  LR <input id="rateLR" type="number" value="3"><br>
 </div>
 
 <!-- 景品登録 -->
@@ -181,15 +173,11 @@ pre{white-space:pre-wrap; word-break:keep-all;}
   <input type="file" id="loadSettingsFile" style="margin-top:10px;" onchange="loadSettings(this.files)">
 </div>
 
-</div>
-
 <script>
 /* ---------- 状態変数 ---------- */
 let players=[],
     logData=[],
-    ceilingCounter={},
-    customRates1 = null,
-    customRates2 = null;
+    ceilingCounter={};
 
 /* 初期1個の景品入力を作る */
 addItem();
@@ -226,7 +214,6 @@ function addItem(){
   `;
   document.getElementById('items').appendChild(div);
 
-  // Enterキーでレアリティ選択に移動
   const input = div.querySelector("input");
   const select = div.querySelector("select");
   input.addEventListener("keydown", e=>{
@@ -237,61 +224,6 @@ function addItem(){
   });
 }
 
-/* ---------- プリセット ---------- */
-function setPreset(type){
-  const preset={
-    normal:{N:40,R:30,SR:20,UR:7,LR:3},
-    hard:{N:60,R:25,SR:10,UR:4,LR:1},
-    veryhard:{N:70,R:20,SR:8,UR:1.5,LR:0.5},
-    hell:{N:80,R:13,SR:6,UR:0.9,LR:0.1}
-  };
-  const p=preset[type];
-  if(!p) return;
-  document.getElementById('rateN').value = p.N;
-  document.getElementById('rateR').value = p.R;
-  document.getElementById('rateSR').value = p.SR;
-  document.getElementById('rateUR').value = p.UR;
-  document.getElementById('rateLR').value = p.LR;
-  document.getElementById("presetName").textContent = ({normal:"優しい",hard:"通常",veryhard:"闇ガチャ",hell:"地獄ガチャ"})[type] || "プリセット";
-}
-
-/* ---------- カスタム保存 / 読み込み ---------- */
-document.getElementById("saveCustom1Btn").addEventListener("click", ()=>{
-  customRates1 = {
-    N: parseFloat(document.getElementById('rateN').value),
-    R: parseFloat(document.getElementById('rateR').value),
-    SR: parseFloat(document.getElementById('rateSR').value),
-    UR: parseFloat(document.getElementById('rateUR').value),
-    LR: parseFloat(document.getElementById('rateLR').value)
-  };
-  document.getElementById("presetName").textContent="カスタム1";
-  alert("カスタム1に保存しました");
-});
-document.getElementById("saveCustom2Btn").addEventListener("click", ()=>{
-  customRates2 = {
-    N: parseFloat(document.getElementById('rateN').value),
-    R: parseFloat(document.getElementById('rateR').value),
-    SR: parseFloat(document.getElementById('rateSR').value),
-    UR: parseFloat(document.getElementById('rateUR').value),
-    LR: parseFloat(document.getElementById('rateLR').value)
-  };
-  document.getElementById("presetName").textContent="カスタム2";
-  alert("カスタム2に保存しました");
-});
-
-function loadCustom(num){
-  const rates = (num===1 ? customRates1 : customRates2);
-  if(!rates){
-    alert("保存されたカスタム" + num + "がありません");
-    return;
-  }
-  document.getElementById('rateN').value = rates.N;
-  document.getElementById('rateR').value = rates.R;
-  document.getElementById('rateSR').value = rates.SR;
-  document.getElementById('rateUR').value = rates.UR;
-  document.getElementById('rateLR').value = rates.LR;
-  document.getElementById("presetName").textContent = "カスタム" + num;
-}
 /* ---------- 天井 ---------- */
 function toggleCeiling(){
   document.getElementById("ceilingSettings").style.display=document.getElementById("ceilingSwitch").checked?"block":"none";
@@ -426,14 +358,14 @@ function displayLog(){
   }
 
   const rarityOrder = ["N","R","SR","UR","LR"];
-let sumText = "";
-rarityOrder.forEach(r => {
-  Object.entries(totalSummary).forEach(([k,v])=>{
-    if(k.startsWith(`【${r}】`) || (r==="N" && !k.startsWith("【"))) {
-      sumText += `${k}: ${v}個\n`;
-    }
+  let sumText = "";
+  rarityOrder.forEach(r => {
+    Object.entries(totalSummary).forEach(([k,v])=>{
+      if(k.startsWith(`【${r}】`) || (r==="N" && !k.startsWith("【"))) {
+        sumText += `${k}: ${v}個\n`;
+      }
+    });
   });
-});
   const sumTitle = filter==="" ? `全員(${totalTimes}回)` : `${filter}(${totalTimes}回)`;
   summaryDiv.innerHTML=`<b>集計結果（${sumTitle}）</b><br><pre>${sumText}</pre>
     <button class="copy-btn" onclick='navigator.clipboard.writeText(\`${sumTitle}\n${sumText}\`)'>コピー</button>
@@ -467,7 +399,7 @@ function saveLog(){
 }
 function saveSummary(text){const blob=new Blob([text],{type:"text/plain"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="gacha_summary.txt"; a.click(); URL.revokeObjectURL(url);}
 
-/* ---------- 設定保存・読み込み（カスタム1/2も含む） ---------- */
+/* ---------- 設定保存・読み込み ---------- */
 function saveSettings(){
   const settings={
     rates:{
@@ -479,8 +411,6 @@ function saveSettings(){
     },
     items:[],
     players: players,
-    customRates1: customRates1,
-    customRates2: customRates2,
     ceiling:{
       enabled: document.getElementById('ceilingSwitch').checked,
       count: document.getElementById('ceilingCount').value,
@@ -528,10 +458,6 @@ function loadSettings(files){
       players.forEach(p => ceilingCounter[p] = 0);
       updatePlayerUI();
 
-      // カスタム1/2
-      if(settings.customRates1) customRates1 = settings.customRates1;
-      if(settings.customRates2) customRates2 = settings.customRates2;
-
       // 天井
       if(settings.ceiling){
         document.getElementById('ceilingSwitch').checked = !!settings.ceiling.enabled;
@@ -564,5 +490,3 @@ document.getElementById("playerName").addEventListener("keydown",e=>{
 updatePlayerUI();
 displayLog();
 </script>
-</body>
-</html>
