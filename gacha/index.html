@@ -198,6 +198,11 @@ pre{white-space:pre-wrap; word-break:keep-all;}
 </div>
 
 <script>
+  function togglePresetHelp(){
+  const box = document.getElementById("presetHelp");
+  box.style.display = (box.style.display === "none") ? "block" : "none";
+}
+
 /* ---------- 状態変数 ---------- */
 let players=[],
     logData=[],
