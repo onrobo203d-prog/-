@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ランダム マルバツ問題ジェネレーター</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#38bdf8; --muted:#9aa7b2; --good:#16a34a; --bad:#ef4444;
+    --glass: rgba(255,255,255,0.03);
+    font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; background:linear-gradient(180deg,#061026 0%, #071227 60%); color:#e6eef6;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .app{
+    width:100%; max-width:960px; background:linear-gradient(180deg,var(--card), #071427 160%); border-radius:12px;
+    padding:20px; box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+  }
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  header h1{font-size:1.1rem;margin:0;color:var(--accent)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  button, select, input[type="checkbox"]{background:var(--glass); color:inherit; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:8px}
+  .main{
+    display:grid; grid-template-columns: 1fr 340px; gap:16px;
+  }
+  @media (max-width:880px){ .main{ grid-template-columns: 1fr; } .side{order:2} }
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:10px; border:1px solid rgba(255,255,255,0.03)}
+  .question-area{min-height:160px; display:flex; align-items:center; justify-content:center; text-align:center; padding:18px; font-size:1.2rem}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px;color:var(--muted);font-size:0.9rem}
+  .answers{display:flex;gap:12px;justify-content:center;margin-top:16px}
+  .btn-big{font-weight:700;padding:12px 22px;border-radius:12px;cursor:pointer}
+  .btn-o{background:linear-gradient(180deg,#083040,#06323a); border:1px solid rgba(56,189,248,0.12)}
+  .btn-x{background:linear-gradient(180deg,#2a0710,#2b0810); border:1px solid rgba(239,68,68,0.12)}
+  .result{margin-top:12px;text-align:center;font-weight:700}
+  .result.correct{color:var(--good)}
+  .result.wrong{color:var(--bad)}
+  .side{display:flex;flex-direction:column;gap:12px}
+  label.small{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:0.9rem}
+  .list{max-height:260px;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+  .qitem{padding:10px;border-radius:8px;background:rgba(255,255,255,0.01);display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .qitem .tags{font-size:0.8rem;color:var(--muted)}
+  .tiny{font-size:0.85rem;color:var(--muted)}
+  textarea, input[type="text"]{width:100%; padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04); background:transparent;color:inherit}
+  footer{margin-top:14px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:0.85rem}
+  .small-btn{padding:6px 8px;border-radius:8px;font-size:0.85rem}
+  .stat-row{display:flex;gap:10px;flex-wrap:wrap; align-items:center}
+  .tag{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-size:0.85rem}
+  .hint{margin-top:8px;color:var(--muted);font-size:0.9rem}
+</style>
+</head>
+<body>
+  <div class="app" role="application" aria-labelledby="title">
+    <header>
+      <h1 id="title">ランダム マルバツ問題ジェネレーター</h1>
+      <div class="controls" aria-hidden="false">
+        <label class="small"><input id="noRepeat" type="checkbox" checked> 重複を避ける</label>
+        <label class="small">カテゴリ:
+          <select id="filterTag"><option value="all">すべて</option></select>
+        </label>
+        <button id="nextBtn" class="small-btn">次へ ▶</button>
+        <button id="addBtn" class="small-btn">問題を追加</button>
+      </div>
+    </header>
+
+    <div class="main">
+      <section class="card">
+        <div class="question-area" id="questionArea" tabindex="0" aria-live="polite"></div>
+        <div class="meta" id="metaArea"></div>
+
+        <div class="answers" role="group" aria-label="選択肢">
+          <button id="oBtn" class="btn-big btn-o" aria-label="正しい(マル)">○（正しい）</button>
+          <button id="xBtn" class="btn-big btn-x" aria-label="間違い(バツ)">×（間違い）</button>
+        </div>
+
+        <div id="resultArea" class="result" role="status"></div>
+        <div class="hint" id="explainArea"></div>
+
+        <div style="display:flex;justify-content:center;margin-top:12px;gap:8px">
+          <button id="showAnswer" class="small-btn">正解を表示</button>
+          <button id="toggleAnswerReveal" class="small-btn">解説を表示</button>
+        </div>
+      </section>
+
+      <aside class="side">
+        <div class="card">
+          <div class="stat-row">
+            <div class="tag">出題数: <strong id="totalAsked">0</strong></div>
+            <div class="tag">正解: <strong id="totalCorrect">0</strong></div>
+            <div class="tag">正答率: <strong id="rate">0%</strong></div>
+          </div>
+          <div class="hint" style="margin-top:8px">キーボード: ←=○ , →=× , N=次へ , S=正解表示</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>問題リスト</strong>
+            <div>
+              <button id="exportBtn" class="small-btn">エクスポート</button>
+              <button id="importBtn" class="small-btn">インポート</button>
+            </div>
+          </div>
+          <div class="list" id="questionList" aria-live="polite"></div>
+        </div>
+
+        <div class="card">
+          <strong>問題の追加 / 編集</strong>
+          <div style="margin-top:8px">
+            <label class="tiny">問題文</label>
+            <input id="qText" type="text" placeholder="例: 日本の首都は東京である。">
+            <label class="tiny">正誤 (true=○ / false=×)</label>
+            <select id="qAnswer"><option value="true">○（正しい）</option><option value="false">×（間違い）</option></select>
+            <label class="tiny">カテゴリ（カンマ区切り）</label>
+            <input id="qTags" type="text" placeholder="例: 地理,一般知識">
+            <label class="tiny">解説（任意）</label>
+            <textarea id="qExplain" rows="3" placeholder="解説を入力"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="saveQ" class="small-btn">保存</button>
+              <button id="clearForm" class="small-btn">クリア</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div class="tiny">ローカルでデータ保存（ブラウザの localStorage）。公開する場合はサーバーAPIに置き換えてください。</div>
+      <div class="tiny">© マルバツジェネレーター</div>
+    </footer>
+  </div>
+
+<script>
+/*
+  シンプルなクライアント実装
+  - 問題は最初にデフォルト配列を読み込み、localStorageの問題で上書きできる
+  - 出題ロジック（ランダム、カテゴリフィルタ、重複回避）
+  - 統計は localStorage に保存
+*/
+
+const DEFAULT_QUESTIONS = [
+  {id:1, text:"富士山は日本で最も高い山である。", answer:true, tags:["地理"], explain:"富士山は標高3,776mで日本最高峰です。"},
+  {id:2, text:"日本の首都は大阪である。", answer:false, tags:["地理"], explain:"日本の首都は東京都です。"},
+  {id:3, text:"光の速度は真空中で毎秒約30万キロメートルである。", answer:true, tags:["理科"], explain:"約299,792 km/s（約30万 km/s）です。"},
+  {id:4, text:"人間の成人の体内にある骨の数は300本以上である。", answer:false, tags:["生物"], explain:"成人の骨は約206本です。"},
+  {id:5, text:"地球は太陽系で最大の惑星である。", answer:false, tags:["天文"], explain:"木星が最大の惑星です。"}
+];
+
+const STORAGE_KEYS = {QUESTIONS:'mb_questions_v1', STATS:'mb_stats_v1'};
+let questions = [];
+let state = {
+  current:null,
+  askedIds:[],
+  noRepeat:true,
+  filterTag:'all',
+  stats: {asked:0, correct:0}
+};
+
+// --- util ---
+const $ = id => document.getElementById(id);
+const saveQuestions = ()=> localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(questions));
+const saveStats = ()=> localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(state.stats));
+const load = ()=>{
+  const qRaw = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
+  questions = qRaw ? JSON.parse(qRaw) : DEFAULT_QUESTIONS.slice();
+  // ensure id unique
+  let max = questions.reduce((m,q)=>Math.max(m,q.id||0),0);
+  questions.forEach(q=>{ if(!q.id) q.id=++max; });
+  const st = localStorage.getItem(STORAGE_KEYS.STATS);
+  if(st) state.stats = JSON.parse(st);
+  state.noRepeat = $('noRepeat').checked;
+  renderTagFilter();
+  renderQuestionList();
+};
+const rnd = n=> Math.floor(Math.random()*n);
+
+// --- selection ---
+function pickRandomQuestion(){
+  const tag = state.filterTag;
+  let pool = questions.filter(q => (tag==='all' || (q.tags||[]).includes(tag)));
+  if(pool.length===0) return null;
+  if(state.noRepeat){
+    const unseen = pool.filter(q => !state.askedIds.includes(q.id));
+    pool = unseen.length ? unseen : pool; // if all seen, allow reuse
+  }
+  const q = pool[rnd(pool.length)];
+  return q;
+}
+
+// --- UI updates ---
+function showQuestion(q){
+  state.current = q;
+  if(!q){
+    $('questionArea').textContent = '問題が見つかりません。問題を追加してください。';
+    $('metaArea').textContent = '';
+    $('resultArea').textContent = '';
+    $('explainArea').textContent = '';
+    return;
+  }
+  $('questionArea').textContent = q.text;
+  $('metaArea').innerHTML = '<span class="tiny">カテゴリ: ' + ((q.tags||[]).join(', ') || 'なし') + '</span>';
+  $('resultArea').textContent = '';
+  $('explainArea').textContent = '';
+  // mark asked
+  if(!state.askedIds.includes(q.id)) state.askedIds.push(q.id);
+}
+
+function nextQuestion(){
+  state.noRepeat = $('noRepeat').checked;
+  state.filterTag = $('filterTag').value;
+  const q = pickRandomQuestion();
+  showQuestion(q);
+  focusQuestion();
+}
+
+// keyboard
+function handleKey(e){
+  const key = e.key.toLowerCase();
+  if(key === 'arrowleft' || key === 'o') checkAnswer(true);
+  if(key === 'arrowright' || key === 'x') checkAnswer(false);
+  if(key === 'n') nextQuestion();
+  if(key === 's') revealAnswer();
+}
+
+// answer checking
+function checkAnswer(userAnswer){
+  const q = state.current;
+  if(!q) return;
+  const correct = (userAnswer === Boolean(q.answer));
+  $('resultArea').textContent = correct ? '正解！' : '不正解';
+  $('resultArea').className = 'result ' + (correct ? 'correct' : 'wrong');
+  if(correct) state.stats.correct++;
+  state.stats.asked++;
+  saveStats();
+  updateStatsUI();
+  // optionally show explanation
+  if($('toggleAnswerReveal').dataset.on === 'true' && q.explain) $('explainArea').textContent = q.explain;
+}
+
+// reveal answer
+function revealAnswer(){
+  const q = state.current;
+  if(!q) return;
+  $('resultArea').textContent = q.answer ? '正しい（○）' : '間違い（×）';
+  $('resultArea').className = 'result';
+  if(q.explain) $('explainArea').textContent = q.explain;
+}
+function toggleExplain(){
+  const el = $('toggleAnswerReveal');
+  el.dataset.on = el.dataset.on === 'true' ? 'false' : 'true';
+  el.textContent = el.dataset.on === 'true' ? '解説を自動表示: ON' : '解説を自動表示: OFF';
+}
+
+// question list UI
+function renderQuestionList(){
+  const list = $('questionList');
+  list.innerHTML = '';
+  // sort by id desc
+  const arr = questions.slice().sort((a,b)=>b.id-a.id);
+  for(const q of arr){
+    const div = document.createElement('div'); div.className='qitem';
+    const left = document.createElement('div');
+    left.innerHTML = `<div>${escapeHtml(q.text)}</div><div class="tags">${(q.tags||[]).join(', ')}</div>`;
+    const right = document.createElement('div');
+    right.style.display='flex'; right.style.gap='6px';
+    const edit = document.createElement('button'); edit.className='small-btn'; edit.textContent='編集';
+    edit.onclick = ()=> loadToForm(q);
+    const del = document.createElement('button'); del.className='small-btn'; del.textContent='削除';
+    del.onclick = ()=> { if(confirm('この問題を削除しますか？')) { questions = questions.filter(x=>x.id!==q.id); saveQuestions(); renderQuestionList(); renderTagFilter(); } };
+    right.appendChild(edit); right.appendChild(del);
+    div.appendChild(left); div.appendChild(right);
+    list.appendChild(div);
+  }
+}
+
+// form
+function loadToForm(q){
+  $('qText').value = q.text;
+  $('qAnswer').value = q.answer ? 'true':'false';
+  $('qTags').value = (q.tags||[]).join(',');
+  $('qExplain').value = q.explain || '';
+  $('saveQ').dataset.editId = q.id;
+}
+function clearForm(){
+  $('qText').value = ''; $('qTags').value=''; $('qExplain').value=''; $('saveQ').removeAttribute('data-edit-id');
+}
+
+// save question
+function saveForm(){
+  const text = $('qText').value.trim();
+  if(!text){ alert('問題文を入力してください'); return; }
+  const answer = $('qAnswer').value === 'true';
+  const tags = $('qTags').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const explain = $('qExplain').value.trim();
+  const editId = $('saveQ').dataset.editId;
+  if(editId){
+    const q = questions.find(x=>x.id==editId);
+    q.text = text; q.answer = answer; q.tags = tags; q.explain = explain;
+  } else {
+    const id = questions.reduce((m,q)=>Math.max(m,q.id||0),0)+1;
+    questions.push({id,text,answer,tags,explain});
+  }
+  saveQuestions();
+  renderQuestionList();
+  renderTagFilter();
+  clearForm();
+}
+
+// tags
+function renderTagFilter(){
+  const sel = $('filterTag');
+  const existing = new Set(['all']);
+  questions.forEach(q => (q.tags||[]).forEach(t=>existing.add(t)));
+  const prev = sel.value || 'all';
+  sel.innerHTML = '';
+  for(const t of Array.from(existing)) {
+    const opt = document.createElement('option'); opt.value = t; opt.textContent = t==='all' ? 'すべて' : t;
+    sel.appendChild(opt);
+  }
+  if(Array.from(existing).includes(prev)) sel.value = prev;
+}
+
+// stats UI
+function updateStatsUI(){
+  $('totalAsked').textContent = state.stats.asked;
+  $('totalCorrect').textContent = state.stats.correct;
+  const rate = state.stats.asked ? Math.round(100 * state.stats.correct / state.stats.asked) : 0;
+  $('rate').textContent = rate + '%';
+}
+
+// import/export
+function exportData(){
+  const payload = {questions, stats: state.stats, exportedAt:new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'marubatsu_export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(){
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json';
+  inp.onchange = e => {
+    const f = e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const obj = JSON.parse(ev.target.result);
+        if(obj.questions && Array.isArray(obj.questions)){
+          questions = obj.questions;
+          saveQuestions();
+          if(obj.stats) { state.stats = obj.stats; saveStats(); }
+          renderQuestionList(); renderTagFilter(); updateStatsUI();
+          alert('インポート完了');
+        } else alert('不正なファイルです');
+      } catch(err){ alert('読み込みに失敗しました: ' + err.message); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+// utilities
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+function focusQuestion(){ $('questionArea').focus(); }
+
+// init
+(function(){
+  // wire up DOM
+  $('nextBtn').onclick = nextQuestion;
+  $('oBtn').onclick = ()=> checkAnswer(true);
+  $('xBtn').onclick = ()=> checkAnswer(false);
+  $('noRepeat').onchange = ()=> state.noRepeat = $('noRepeat').checked;
+  $('showAnswer').onclick = revealAnswer;
+  $('toggleAnswerReveal').onclick = toggleExplain;
+  $('addBtn').onclick = ()=> { clearForm(); window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'}); };
+  $('saveQ').onclick = saveForm;
+  $('clearForm').onclick = clearForm;
+  $('exportBtn').onclick = exportData;
+  $('importBtn').onclick = importData;
+  $('filterTag').onchange = ()=> { state.filterTag = $('filterTag').value; nextQuestion(); };
+
+  document.addEventListener('keydown', handleKey);
+
+  // load defaults
+  if(!localStorage.getItem(STORAGE_KEYS.QUESTIONS)) {
+    localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(DEFAULT_QUESTIONS));
+  }
+  load();
+  updateStatsUI();
+  // start with a question
+  nextQuestion();
+
+})();
+</script>
+</body>
+</html>
