@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>簡易RPGバトル 完全版</title>
+<style>
+  body { font-family: sans-serif; margin: 10px; }
+  #monster { border: 1px solid #000; padding: 10px; margin-bottom: 10px; }
+  #log { border: 1px solid #000; height: 200px; overflow-y: scroll; padding: 5px; margin-bottom: 10px; background: #f0f0f0; }
+  .player { border: 1px solid #000; padding: 5px; margin-bottom: 5px; background: #e0f7fa; }
+  button { margin: 2px; }
+</style>
+</head>
+<body>
+
+<div id="monster">
+  <strong id="monsterName">スライム</strong> HP: <span id="monsterHP">100</span>
+</div>
+
+<div id="log"></div>
+
+<div id="players"></div>
+
+<script>
+const maxPlayers = 4; 
+const players = [];
+let turn = 1;
+const maxTurns = 5;
+
+// モンスター設定
+let monster = {
+  name: "スライム",
+  maxHP: 100,
+  hp: 100
+};
+
+// プレイヤー作成
+for(let i=0; i<maxPlayers; i++){
+  const player = {
+    id: i,
+    name: "Player" + (i+1),
+    hp: 100,
+    maxHP: 100,
+    alive: true,
+    defending: false
+  };
+  players.push(player);
+}
+
+// モンスターHP調整
+monster.maxHP = 50 + players.length * 50;
+monster.hp = monster.maxHP;
+document.getElementById("monsterHP").innerText = monster.hp;
+
+// プレイヤーUI生成
+const playersDiv = document.getElementById("players");
+players.forEach(p=>{
+  const div = document.createElement("div");
+  div.className = "player";
+  div.id = "player"+p.id;
+  div.innerHTML = `
+    名前: <input type="text" id="name${p.id}" value="${p.name}">
+    <br>HP: <span id="hp${p.id}">${p.hp}</span>
+    <br>
+    <button onclick="playerAction(${p.id}, 'attack')">攻撃</button>
+    <button onclick="playerAction(${p.id}, 'defense')">防御</button>
+    <button onclick="playerAction(${p.id}, 'heal')">回復</button>
+    <button onclick="playerAction(${p.id}, 'revive')">復活</button>
+  `;
+  playersDiv.appendChild(div);
+});
+
+function logAction(text){
+  const logDiv = document.getElementById("log");
+  logDiv.innerHTML += text + "<br>";
+  logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function playerAction(id, action){
+  const player = players[id];
+  player.name = document.getElementById("name"+id).value;
+
+  if(!player.alive && action !== "revive") {
+    logAction(`${player.name} は倒れていて行動できません`);
+    return;
+  }
+
+  // まず行動を実行
+  switch(action){
+    case "attack":
+      const dmg = Math.floor(Math.random()*20)+10;
+      monster.hp -= dmg;
+      if(monster.hp < 0) monster.hp = 0;
+      logAction(`${player.name} の攻撃！ ${monster.name} に ${dmg} のダメージ`);
+      document.getElementById("monsterHP").innerText = monster.hp;
+      break;
+    case "defense":
+      player.defending = true;
+      logAction(`${player.name} は防御態勢をとった`);
+      break;
+    case "heal":
+      player.hp += 50;
+      if(player.hp > player.maxHP) player.hp = player.maxHP;
+      logAction(`${player.name} は 50 回復した`);
+      document.getElementById("hp"+id).innerText = player.hp;
+      break;
+    case "revive":
+      if(!player.alive){
+        player.alive = true;
+        player.hp = 100;
+        logAction(`${player.name} が復活！ HPは100`);
+        document.getElementById("hp"+id).innerText = player.hp;
+      } else {
+        logAction(`${player.name} はまだ倒れていない`);
+      }
+      break;
+  }
+
+  // モンスターターン
+  monsterTurn();
+
+  // ターン進行
+  turn++;
+  if(turn > maxTurns || monster.hp <= 0 || players.every(p=>!p.alive)){
+    logAction("バトル終了！");
+  }
+
+  // 防御フラグリセット
+  players.forEach(p => p.defending = false);
+}
+
+function monsterTurn(){
+  const alivePlayers = players.filter(p=>p.alive);
+  if(alivePlayers.length === 0) return;
+
+  const targetCount = Math.floor(alivePlayers.length * 2 / players.length);
+  for(let i=0; i<targetCount; i++){
+    const target = alivePlayers[Math.floor(Math.random()*alivePlayers.length)];
+    let dmg = Math.floor(Math.random()*15)+5;
+    if(target.defending) dmg = Math.floor(dmg/2);
+    target.hp -= dmg;
+    if(target.hp <= 0){
+      target.hp = 0;
+      target.alive = false;
+      logAction(`${monster.name} の攻撃！ ${target.name} に ${dmg} のダメージ！ 倒れた！`);
+    } else {
+      logAction(`${monster.name} の攻撃！ ${target.name} に ${dmg} のダメージ`);
+    }
+    document.getElementById("hp"+target.id).innerText = target.hp;
+  }
+}
+</script>
+
+</body>
+</html>
