@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>企画管理ツール</title>
+<title>配信企画管理ツール</title>
 
 <style>
 body {
@@ -129,55 +129,69 @@ button {
 
 <script>
 let timers = { 1: null, 2: null };
+let audioCtx = null;
+
+/* iOS対策：AudioContext初期化 */
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
 
 /* タイマー終了音：ピピピピッ */
 function playTimerSound() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  let time = ctx.currentTime;
+  if (!audioCtx) return;
+  let time = audioCtx.currentTime;
 
   for (let i = 0; i < 8; i++) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
     osc.type = 'square';
     osc.frequency.setValueAtTime(1000, time);
 
     gain.gain.setValueAtTime(0.001, time);
-    gain.gain.linearRampToValueAtTime(0.2, time + 0.02);
+    gain.gain.linearRampToValueAtTime(0.25, time + 0.02);
     gain.gain.linearRampToValueAtTime(0.001, time + 0.15);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(audioCtx.destination);
 
     osc.start(time);
     osc.stop(time + 0.15);
-
     time += 0.18;
   }
 }
 
-/* サイコロ決定音：ジャン！ */
+/* サイコロ音：ジャン！ */
 function playDiceSound() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
+  if (!audioCtx) return;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
 
   osc.type = 'triangle';
-  osc.frequency.setValueAtTime(300, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.3);
+  osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.3);
 
-  gain.gain.setValueAtTime(0.001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+  gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(audioCtx.destination);
 
   osc.start();
-  osc.stop(ctx.currentTime + 0.6);
+  osc.stop(audioCtx.currentTime + 0.6);
 }
 
+/* タイマー制御 */
 function startTimer(num) {
+  initAudio();
+
   const input = document.getElementById('input' + num);
   const display = document.getElementById('display' + num);
   let time = parseInt(input.value);
@@ -203,15 +217,17 @@ function resetTimer(num) {
 
 /* サイコロ */
 function rollDice() {
+  initAudio();
+
   const dice = document.getElementById('dice');
   dice.classList.add('rolling');
 
-  const interval = setInterval(() => {
+  const rolling = setInterval(() => {
     dice.textContent = Math.floor(Math.random() * 6) + 1;
   }, 100);
 
   setTimeout(() => {
-    clearInterval(interval);
+    clearInterval(rolling);
     const result = Math.floor(Math.random() * 6) + 1;
     dice.textContent = result;
     dice.classList.remove('rolling');
@@ -222,3 +238,4 @@ function rollDice() {
 
 </body>
 </html>
+
