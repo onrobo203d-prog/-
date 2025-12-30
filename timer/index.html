@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企画管理ツール</title>
+<style>
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f7f7f7;
+}
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.timer-area {
+  flex: 1;
+  padding: 10px;
+}
+.timer-box {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.timer-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+.timer-input {
+  width: 80px;
+  font-size: 16px;
+  text-align: center;
+}
+.time-display {
+  font-size: 32px;
+  margin: 10px 0;
+}
+.button-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+button {
+  padding: 8px 16px;
+  font-size: 16px;
+}
+.dice-area {
+  flex: 1;
+  background: #ffffff;
+  margin: 10px;
+  border-radius: 10px;
+  text-align: center;
+  padding: 20px;
+}
+.dice {
+  font-size: 64px;
+  margin: 20px 0;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="timer-area">
+    <!-- タイマー1 -->
+    <div class="timer-box">
+      <div class="timer-title">⏱ タイマー①</div>
+      <input type="number" id="input1" class="timer-input" placeholder="秒"> 秒
+      <div id="display1" class="time-display">0</div>
+      <div class="button-row">
+        <button onclick="startTimer(1)">スタート</button>
+        <button onclick="resetTimer(1)">リセット</button>
+      </div>
+    </div>
+
+    <!-- タイマー2 -->
+    <div class="timer-box">
+      <div class="timer-title">⏱ タイマー②</div>
+      <input type="number" id="input2" class="timer-input" placeholder="秒"> 秒
+      <div id="display2" class="time-display">0</div>
+      <div class="button-row">
+        <button onclick="startTimer(2)">スタート</button>
+        <button onclick="resetTimer(2)">リセット</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- サイコロ -->
+  <div class="dice-area">
+    <div class="timer-title">🎲 サイコロ</div>
+    <div id="dice" class="dice">-</div>
+    <button onclick="rollDice()">回す！</button>
+  </div>
+
+</div>
+
+<script>
+let timers = {
+  1: null,
+  2: null
+};
+
+function playSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+  gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+  oscillator.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + 0.3);
+}
+
+function startTimer(num) {
+  const input = document.getElementById('input' + num);
+  const display = document.getElementById('display' + num);
+  let time = parseInt(input.value);
+
+  if (isNaN(time) || time <= 0) return;
+
+  clearInterval(timers[num]);
+  display.textContent = time;
+
+  timers[num] = setInterval(() => {
+    time--;
+    display.textContent = time;
+
+    if (time <= 0) {
+      clearInterval(timers[num]);
+      playSound();
+    }
+  }, 1000);
+}
+
+function resetTimer(num) {
+  clearInterval(timers[num]);
+  document.getElementById('display' + num).textContent = 0;
+}
+
+function rollDice() {
+  const result = Math.floor(Math.random() * 6) + 1;
+  document.getElementById('dice').textContent = result;
+}
+</script>
+
+</body>
+</html>
