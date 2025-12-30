@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>企画管理ツール</title>
+
 <style>
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f7f7f7;
+  background: #f5f5f5;
 }
 .container {
   height: 100vh;
@@ -20,15 +21,14 @@ body {
   padding: 10px;
 }
 .timer-box {
-  background: #ffffff;
-  border-radius: 10px;
+  background: #fff;
+  border-radius: 12px;
   padding: 10px;
   margin-bottom: 10px;
   text-align: center;
 }
 .timer-title {
   font-weight: bold;
-  margin-bottom: 5px;
 }
 .timer-input {
   width: 80px;
@@ -37,7 +37,7 @@ body {
 }
 .time-display {
   font-size: 32px;
-  margin: 10px 0;
+  margin: 8px 0;
 }
 .button-row {
   display: flex;
@@ -50,20 +50,39 @@ button {
 }
 .dice-area {
   flex: 1;
-  background: #ffffff;
+  background: #fff;
   margin: 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   text-align: center;
   padding: 20px;
 }
-.dice {
-  font-size: 64px;
-  margin: 20px 0;
+.dice-box {
+  width: 120px;
+  height: 120px;
+  margin: 20px auto;
+  border-radius: 16px;
+  border: 4px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: bold;
+  background: #ffffff;
+}
+.rolling {
+  animation: shake 0.2s infinite;
+}
+@keyframes shake {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(2deg); }
+  50% { transform: rotate(0deg); }
+  75% { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
 }
 </style>
 </head>
-<body>
 
+<body>
 <div class="container">
 
   <div class="timer-area">
@@ -93,29 +112,33 @@ button {
   <!-- サイコロ -->
   <div class="dice-area">
     <div class="timer-title">🎲 サイコロ</div>
-    <div id="dice" class="dice">-</div>
+    <div id="dice" class="dice-box">?</div>
     <button onclick="rollDice()">回す！</button>
   </div>
 
 </div>
 
 <script>
-let timers = {
-  1: null,
-  2: null
-};
+let timers = { 1: null, 2: null };
 
+/* iPhone風タイマー音 */
 function playSound() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = ctx.createOscillator();
-  const gainNode = ctx.createGain();
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-  gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-  oscillator.connect(gainNode);
-  gainNode.connect(ctx.destination);
-  oscillator.start();
-  oscillator.stop(ctx.currentTime + 0.3);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(440, ctx.currentTime);
+
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 1.0);
 }
 
 function startTimer(num) {
@@ -131,7 +154,6 @@ function startTimer(num) {
   timers[num] = setInterval(() => {
     time--;
     display.textContent = time;
-
     if (time <= 0) {
       clearInterval(timers[num]);
       playSound();
@@ -144,11 +166,24 @@ function resetTimer(num) {
   document.getElementById('display' + num).textContent = 0;
 }
 
+/* サイコロ抽選エフェクト */
 function rollDice() {
-  const result = Math.floor(Math.random() * 6) + 1;
-  document.getElementById('dice').textContent = result;
+  const dice = document.getElementById('dice');
+  dice.classList.add('rolling');
+
+  let count = 0;
+  const interval = setInterval(() => {
+    dice.textContent = Math.floor(Math.random() * 6) + 1;
+    count++;
+  }, 100);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    const result = Math.floor(Math.random() * 6) + 1;
+    dice.textContent = result;
+    dice.classList.remove('rolling');
+  }, 3000);
 }
 </script>
-
 </body>
 </html>
