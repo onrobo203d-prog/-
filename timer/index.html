@@ -17,8 +17,12 @@ body {
   color: #c00;
   padding: 8px;
 }
+.sound-init {
+  text-align: center;
+  margin: 6px 0;
+}
 .container {
-  height: calc(100vh - 40px);
+  height: calc(100vh - 70px);
   display: flex;
   flex-direction: column;
 }
@@ -90,7 +94,11 @@ button {
 
 <body>
 
-<div class="notice">※ 音が出ます（配信前に一度操作してください）※</div>
+<div class="notice">※ 配信前に「音を有効化」を必ず押してください ※</div>
+
+<div class="sound-init">
+  <button onclick="enableSound()">🔊 音を有効化</button>
+</div>
 
 <div class="container">
 
@@ -129,14 +137,15 @@ let audioCtx;
 let silentOsc;
 let timers = {};
 
-/* -------- Audio 安定化 -------- */
-async function initAudio() {
+/* ---------- 音有効化（ユーザー操作） ---------- */
+async function enableSound() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
   if (audioCtx.state !== 'running') {
     await audioCtx.resume();
   }
+
   if (!silentOsc) {
     const gain = audioCtx.createGain();
     gain.gain.value = 0.0001;
@@ -144,15 +153,18 @@ async function initAudio() {
     silentOsc.connect(gain).connect(audioCtx.destination);
     silentOsc.start();
   }
+
+  alert('音を有効化しました');
 }
 
+/* ---------- iOS復帰対策 ---------- */
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && audioCtx?.state !== 'running') {
     audioCtx.resume();
   }
 });
 
-/* -------- 音 -------- */
+/* ---------- 効果音 ---------- */
 function playTimerSound() {
   let t = audioCtx.currentTime;
   for (let i = 0; i < 8; i++) {
@@ -184,16 +196,20 @@ function playDiceSound() {
   o.stop(audioCtx.currentTime + 0.6);
 }
 
-/* -------- 時間表示 -------- */
+/* ---------- 時間表示 ---------- */
 function format(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-/* -------- タイマー -------- */
+/* ---------- タイマー ---------- */
 function startTimer(n) {
-  initAudio();
+  if (!audioCtx) {
+    alert('先に「音を有効化」を押してください');
+    return;
+  }
+
   const input = document.getElementById('input' + n);
   const display = document.getElementById('display' + n);
   const total = Number(input.value);
@@ -218,9 +234,13 @@ function resetTimer(n) {
   document.getElementById('display' + n).textContent = '0:00';
 }
 
-/* -------- サイコロ -------- */
+/* ---------- サイコロ ---------- */
 function rollDice() {
-  initAudio();
+  if (!audioCtx) {
+    alert('先に「音を有効化」を押してください');
+    return;
+  }
+
   const dice = document.getElementById('dice');
   dice.classList.add('rolling');
 
