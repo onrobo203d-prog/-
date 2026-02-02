@@ -6,16 +6,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+:root {
+  --card-size: clamp(90px, 10vw, 140px);
+}
+
 body {
+  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  margin: 12px;
-  background: #fafafa;
+  background: #f7f7f7;
 }
 
 header {
+  padding: 10px;
   display: flex;
   gap: 8px;
-  margin-bottom: 10px;
 }
 
 #search {
@@ -26,57 +30,37 @@ header {
 
 #exportBtn {
   padding: 8px 12px;
-  font-size: 13px;
 }
 
 #tabs {
   display: flex;
   gap: 6px;
+  padding: 0 10px;
   overflow-x: auto;
-  margin-bottom: 12px;
 }
 
 #tabs button {
   border: none;
-  background: #e0e0e0;
   padding: 6px 10px;
   border-radius: 6px;
+  background: #ddd;
   font-size: 13px;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 #tabs button.active {
-  background: #333;
+  background: #222;
   color: #fff;
 }
 
-/* 表示用 */
 #grid {
+  padding: 10px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-size), 1fr));
   gap: 10px;
 }
 
-/* 出力用ラッパー（普段は非表示） */
-#exportArea {
-  width: 1280px;
-  height: 720px;
-  background: #fafafa;
-  padding: 16px;
-  box-sizing: border-box;
-  display: none;
-}
-
-#exportGrid {
-  display: grid;
-  gap: 12px;
-}
-
-/* 共通カード */
 .card {
   background: #fff;
-  border: 1px solid #ddd;
   border-radius: 8px;
   padding: 6px;
   text-align: center;
@@ -86,9 +70,8 @@ header {
 .thumb {
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #ccc;
+  background: #bbb;
   border-radius: 6px;
-  margin-bottom: 4px;
 }
 
 .name {
@@ -101,15 +84,9 @@ header {
 }
 
 .counter {
-  margin-top: 6px;
-  font-size: 12px;
+  margin-top: 4px;
 }
 
-.counter button {
-  margin: 0 4px;
-}
-
-/* 斜線 */
 .card.disabled {
   opacity: 0.5;
 }
@@ -121,11 +98,10 @@ header {
   background: linear-gradient(
     45deg,
     transparent 45%,
-    rgba(200,0,0,0.8) 45%,
-    rgba(200,0,0,0.8) 55%,
+    rgba(200,0,0,.8) 45%,
+    rgba(200,0,0,.8) 55%,
     transparent 55%
   );
-  pointer-events: none;
 }
 </style>
 </head>
@@ -133,7 +109,7 @@ header {
 <body>
 
 <header>
-  <input type="text" id="search" placeholder="検索">
+  <input id="search" placeholder="検索">
   <button id="exportBtn">画像出力</button>
 </header>
 
@@ -151,127 +127,112 @@ header {
 
 <main id="grid"></main>
 
-<!-- 画像出力専用 -->
-<div id="exportArea">
-  <div id="exportGrid"></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-
 <script>
 const items = [
   { name:"おつかれ", points:5, categories:["挨拶","定番"], isCustom:true, count:0, disabled:false },
+  { name:"草", points:3, categories:["ネタ","笑"], isCustom:true, count:0, disabled:true },
   { name:"すごい", points:10, categories:["えらい"], isCustom:false, count:0, disabled:false },
-  { name:"草", points:3, categories:["ネタ","笑"], isCustom:true, count:0, disabled:false },
-  { name:"ありがとう", points:8, categories:["挨拶","LOVE"], isCustom:false, count:0, disabled:false }
+  { name:"ありがとう", points:8, categories:["LOVE","挨拶"], isCustom:false, count:0, disabled:false }
 ];
 
 let activeTab = "全て";
 
 const grid = document.getElementById("grid");
-const searchInput = document.getElementById("search");
-const exportBtn = document.getElementById("exportBtn");
-const exportArea = document.getElementById("exportArea");
-const exportGrid = document.getElementById("exportGrid");
+const search = document.getElementById("search");
 
-function getFilteredItems() {
-  const keyword = searchInput.value.toLowerCase();
-  return items.filter(item => {
-    if (!item.name.toLowerCase().includes(keyword)) return false;
+function filteredItems(ignoreSearch=false) {
+  return items.filter(i => {
+    if (!ignoreSearch && !i.name.includes(search.value)) return false;
     if (activeTab === "全て") return true;
-    if (activeTab === "カスタム") return item.isCustom;
-    return item.categories.includes(activeTab);
+    if (activeTab === "カスタム") return i.isCustom;
+    return i.categories.includes(activeTab);
   });
 }
 
 function render() {
   grid.innerHTML = "";
-  getFilteredItems().forEach(item => {
-    const card = document.createElement("div");
-    card.className = "card";
-    if (item.disabled) card.classList.add("disabled");
-
-    let counterHTML = "";
-    if (activeTab === "カスタム") {
-      counterHTML = `
-        <div class="counter">
-          <button class="minus">-</button>
-          <span>${item.count}</span>
-          <button class="plus">+</button>
-        </div>`;
-    }
-
-    card.innerHTML = `
+  filteredItems().forEach(item => {
+    const c = document.createElement("div");
+    c.className = "card" + (item.disabled ? " disabled" : "");
+    c.innerHTML = `
       <div class="thumb"></div>
       <div class="name">${item.name}</div>
-      <div class="point">${item.points} pt</div>
-      ${counterHTML}
+      <div class="point">${item.points}pt</div>
+      ${activeTab==="カスタム"
+        ? `<div class="counter">
+            <button class="m">-</button>${item.count}<button class="p">+</button>
+           </div>`
+        : ""}
     `;
+    c.onclick = () => { item.disabled = !item.disabled; render(); };
 
-    card.onclick = () => {
-      item.disabled = !item.disabled;
-      render();
-    };
-
-    if (activeTab === "カスタム") {
-      card.querySelector(".plus").onclick = e => {
-        e.stopPropagation(); item.count++; render();
-      };
-      card.querySelector(".minus").onclick = e => {
-        e.stopPropagation(); if (item.count>0) item.count--; render();
-      };
+    if (activeTab==="カスタム") {
+      c.querySelector(".p").onclick = e => { e.stopPropagation(); item.count++; render(); };
+      c.querySelector(".m").onclick = e => { e.stopPropagation(); item.count=Math.max(0,item.count-1); render(); };
     }
-
-    grid.appendChild(card);
+    grid.appendChild(c);
   });
 }
 
-// タブ
-document.querySelectorAll("#tabs button").forEach(btn => {
-  btn.onclick = () => {
-    document.querySelector("#tabs .active").classList.remove("active");
-    btn.classList.add("active");
-    activeTab = btn.dataset.tab;
+document.querySelectorAll("#tabs button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelector(".active").classList.remove("active");
+    b.classList.add("active");
+    activeTab=b.dataset.tab;
     render();
   };
 });
 
-// 検索
-searchInput.oninput = render;
+search.oninput = render;
+render();
 
-// 画像出力
-exportBtn.onclick = async () => {
-  const list = getFilteredItems();
-  exportGrid.innerHTML = "";
+/* ===== 画像生成 ===== */
+document.getElementById("exportBtn").onclick = () => {
+  const list = filteredItems(true);
+  if (!list.length) return;
 
-  // 自動列数（最大5列）
-  const cols = Math.min(5, Math.ceil(Math.sqrt(list.length || 1)));
-  exportGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  const cols = Math.ceil(Math.sqrt(list.length * 16 / 9));
+  const rows = Math.ceil(list.length / cols);
 
-  list.forEach(item => {
-    const card = document.createElement("div");
-    card.className = "card";
-    if (item.disabled) card.classList.add("disabled");
-    card.innerHTML = `
-      <div class="thumb"></div>
-      <div class="name">${item.name}</div>
-      <div class="point">${item.points} pt</div>
-    `;
-    exportGrid.appendChild(card);
+  const w = 1920;
+  const h = 1080;
+  const cellW = w / cols;
+  const cellH = h / rows;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#f7f7f7";
+  ctx.fillRect(0,0,w,h);
+
+  list.forEach((item,i)=>{
+    const x = (i % cols) * cellW;
+    const y = Math.floor(i / cols) * cellH;
+
+    ctx.fillStyle = "#ccc";
+    ctx.fillRect(x+10,y+10,cellW-20,cellW-20);
+
+    ctx.fillStyle = "#000";
+    ctx.font = "20px sans-serif";
+    ctx.fillText(item.name, x+12, y+cellW+30);
+    ctx.font = "16px sans-serif";
+    ctx.fillText(item.points+"pt", x+12, y+cellW+52);
+
+    if (item.disabled) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(x+cellW,y+cellH);
+      ctx.stroke();
+    }
   });
 
-  exportArea.style.display = "block";
-
-  const canvas = await html2canvas(exportArea, { scale: 1 });
-  exportArea.style.display = "none";
-
-  const link = document.createElement("a");
-  link.href = canvas.toDataURL("image/jpeg", 0.85); // 5MB以下狙い
-  link.download = "status.jpg";
-  link.click();
+  const img = canvas.toDataURL("image/jpeg", 0.85);
+  window.open(img, "_blank");
 };
-
-render();
 </script>
 
 </body>
