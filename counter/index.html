@@ -13,13 +13,13 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f7f7f7;
+  background: #f6f6f6;
 }
 
 header {
-  padding: 10px;
   display: flex;
   gap: 8px;
+  padding: 10px;
 }
 
 #search {
@@ -45,6 +45,7 @@ header {
   border-radius: 6px;
   background: #ddd;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 #tabs button.active {
@@ -85,6 +86,11 @@ header {
 
 .counter {
   margin-top: 4px;
+  font-size: 12px;
+}
+
+.counter button {
+  margin: 0 4px;
 }
 
 .card.disabled {
@@ -102,6 +108,41 @@ header {
     rgba(200,0,0,.8) 55%,
     transparent 55%
   );
+  pointer-events: none;
+}
+
+/* ===== プレビュー ===== */
+#preview {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+#previewInner {
+  position: relative;
+  background: #fff;
+  padding: 10px;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+
+#previewImg {
+  max-width: 100%;
+  max-height: 85vh;
+  display: block;
+}
+
+#closePreview {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 24px;
+  background: none;
+  border: none;
 }
 </style>
 </head>
@@ -127,6 +168,14 @@ header {
 
 <main id="grid"></main>
 
+<!-- プレビュー -->
+<div id="preview">
+  <div id="previewInner">
+    <button id="closePreview">×</button>
+    <img id="previewImg">
+  </div>
+</div>
+
 <script>
 const items = [
   { name:"おつかれ", points:5, categories:["挨拶","定番"], isCustom:true, count:0, disabled:false },
@@ -140,7 +189,7 @@ let activeTab = "全て";
 const grid = document.getElementById("grid");
 const search = document.getElementById("search");
 
-function filteredItems(ignoreSearch=false) {
+function getFiltered(ignoreSearch=false) {
   return items.filter(i => {
     if (!ignoreSearch && !i.name.includes(search.value)) return false;
     if (activeTab === "全て") return true;
@@ -151,7 +200,7 @@ function filteredItems(ignoreSearch=false) {
 
 function render() {
   grid.innerHTML = "";
-  filteredItems().forEach(item => {
+  getFiltered().forEach(item => {
     const c = document.createElement("div");
     c.className = "card" + (item.disabled ? " disabled" : "");
     c.innerHTML = `
@@ -168,17 +217,21 @@ function render() {
 
     if (activeTab==="カスタム") {
       c.querySelector(".p").onclick = e => { e.stopPropagation(); item.count++; render(); };
-      c.querySelector(".m").onclick = e => { e.stopPropagation(); item.count=Math.max(0,item.count-1); render(); };
+      c.querySelector(".m").onclick = e => {
+        e.stopPropagation();
+        item.count = Math.max(0, item.count - 1);
+        render();
+      };
     }
     grid.appendChild(c);
   });
 }
 
 document.querySelectorAll("#tabs button").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelector(".active").classList.remove("active");
+  b.onclick = () => {
+    document.querySelector("#tabs .active").classList.remove("active");
     b.classList.add("active");
-    activeTab=b.dataset.tab;
+    activeTab = b.dataset.tab;
     render();
   };
 });
@@ -186,52 +239,56 @@ document.querySelectorAll("#tabs button").forEach(b=>{
 search.oninput = render;
 render();
 
-/* ===== 画像生成 ===== */
+/* ===== 画像生成 & プレビュー ===== */
 document.getElementById("exportBtn").onclick = () => {
-  const list = filteredItems(true);
+  const list = getFiltered(true);
   if (!list.length) return;
 
   const cols = Math.ceil(Math.sqrt(list.length * 16 / 9));
   const rows = Math.ceil(list.length / cols);
 
-  const w = 1920;
-  const h = 1080;
-  const cellW = w / cols;
-  const cellH = h / rows;
+  const W = 1920, H = 1080;
+  const cellW = W / cols;
+  const cellH = H / rows;
 
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#f7f7f7";
-  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = "#f6f6f6";
+  ctx.fillRect(0,0,W,H);
 
   list.forEach((item,i)=>{
     const x = (i % cols) * cellW;
     const y = Math.floor(i / cols) * cellH;
 
     ctx.fillStyle = "#ccc";
-    ctx.fillRect(x+10,y+10,cellW-20,cellW-20);
+    ctx.fillRect(x+10, y+10, cellW-20, cellW-20);
 
     ctx.fillStyle = "#000";
     ctx.font = "20px sans-serif";
-    ctx.fillText(item.name, x+12, y+cellW+30);
+    ctx.fillText(item.name, x+14, y+cellW+30);
     ctx.font = "16px sans-serif";
-    ctx.fillText(item.points+"pt", x+12, y+cellW+52);
+    ctx.fillText(item.points+"pt", x+14, y+cellW+52);
 
     if (item.disabled) {
       ctx.strokeStyle = "red";
       ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(x,y);
-      ctx.lineTo(x+cellW,y+cellH);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x+cellW, y+cellH);
       ctx.stroke();
     }
   });
 
-  const img = canvas.toDataURL("image/jpeg", 0.85);
-  window.open(img, "_blank");
+  const imgData = canvas.toDataURL("image/jpeg", 0.85);
+  document.getElementById("previewImg").src = imgData;
+  document.getElementById("preview").style.display = "flex";
+};
+
+document.getElementById("closePreview").onclick = () => {
+  document.getElementById("preview").style.display = "none";
 };
 </script>
 
