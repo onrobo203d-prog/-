@@ -128,12 +128,14 @@ header {
   padding: 10px;
   max-width: 95vw;
   max-height: 95vh;
+  text-align: center;
 }
 
 #previewImg {
   max-width: 100%;
-  max-height: 85vh;
+  max-height: 80vh;
   display: block;
+  margin: auto;
 }
 
 #closePreview {
@@ -143,6 +145,23 @@ header {
   font-size: 24px;
   background: none;
   border: none;
+}
+
+#prevImg, #nextImg {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 32px;
+  background: none;
+  border: none;
+}
+
+#prevImg { left: -8px; }
+#nextImg { right: -8px; }
+
+#pageInfo {
+  font-size: 12px;
+  margin-bottom: 6px;
 }
 </style>
 </head>
@@ -172,11 +191,15 @@ header {
 <div id="preview">
   <div id="previewInner">
     <button id="closePreview">×</button>
+    <button id="prevImg">‹</button>
+    <button id="nextImg">›</button>
+    <div id="pageInfo"></div>
     <img id="previewImg">
   </div>
 </div>
 
 <script>
+/* ===== データ ===== */
 const items = [
   { name:"おつかれ", points:5, categories:["挨拶","定番"], isCustom:true, count:0, disabled:false },
   { name:"草", points:3, categories:["ネタ","笑"], isCustom:true, count:0, disabled:true },
@@ -186,6 +209,7 @@ const items = [
 
 let activeTab = "全て";
 
+/* ===== 表示 ===== */
 const grid = document.getElementById("grid");
 const search = document.getElementById("search");
 
@@ -239,17 +263,32 @@ document.querySelectorAll("#tabs button").forEach(b=>{
 search.oninput = render;
 render();
 
-/* ===== 画像生成 & プレビュー ===== */
+/* ===== 画像出力 ===== */
+let previewImages = [];
+let currentPreviewIndex = 0;
+
 document.getElementById("exportBtn").onclick = () => {
   const list = getFiltered(true);
   if (!list.length) return;
 
-  const cols = Math.ceil(Math.sqrt(list.length * 16 / 9));
-  const rows = Math.ceil(list.length / cols);
+  previewImages = [];
+  currentPreviewIndex = 0;
 
+  const MAX_PER_IMAGE = 100;
+  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
+    previewImages.push(generateCanvasImage(list.slice(i, i + MAX_PER_IMAGE)));
+  }
+  showPreview();
+};
+
+function generateCanvasImage(list) {
   const W = 1920, H = 1080;
-  const cellW = W / cols;
-  const cellH = H / rows;
+  const padding = 20;
+  const thumbSize = 160;
+  const textHeight = 56;
+  const cardW = thumbSize + padding * 2;
+  const cardH = thumbSize + textHeight + padding * 2;
+  const cols = Math.floor(W / cardW);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -257,34 +296,55 @@ document.getElementById("exportBtn").onclick = () => {
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = "#f6f6f6";
-  ctx.fillRect(0,0,W,H);
+  ctx.fillRect(0, 0, W, H);
 
-  list.forEach((item,i)=>{
-    const x = (i % cols) * cellW;
-    const y = Math.floor(i / cols) * cellH;
+  list.forEach((item, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = col * cardW + padding;
+    const y = row * cardH + padding;
 
     ctx.fillStyle = "#ccc";
-    ctx.fillRect(x+10, y+10, cellW-20, cellW-20);
+    ctx.fillRect(x, y, thumbSize, thumbSize);
 
     ctx.fillStyle = "#000";
-    ctx.font = "20px sans-serif";
-    ctx.fillText(item.name, x+14, y+cellW+30);
-    ctx.font = "16px sans-serif";
-    ctx.fillText(item.points+"pt", x+14, y+cellW+52);
+    ctx.font = "18px sans-serif";
+    ctx.fillText(item.name, x, y + thumbSize + 24);
+    ctx.font = "14px sans-serif";
+    ctx.fillText(item.points + "pt", x, y + thumbSize + 44);
 
     if (item.disabled) {
       ctx.strokeStyle = "red";
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x+cellW, y+cellH);
+      ctx.lineTo(x + thumbSize, y + thumbSize);
       ctx.stroke();
     }
   });
 
-  const imgData = canvas.toDataURL("image/jpeg", 0.85);
-  document.getElementById("previewImg").src = imgData;
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+function showPreview() {
+  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent =
+    `${currentPreviewIndex + 1} / ${previewImages.length}`;
   document.getElementById("preview").style.display = "flex";
+}
+
+document.getElementById("prevImg").onclick = () => {
+  if (currentPreviewIndex > 0) {
+    currentPreviewIndex--;
+    showPreview();
+  }
+};
+
+document.getElementById("nextImg").onclick = () => {
+  if (currentPreviewIndex < previewImages.length - 1) {
+    currentPreviewIndex++;
+    showPreview();
+  }
 };
 
 document.getElementById("closePreview").onclick = () => {
