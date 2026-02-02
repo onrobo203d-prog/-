@@ -1,168 +1,95 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no">
-    <title>4カウンター</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: sans-serif;
-            background: #f5f5f5;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
+const items = [
+  {
+    name: "おつかれ",
+    points: 5,
+    categories: ["挨拶", "定番"],
+    isCustom: true,
+    count: 0
+  },
+  {
+    name: "すごい",
+    points: 10,
+    categories: ["えらい"],
+    isCustom: false,
+    count: 0
+  },
+  {
+    name: "草",
+    points: 3,
+    categories: ["ネタ", "笑"],
+    isCustom: true,
+    count: 0
+  }
+];
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-auto-rows: 1fr;
-            gap: 12px;
-            padding: 12px;
-            height: 100vh;
-            box-sizing: border-box;
-        }
+let activeTab = "全て";
 
-        .counter-box {
-            background: #fff;
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0px 3px 8px rgba(0,0,0,0.1);
-            position: relative;
-        }
+const grid = document.getElementById("grid");
+const searchInput = document.getElementById("search");
 
-        /* 名前入力欄 */
-        .name-input {
-            width: 100%;
-            font-size: 20px;
-            padding: 6px;
-            text-align: center;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-        }
+// 描画
+function render() {
+  grid.innerHTML = "";
+  const keyword = searchInput.value.toLowerCase();
 
-        /* 小さいリセットボタンを右下に配置 */
-        .reset-small {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            font-size: 14px;
-            padding: 6px 12px;
-            background: #ff4d4d;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            width: 45%;  /* 横幅半分 */
-        }
+  items
+    .filter(item => {
+      // 検索
+      if (!item.name.toLowerCase().includes(keyword)) return false;
 
-        /* カウント数字 */
-        .counter-input {
-            font-size: 48px;
-            text-align: center;
-            border: none;
-            width: 100%;
-            appearance: none;
-            outline: none;
-            margin-top: 10px;
-        }
+      // タブ判定
+      if (activeTab === "全て") return true;
+      if (activeTab === "カスタム") return item.isCustom;
+      return item.categories.includes(activeTab);
+    })
+    .forEach(item => {
+      const card = document.createElement("div");
+      card.className = "card";
 
-        .buttons {
-            display: flex;
-            justify-content: center;
-            margin-top: 10px;
-            margin-bottom: 40px; /* リセットとの距離を確保 */
-        }
+      let counterHTML = "";
+      if (activeTab === "カスタム") {
+        counterHTML = `
+          <div class="counter">
+            <button class="minus">-</button>
+            <span>${item.count}</span>
+            <button class="plus">+</button>
+          </div>
+        `;
+      }
 
-        button {
-            padding: 12px;
-            font-size: 20px;
-            border: none;
-            border-radius: 8px;
-            width: 100%;
-            color: white;
-        }
+      card.innerHTML = `
+        <div class="thumb"></div>
+        <div class="name">${item.name}</div>
+        <div class="point">${item.points} pt</div>
+        ${counterHTML}
+      `;
 
-        /* 4色のプラスボタン */
-        .plus.blue   { background: #007bff; }
-        .plus.green  { background: #28a745; }
-        .plus.yellow { background: #f0c20c; color: #333; }
-        .plus.pink   { background: #ff4da6; }
+      if (activeTab === "カスタム") {
+        card.querySelector(".plus").onclick = () => {
+          item.count++;
+          render();
+        };
+        card.querySelector(".minus").onclick = () => {
+          if (item.count > 0) item.count--;
+          render();
+        };
+      }
 
-    </style>
-</head>
-<body>
-
-<div class="container">
-
-    <!-- 1 -->
-    <div class="counter-box">
-        <input type="text" class="name-input" placeholder="名前">
-        <input type="number" class="counter-input" value="0" min="0" max="9999">
-        <div class="buttons">
-            <button class="plus blue">＋</button>
-        </div>
-        <button class="reset-small">リセット</button>
-    </div>
-
-    <!-- 2 -->
-    <div class="counter-box">
-        <input type="text" class="name-input" placeholder="名前">
-        <input type="number" class="counter-input" value="0" min="0" max="9999">
-        <div class="buttons">
-            <button class="plus green">＋</button>
-        </div>
-        <button class="reset-small">リセット</button>
-    </div>
-
-    <!-- 3 -->
-    <div class="counter-box">
-        <input type="text" class="name-input" placeholder="名前">
-        <input type="number" class="counter-input" value="0" min="0" max="9999">
-        <div class="buttons">
-            <button class="plus yellow">＋</button>
-        </div>
-        <button class="reset-small">リセット</button>
-    </div>
-
-    <!-- 4 -->
-    <div class="counter-box">
-        <input type="text" class="name-input" placeholder="名前">
-        <input type="number" class="counter-input" value="0" min="0" max="9999">
-        <div class="buttons">
-            <button class="plus pink">＋</button>
-        </div>
-        <button class="reset-small">リセット</button>
-    </div>
-
-</div>
-
-<script>
-    document.querySelectorAll(".counter-box").forEach(box => {
-        const nameField = box.querySelector(".name-input");
-        const input = box.querySelector(".counter-input");
-        const plus = box.querySelector(".plus");
-        const resetSmall = box.querySelector(".reset-small");
-
-        plus.addEventListener("click", () => {
-            let value = parseInt(input.value) || 0;
-            if (value < 9999) input.value = value + 1;
-        });
-
-        resetSmall.addEventListener("click", () => {
-            input.value = 0;
-            nameField.value = "";   // ← 名前も消す
-        });
-
-        input.addEventListener("change", () => {
-            let v = parseInt(input.value);
-            if (isNaN(v) || v < 0) v = 0;
-            if (v > 9999) v = 9999;
-            input.value = v;
-        });
+      grid.appendChild(card);
     });
-</script>
+}
 
-</body>
-</html>
+// タブ切替
+document.querySelectorAll("#tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelector("#tabs .active").classList.remove("active");
+    btn.classList.add("active");
+    activeTab = btn.dataset.tab;
+    render();
+  });
+});
+
+// 検索
+searchInput.addEventListener("input", render);
+
+render();
