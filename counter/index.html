@@ -56,6 +56,7 @@ header {
   border-radius: 8px;
   padding: 6px;
   text-align: center;
+  position: relative;
 }
 
 .thumb {
@@ -82,6 +83,25 @@ header {
 
 .counter button {
   margin: 0 4px;
+}
+
+/* 斜線 */
+.card.disabled {
+  opacity: 0.5;
+}
+
+.card.disabled::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 45%,
+    rgba(200, 0, 0, 0.8) 45%,
+    rgba(200, 0, 0, 0.8) 55%,
+    transparent 55%
+  );
+  pointer-events: none;
 }
 </style>
 </head>
@@ -113,28 +133,32 @@ const items = [
     points: 5,
     categories: ["挨拶", "定番"],
     isCustom: true,
-    count: 0
+    count: 0,
+    disabled: false
   },
   {
     name: "すごい",
     points: 10,
     categories: ["えらい"],
     isCustom: false,
-    count: 0
+    count: 0,
+    disabled: false
   },
   {
     name: "草",
     points: 3,
     categories: ["ネタ", "笑"],
     isCustom: true,
-    count: 0
+    count: 0,
+    disabled: false
   },
   {
     name: "ありがとう",
     points: 8,
     categories: ["挨拶", "LOVE"],
     isCustom: false,
-    count: 0
+    count: 0,
+    disabled: false
   }
 ];
 
@@ -143,17 +167,13 @@ let activeTab = "全て";
 const grid = document.getElementById("grid");
 const searchInput = document.getElementById("search");
 
-// 描画
 function render() {
   grid.innerHTML = "";
   const keyword = searchInput.value.toLowerCase();
 
   items
     .filter(item => {
-      // 検索
       if (!item.name.toLowerCase().includes(keyword)) return false;
-
-      // タブ条件
       if (activeTab === "全て") return true;
       if (activeTab === "カスタム") return item.isCustom;
       return item.categories.includes(activeTab);
@@ -161,6 +181,7 @@ function render() {
     .forEach(item => {
       const card = document.createElement("div");
       card.className = "card";
+      if (item.disabled) card.classList.add("disabled");
 
       let counterHTML = "";
       if (activeTab === "カスタム") {
@@ -180,12 +201,21 @@ function render() {
         ${counterHTML}
       `;
 
+      // 斜線トグル
+      card.addEventListener("click", () => {
+        item.disabled = !item.disabled;
+        render();
+      });
+
+      // カウンター（カスタムのみ）
       if (activeTab === "カスタム") {
-        card.querySelector(".plus").onclick = () => {
+        card.querySelector(".plus").onclick = (e) => {
+          e.stopPropagation();
           item.count++;
           render();
         };
-        card.querySelector(".minus").onclick = () => {
+        card.querySelector(".minus").onclick = (e) => {
+          e.stopPropagation();
           if (item.count > 0) item.count--;
           render();
         };
