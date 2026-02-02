@@ -1,3 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>画像管理サイト</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 12px;
+  background: #fafafa;
+}
+
+header {
+  margin-bottom: 10px;
+}
+
+#search {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+}
+
+#tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+#tabs button {
+  border: none;
+  background: #e0e0e0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#tabs button.active {
+  background: #333;
+  color: #fff;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 6px;
+  text-align: center;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #ccc;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.name {
+  font-size: 12px;
+}
+
+.point {
+  font-size: 11px;
+  color: #666;
+}
+
+.counter {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.counter button {
+  margin: 0 4px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <input type="text" id="search" placeholder="検索">
+</header>
+
+<nav id="tabs">
+  <button class="active" data-tab="全て">全て</button>
+  <button data-tab="ネタ">ネタ</button>
+  <button data-tab="笑">笑</button>
+  <button data-tab="定番">定番</button>
+  <button data-tab="えらい">えらい</button>
+  <button data-tab="挨拶">挨拶</button>
+  <button data-tab="ステージ">ステージ</button>
+  <button data-tab="LOVE">LOVE</button>
+  <button data-tab="カスタム">カスタム</button>
+</nav>
+
+<main id="grid"></main>
+
+<script>
 const items = [
   {
     name: "おつかれ",
@@ -19,6 +128,13 @@ const items = [
     categories: ["ネタ", "笑"],
     isCustom: true,
     count: 0
+  },
+  {
+    name: "ありがとう",
+    points: 8,
+    categories: ["挨拶", "LOVE"],
+    isCustom: false,
+    count: 0
   }
 ];
 
@@ -37,7 +153,7 @@ function render() {
       // 検索
       if (!item.name.toLowerCase().includes(keyword)) return false;
 
-      // タブ判定
+      // タブ条件
       if (activeTab === "全て") return true;
       if (activeTab === "カスタム") return item.isCustom;
       return item.categories.includes(activeTab);
@@ -93,3 +209,7 @@ document.querySelectorAll("#tabs button").forEach(btn => {
 searchInput.addEventListener("input", render);
 
 render();
+</script>
+
+</body>
+</html>
