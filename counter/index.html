@@ -116,7 +116,6 @@ header {
   pointer-events: none;
 }
 
-/* ===== プレビュー ===== */
 #preview {
   position: fixed;
   inset: 0;
@@ -199,7 +198,6 @@ header {
 
 <main id="grid"></main>
 
-<!-- プレビュー -->
 <div id="preview">
   <div id="previewInner">
     <button id="closePreview">×</button>
@@ -211,55 +209,45 @@ header {
 </div>
 
 <script>
-/* ===== 設定 ===== */
 const DATA_URL =
   "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
 const IMG_BASE =
   "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
 
-/* ===== state ===== */
 let items = [];
 let activeTab = "全て";
 
-/* ===== DOM ===== */
 const grid = document.getElementById("grid");
 const search = document.getElementById("search");
 const customFilter = document.getElementById("customFilter");
 const minPointInput = document.getElementById("minPoint");
 const maxPointInput = document.getElementById("maxPoint");
 
-/* ===== fetch JSON ===== */
 fetch(DATA_URL + "?v=" + Date.now())
   .then(r => r.json())
-  .then(data => {
-    items = data;
-    render();
-  });
+  .then(data => { items = data; render(); });
 
-/* ===== フィルター ===== */
 function getFiltered(ignoreSearch=false) {
   return items.filter(i => {
     if (!ignoreSearch && !i.name.includes(search.value)) return false;
-
     if (activeTab === "カスタム") {
       const min = minPointInput.value === "" ? -Infinity : Number(minPointInput.value);
       const max = maxPointInput.value === "" ? Infinity : Number(maxPointInput.value);
       return i.points >= min && i.points <= max;
     }
-
     if (activeTab === "全て") return true;
     return i.categories.includes(activeTab);
   });
 }
 
-/* ===== 描画 ===== */
 function render() {
   grid.innerHTML = "";
   getFiltered().forEach(item => {
     const c = document.createElement("div");
     c.className = "card" + (item.disabled ? " disabled" : "");
+    // ここで拡張子 .PNG を付けて表示
     c.innerHTML = `
-      <div class="thumb" style="background-image:url(${IMG_BASE + item.id})"></div>
+      <div class="thumb" style="background-image:url(${IMG_BASE + item.id}.PNG?v=${Date.now()})"></div>
       <div class="name">${item.name}</div>
       <div class="point">${item.points}pt</div>
     `;
@@ -268,7 +256,6 @@ function render() {
   });
 }
 
-/* ===== タブ切替 ===== */
 document.querySelectorAll("#tabs button").forEach(b=>{
   b.onclick = () => {
     document.querySelector("#tabs .active").classList.remove("active");
@@ -279,12 +266,10 @@ document.querySelectorAll("#tabs button").forEach(b=>{
   };
 });
 
-/* ===== 検索・カスタム入力 ===== */
 search.oninput = render;
 minPointInput.oninput = render;
 maxPointInput.oninput = render;
 
-/* ===== 画像出力 ===== */
 let previewImages = [];
 let currentPreviewIndex = 0;
 
@@ -294,7 +279,6 @@ document.getElementById("exportBtn").onclick = () => {
 
   previewImages = [];
   currentPreviewIndex = 0;
-
   const MAX_PER_IMAGE = 100;
   for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
     previewImages.push(generateCanvasImage(list.slice(i, i + MAX_PER_IMAGE)));
@@ -310,7 +294,6 @@ function generateCanvasImage(list) {
   const cardW = thumbSize + padding * 2;
   const cardH = thumbSize + textHeight + padding * 2;
   const cols = Math.floor(W / cardW);
-
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -347,7 +330,6 @@ function generateCanvasImage(list) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
-/* ===== プレビュー表示 ===== */
 function showPreview() {
   document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
   document.getElementById("pageInfo").textContent =
@@ -356,19 +338,11 @@ function showPreview() {
 }
 
 document.getElementById("prevImg").onclick = () => {
-  if (currentPreviewIndex > 0) {
-    currentPreviewIndex--;
-    showPreview();
-  }
+  if (currentPreviewIndex > 0) { currentPreviewIndex--; showPreview(); }
 };
-
 document.getElementById("nextImg").onclick = () => {
-  if (currentPreviewIndex < previewImages.length - 1) {
-    currentPreviewIndex++;
-    showPreview();
-  }
+  if (currentPreviewIndex < previewImages.length - 1) { currentPreviewIndex++; showPreview(); }
 };
-
 document.getElementById("closePreview").onclick = () => {
   document.getElementById("preview").style.display = "none";
 };
