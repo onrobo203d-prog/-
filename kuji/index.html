@@ -2,290 +2,181 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>くじ引きツール</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>画像管理サイト</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{margin:0;padding:10px;font-family:system-ui,sans-serif;background:#f5f5f5;}
-h1{text-align:center;margin-bottom:10px;font-size:22px;}
-.section{background:#fff;padding:12px;margin-bottom:12px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
-label{font-weight:600;}
-input,select,button,textarea{font-size:16px;padding:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;}
-.row{display:flex;gap:6px;margin-bottom:8px;}
-.row input[type="text"]{flex:1;}
-.small-input{width:70px;text-align:center;}
-.item-list{margin-top:8px;}
-.item-row{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid #eee;word-break:break-word;}
-.item-name{flex:1;max-width:60%;overflow-wrap:break-word;white-space:normal;display:inline-block;}
-.log-entry{border:1px solid #ddd;border-radius:6px;padding:8px;margin-bottom:8px;background:#fafafa;}
-.log-header{font-weight:bold;margin-bottom:6px;}
-.copy-btn{font-size:14px;padding:4px 8px;margin-top:4px;}
-button{background:#007aff;color:#fff;border:none;font-weight:600;}
-button:active{opacity:0.85;}
-.reset-btn{background:#d9534f;}
-.folded{height:0;overflow:hidden;cursor:pointer;}
-@media (max-width:600px){.row{flex-direction:column;}.small-input{width:100%;}}
+:root { --card-size: clamp(90px, 10vw, 140px); }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
+header { display:flex; gap:8px; padding:10px; }
+#search { flex:1; padding:8px; font-size:14px; }
+#exportBtn { padding:8px 12px; }
+#customFilter { display:none; gap:6px; padding:0 10px 6px; }
+#customFilter input { width:80px; padding:4px; font-size:12px; }
+#tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
+#tabs button { border:none; padding:6px 10px; border-radius:6px; background:#ddd; font-size:13px; white-space:nowrap; }
+#tabs button.active { background:#222; color:#fff; }
+#grid { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr)); gap:10px; }
+.card { background:#fff; border-radius:8px; padding:6px; text-align:center; position:relative; }
+.thumb { width:100%; aspect-ratio:1/1; background:#bbb; border-radius:6px; background-size:cover; background-position:center; }
+.name { font-size:12px; }
+.point { font-size:11px; color:#666; }
+.card.disabled { opacity:0.5; }
+.card.disabled::after { content:""; position:absolute; inset:0; background:linear-gradient(45deg,transparent 45%, rgba(200,0,0,.8) 45%, rgba(200,0,0,.8) 55%, transparent 55%); pointer-events:none; }
+#preview { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:9999; }
+#previewInner { position:relative; background:#fff; padding:10px; max-width:95vw; max-height:95vh; text-align:center; }
+#previewImg { max-width:100%; max-height:80vh; display:block; margin:auto; }
+#closePreview { position:absolute; top:4px; right:8px; font-size:24px; background:none; border:none; }
+#prevImg, #nextImg { position:absolute; top:50%; transform:translateY(-50%); font-size:32px; background:none; border:none; }
+#prevImg { left:-8px; } #nextImg { right:-8px; }
+#pageInfo { font-size:12px; margin-bottom:6px; }
 </style>
 </head>
 <body>
 
-<h1>くじ引きツール</h1>
+<header>
+  <input id="search" placeholder="検索">
+  <button id="exportBtn">画像出力</button>
+</header>
 
-<!-- 景品追加 -->
-<div class="section">
-  <div class="row">
-    <input id="itemName" type="text" placeholder="景品名">
-    <input id="itemCount" type="number" class="small-input" placeholder="個数">
-    <button id="addItemBtn">追加</button>
-  </div>
-  <button id="clearItemsBtn" class="reset-btn" style="margin-top:6px;">景品リスト全消去</button>
-  <div id="totalDisplay">残り0個</div>
-  <div id="itemList" class="item-list"></div>
-  <div style="margin-top:10px;">
-    <label><input type="checkbox" id="lastOneToggle">ラストワン賞を有効にする</label>
-  </div>
+<div id="customFilter">
+  <span>ポイント範囲：</span>
+  <input type="number" id="minPoint" placeholder="最小">
+  <span>〜</span>
+  <input type="number" id="maxPoint" placeholder="最大">
 </div>
 
-<!-- 人物管理 -->
-<div class="section">
-  <div class="row">
-    <input id="personInput" type="text" placeholder="名前を追加">
-    <button id="addPersonBtn">追加</button>
-  </div>
-  <button id="resetPersons" class="reset-btn">人物名リセット</button>
-  <div style="margin-top:10px;">
-    <label>抽選する人：</label>
-    <select id="personSelect"></select>
-  </div>
-  <div class="row" style="margin-top:10px;">
-    <input id="drawCount" type="number" class="small-input" placeholder="回数">
-    <button id="drawBtn">引く</button>
-  </div>
-</div>
+<nav id="tabs">
+  <button class="active" data-tab="全て">全て</button>
+  <button data-tab="ネタ">ネタ</button>
+  <button data-tab="笑">笑</button>
+  <button data-tab="定番">定番</button>
+  <button data-tab="えらい">えらい</button>
+  <button data-tab="挨拶">挨拶</button>
+  <button data-tab="ステージ">ステージ</button>
+  <button data-tab="LOVE">LOVE</button>
+  <button data-tab="カスタム">カスタム</button>
+</nav>
 
-<!-- ログ表示 -->
-<div class="section">
-  <label>ログフィルタ：</label>
-  <select id="logFilter"></select>
-  <button id="resetLogs" class="reset-btn" style="margin-top:8px;">ログを全削除</button>
-  <div id="logArea" style="margin-top:10px;"></div>
-</div>
+<main id="grid"></main>
 
-<!-- 集計表示 -->
-<div class="section">
-  <div id="summaryArea"></div>
-  <div id="copyMessage" style="color:green;margin-top:6px;"></div>
-</div>
-
-<!-- 設定保存/読み込み -->
-<div class="section">
-  <button id="saveConfigBtn">設定を保存</button>
-  <input type="file" id="loadConfigInput" style="display:none;">
-  <button id="loadConfigBtn">設定を読み込む</button>
+<div id="preview">
+  <div id="previewInner">
+    <button id="closePreview">×</button>
+    <button id="prevImg">‹</button>
+    <button id="nextImg">›</button>
+    <div id="pageInfo"></div>
+    <img id="previewImg">
+  </div>
 </div>
 
 <script>
-let items=[],persons=[],logs=[];
+const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
+const IMG_BASE = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
 
-// ---------- ローカル保存 ----------
-function saveLocal(){
-  const data={items,persons,logs,lastOneEnabled:lastOneToggle.checked};
-  localStorage.setItem("kujiToolData",JSON.stringify(data));
-}
+let items = [];
+let activeTab = "全て";
 
-// ---------- 景品リスト ----------
-function updateItemList(){
-  const area=document.getElementById("itemList"); area.innerHTML="";
-  items.forEach((item,i)=>{
-    const row=document.createElement("div"); row.className="item-row";
-    const nameInput=document.createElement("input"); nameInput.type="text"; nameInput.value=item.name; nameInput.className="item-name";
-    nameInput.onchange=()=>{items[i].name=nameInput.value; saveLocal();};
-    const countInput=document.createElement("input"); countInput.type="number"; countInput.value=item.count; countInput.className="small-input";
-    countInput.onchange=()=>{items[i].count=Number(countInput.value);updateTotalCount(); saveLocal();};
-    row.appendChild(nameInput); row.appendChild(countInput); area.appendChild(row);
-  });
-}
+const grid = document.getElementById("grid");
+const search = document.getElementById("search");
+const customFilter = document.getElementById("customFilter");
+const minPointInput = document.getElementById("minPoint");
+const maxPointInput = document.getElementById("maxPoint");
 
-function updateTotalCount(){
-  const total=items.reduce((a,b)=>a+b.count,0);
-  document.getElementById("totalDisplay").textContent=`残り${total}個`;
-}
+fetch(DATA_URL + "?v=" + Date.now())
+  .then(r => r.json())
+  .then(data => { items = data; render(); });
 
-// ---------- 人物リスト ----------
-function updatePersonSelect(){
-  const sel=personSelect; sel.innerHTML="";
-  persons.forEach(p=>{const op=document.createElement("option"); op.value=p; op.textContent=p; sel.appendChild(op);});
-}
-
-function updateLogFilter(){
-  const sel=logFilter; sel.innerHTML="";
-  const all=document.createElement("option"); all.value="all"; all.textContent="全員"; sel.appendChild(all);
-  persons.forEach(p=>{const op=document.createElement("option"); op.value=p; op.textContent=p; sel.appendChild(op);});
-}
-
-// ---------- イベント ----------
-addItemBtn.onclick=()=>{addItem();};
-itemName.addEventListener("keydown",e=>{if(e.key==="Enter") itemCount.focus();});
-itemCount.addEventListener("keydown",e=>{if(e.key==="Enter") addItem();});
-function addItem(){
-  const name=itemName.value.trim(); const count=Number(itemCount.value); if(!name||count<=0) return;
-  items.push({name,count}); itemName.value=""; itemCount.value=""; updateItemList(); updateTotalCount(); saveLocal(); itemName.focus();
-}
-
-personInput.addEventListener("keydown",e=>{if(e.key==="Enter") addPerson();});
-addPersonBtn.onclick=()=>addPerson();
-function addPerson(){
-  const name=personInput.value.trim(); if(!name) return; persons.push(name); personInput.value="";
-  updatePersonSelect(); updateLogFilter(); saveLocal(); personSelect.value=name;
-}
-
-resetPersons.onclick=()=>{persons=[]; updatePersonSelect(); updateLogFilter(); saveLocal();};
-clearItemsBtn.onclick=()=>{if(confirm("景品リストを全て消去しますか？")){items=[];updateItemList();updateTotalCount(); saveLocal();}};
-drawBtn.onclick=()=>{doDraw();};
-lastOneToggle.onchange=()=>{saveLocal();};
-
-// ---------- 抽選 ----------
-function doDraw(){
-  const person=personSelect.value; const times=Number(drawCount.value); if(!person||times<=0) return;
-  const counts={};
-  for(let i=0;i<times;i++){
-    const remaining=items.reduce((a,b)=>a+b.count,0); if(remaining===0) break;
-    const flatList=[]; items.forEach((it,j)=>{if(it.count>0){for(let k=0;k<it.count;k++) flatList.push(j);}});
-    if(flatList.length===0) break;
-    const r=Math.floor(Math.random()*flatList.length); const idx=flatList[r]; let name=items[idx].name;
-    if(lastOneToggle.checked && remaining===1) name+="（ラストワン）";
-    counts[name]=(counts[name]||0)+1; items[idx].count--;
-  }
-  updateItemList(); updateTotalCount();
-  logs.push({person,counts}); renderLogs(); renderSummary(); saveLocal();
-}
-
-// ---------- ログ表示 ----------
-function renderLogs(){
-  logArea.innerHTML="";
-  const filter = logFilter.value;
-  const list = logs.slice().reverse();
-
-  // 最新2件
-  const latestLogs = list.slice(0,2);
-  latestLogs.forEach(l=>{
-    if(filter!=="all" && l.person!==filter) return;
-    const div = document.createElement("div"); div.className="log-entry";
-    let innerHTML=`<div class="log-header">${l.person}</div>`;
-    for(const k in l.counts) innerHTML+=`${k} × ${l.counts[k]}<br>`;
-    div.innerHTML=innerHTML;
-    const copyBtn=document.createElement("button"); copyBtn.className="copy-btn"; copyBtn.textContent="コピー";
-    copyBtn.onclick=()=>{let t=`【${l.person}】\n`; for(const k in l.counts) t+=`${k} × ${l.counts[k]}\n`;
-      navigator.clipboard.writeText(t).then(()=>{
-        document.getElementById("copyMessage").textContent="コピーしました";
-        setTimeout(()=>{document.getElementById("copyMessage").textContent="";},2000);
-      });
-    };
-    div.appendChild(copyBtn);
-    logArea.appendChild(div);
-  });
-
-  // 古いログまとめ
-  const oldLogs = list.slice(2);
-  if(oldLogs.length>0){
-    const foldDiv = document.createElement("div"); foldDiv.style.height="0px"; foldDiv.style.overflow="hidden"; foldDiv.id="oldLogsBlock";
-    oldLogs.forEach(l=>{
-      if(filter!=="all" && l.person!==filter) return;
-      let entry=document.createElement("div"); entry.className="log-entry";
-      entry.innerHTML=`<div class="log-header">${l.person}</div>` + Object.entries(l.counts).map(([k,v])=>`${k} × ${v}`).join("<br>");
-      const copyBtn=document.createElement("button"); copyBtn.className="copy-btn"; copyBtn.textContent="コピー";
-      copyBtn.onclick=()=>{let t=`【${l.person}】\n`; for(const k in l.counts) t+=`${k} × ${l.counts[k]}\n`;
-        navigator.clipboard.writeText(t).then(()=>{
-          document.getElementById("copyMessage").textContent="コピーしました";
-          setTimeout(()=>{document.getElementById("copyMessage").textContent="";},2000);
-        });
-      };
-      entry.appendChild(copyBtn);
-      foldDiv.appendChild(entry);
-    });
-
-    const toggleBtn=document.createElement("button"); toggleBtn.textContent="過去ログ表示";
-    toggleBtn.onclick=()=>{
-      if(foldDiv.style.height==="0px"){ foldDiv.style.height="auto"; toggleBtn.textContent="過去ログ非表示"; }
-      else{ foldDiv.style.height="0px"; toggleBtn.textContent="過去ログ表示"; }
-    };
-    logArea.appendChild(toggleBtn); logArea.appendChild(foldDiv);
-
-    if(filter!=="all"){ foldDiv.style.height="auto"; toggleBtn.textContent="過去ログ非表示"; }
-  }
-}
-
-resetLogs.onclick=()=>{logs=[]; renderLogs(); renderSummary(); saveLocal();};
-
-// ---------- 集計表示 ----------
-function renderSummary(){
-  summaryArea.innerHTML = '<strong style="font-size:1.5em;">--集計--</strong>';
-  const filter=logFilter.value;
-  let summary={};
-
-  if(filter==="all"){
-    summary["全員"]={};
-    logs.forEach(l=>{for(const k in l.counts){summary["全員"][k]=(summary["全員"][k]||0)+l.counts[k];}});
-  } else {
-    summary[filter]={};
-    logs.forEach(l=>{if(l.person===filter){for(const k in l.counts){summary[filter][k]=(summary[filter][k]||0)+l.counts[k];}}});
-  }
-
-  for(const person in summary){
-    const div=document.createElement("div");
-    div.innerHTML=`<strong>${person}</strong>`;
-    for(const item in summary[person]){
-      const d=document.createElement("div"); d.style.paddingLeft="10px"; d.textContent=`${item} × ${summary[person][item]}`; div.appendChild(d);
+function getFiltered(ignoreSearch=false){
+  return items.filter(i=>{
+    if(!ignoreSearch && !i.name.includes(search.value)) return false;
+    if(activeTab==="カスタム"){
+      const min=minPointInput.value===""?-Infinity:Number(minPointInput.value);
+      const max=maxPointInput.value===""?Infinity:Number(maxPointInput.value);
+      return i.points>=min && i.points<=max;
     }
-    const copyBtn=document.createElement("button"); copyBtn.className="copy-btn"; copyBtn.textContent="コピー";
-    copyBtn.onclick=()=>{let t=`【${person}】\n`; for(const k in summary[person]) t+=`${k} × ${summary[person][k]}\n`;
-      navigator.clipboard.writeText(t).then(()=>{
-        document.getElementById("copyMessage").textContent="コピーしました";
-        setTimeout(()=>{document.getElementById("copyMessage").textContent="";},2000);
-      });
-    };
-    div.appendChild(copyBtn);
-    summaryArea.appendChild(div);
-  }
+    if(activeTab==="全て") return true;
+    return i.categories.includes(activeTab);
+  });
 }
 
-// ---------- 保存 / 読み込み ----------
-saveConfigBtn.onclick=()=>{
-  const data={items,persons,logs,lastOneEnabled:lastOneToggle.checked};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"text/plain"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="kuji_config.txt";
-  a.click();
-};
+function render(){
+  grid.innerHTML="";
+  getFiltered().forEach(item=>{
+    const c=document.createElement("div");
+    c.className="card"+(item.disabled?" disabled":"");
+    // 画像出力・表示ともに .PNG を付与 & キャッシュ回避
+    const imgURL = IMG_BASE + item.id + ".PNG?v=" + Date.now();
+    c.innerHTML=`
+      <div class="thumb" style="background-image:url(${imgURL})"></div>
+      <div class="name">${item.name}</div>
+      <div class="point">${item.points}pt</div>
+    `;
+    c.onclick=()=>{ item.disabled=!item.disabled; render(); };
+    grid.appendChild(c);
+  });
+}
 
-loadConfigBtn.onclick=()=>{loadConfigInput.click();};
-loadConfigInput.onchange=e=>{
-  const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    try{
-      const d=JSON.parse(ev.target.result);
-      items=d.items||[]; persons=d.persons||[]; logs=d.logs||[]; lastOneToggle.checked=d.lastOneEnabled||false;
-      updateItemList(); updateTotalCount(); updatePersonSelect(); updateLogFilter(); renderLogs(); renderSummary(); saveLocal();
-      loadConfigInput.value = ""; // 再読み込み用にクリア
-    }catch{alert("設定の読み込みに失敗しました");}
+document.querySelectorAll("#tabs button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelector("#tabs .active").classList.remove("active");
+    b.classList.add("active");
+    activeTab=b.dataset.tab;
+    customFilter.style.display=activeTab==="カスタム"?"flex":"none";
+    render();
   };
-  reader.readAsText(file);
+});
+
+search.oninput=render;
+minPointInput.oninput=render;
+maxPointInput.oninput=render;
+
+/* 画像出力 */
+let previewImages=[],currentPreviewIndex=0;
+
+document.getElementById("exportBtn").onclick=()=>{
+  const list=getFiltered(true);
+  if(!list.length) return;
+  previewImages=[];
+  currentPreviewIndex=0;
+  const MAX_PER_IMAGE=100;
+  for(let i=0;i<list.length;i+=MAX_PER_IMAGE){
+    previewImages.push(generateCanvasImage(list.slice(i,i+MAX_PER_IMAGE)));
+  }
+  showPreview();
 };
 
-logFilter.onchange=()=>{renderLogs(); renderSummary();};
-personSelect.onchange=()=>{renderLogs(); renderSummary();};
+function generateCanvasImage(list){
+  const W=1920,H=1080,padding=20,thumbSize=160,textHeight=56,cardW=thumbSize+padding*2,cardH=thumbSize+textHeight+padding*2;
+  const cols=Math.floor(W/cardW);
+  const canvas=document.createElement("canvas");
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#f6f6f6"; ctx.fillRect(0,0,W,H);
 
-// ---------- 初期ロード ----------
-(function(){
-  const raw=localStorage.getItem("kujiToolData"); if(!raw) return;
-  try{
-    const d=JSON.parse(raw);
-    items=d.items||[]; persons=d.persons||[]; logs=d.logs||[]; lastOneToggle.checked=d.lastOneEnabled||false;
-    updateItemList(); updateTotalCount(); updatePersonSelect(); updateLogFilter(); renderLogs(); renderSummary();
-  }catch{}
-})();
+  list.forEach((item,i)=>{
+    const col=i%cols,row=Math.floor(i/cols),x=col*cardW+padding,y=row*cardH+padding;
+    ctx.fillStyle="#fff"; // 余白部分白に変更
+    ctx.fillRect(x,y,thumbSize,thumbSize);
+    ctx.fillStyle="#000";
+    ctx.font="18px sans-serif"; ctx.fillText(item.name,x,y+thumbSize+24);
+    ctx.font="14px sans-serif"; ctx.fillText(item.points+"pt",x,y+thumbSize+44);
+    if(item.disabled){
+      ctx.strokeStyle="red"; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+thumbSize,y+thumbSize); ctx.stroke();
+    }
+  });
+
+  return canvas.toDataURL("image/jpeg",0.85);
+}
+
+function showPreview(){
+  document.getElementById("previewImg").src=previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent=`${currentPreviewIndex+1} / ${previewImages.length}`;
+  document.getElementById("preview").style.display="flex";
+}
+
+document.getElementById("prevImg").onclick=()=>{ if(currentPreviewIndex>0){ currentPreviewIndex--; showPreview(); }};
+document.getElementById("nextImg").onclick=()=>{ if(currentPreviewIndex<previewImages.length-1){ currentPreviewIndex++; showPreview(); }};
+document.getElementById("closePreview").onclick=()=>{ document.getElementById("preview").style.display="none"; };
 </script>
-
 </body>
 </html>
