@@ -85,6 +85,8 @@ header {
   aspect-ratio: 1 / 1;
   background: #bbb;
   border-radius: 6px;
+  background-size: cover;
+  background-position: center;
 }
 
 .name {
@@ -209,21 +211,32 @@ header {
 </div>
 
 <script>
-const items = [
-  { name:"おつかれ", points:5, categories:["挨拶","定番"], disabled:false },
-  { name:"草", points:3, categories:["ネタ","笑"], disabled:true },
-  { name:"すごい", points:10, categories:["えらい"], disabled:false },
-  { name:"ありがとう", points:8, categories:["LOVE","挨拶"], disabled:false }
-];
+/* ===== 設定 ===== */
+const DATA_URL =
+  "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
+const IMG_BASE =
+  "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
 
+/* ===== state ===== */
+let items = [];
 let activeTab = "全て";
 
+/* ===== DOM ===== */
 const grid = document.getElementById("grid");
 const search = document.getElementById("search");
 const customFilter = document.getElementById("customFilter");
 const minPointInput = document.getElementById("minPoint");
 const maxPointInput = document.getElementById("maxPoint");
 
+/* ===== fetch JSON ===== */
+fetch(DATA_URL + "?v=" + Date.now())
+  .then(r => r.json())
+  .then(data => {
+    items = data;
+    render();
+  });
+
+/* ===== フィルター ===== */
 function getFiltered(ignoreSearch=false) {
   return items.filter(i => {
     if (!ignoreSearch && !i.name.includes(search.value)) return false;
@@ -239,13 +252,14 @@ function getFiltered(ignoreSearch=false) {
   });
 }
 
+/* ===== 描画 ===== */
 function render() {
   grid.innerHTML = "";
   getFiltered().forEach(item => {
     const c = document.createElement("div");
     c.className = "card" + (item.disabled ? " disabled" : "");
     c.innerHTML = `
-      <div class="thumb"></div>
+      <div class="thumb" style="background-image:url(${IMG_BASE + item.id}.png)"></div>
       <div class="name">${item.name}</div>
       <div class="point">${item.points}pt</div>
     `;
@@ -254,6 +268,7 @@ function render() {
   });
 }
 
+/* ===== タブ切替 ===== */
 document.querySelectorAll("#tabs button").forEach(b=>{
   b.onclick = () => {
     document.querySelector("#tabs .active").classList.remove("active");
@@ -264,11 +279,10 @@ document.querySelectorAll("#tabs button").forEach(b=>{
   };
 });
 
+/* ===== 検索・カスタム入力 ===== */
 search.oninput = render;
 minPointInput.oninput = render;
 maxPointInput.oninput = render;
-
-render();
 
 /* ===== 画像出力 ===== */
 let previewImages = [];
@@ -333,6 +347,7 @@ function generateCanvasImage(list) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
+/* ===== プレビュー表示 ===== */
 function showPreview() {
   document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
   document.getElementById("pageInfo").textContent =
@@ -357,6 +372,7 @@ document.getElementById("nextImg").onclick = () => {
 document.getElementById("closePreview").onclick = () => {
   document.getElementById("preview").style.display = "none";
 };
+
 </script>
 
 </body>
