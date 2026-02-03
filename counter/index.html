@@ -259,7 +259,7 @@ function render() {
     const c = document.createElement("div");
     c.className = "card" + (item.disabled ? " disabled" : "");
     c.innerHTML = `
-      <div class="thumb" style="background-image:url(${IMG_BASE + item.id}.png)"></div>
+      <div class="thumb" style="background-image:url(${IMG_BASE + item.id})"></div>
       <div class="name">${item.name}</div>
       <div class="point">${item.points}pt</div>
     `;
