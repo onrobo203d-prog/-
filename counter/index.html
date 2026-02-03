@@ -4,172 +4,33 @@
 <meta charset="UTF-8">
 <title>画像管理サイト</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
-:root {
-  --card-size: clamp(90px, 10vw, 140px);
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f6f6f6;
-}
-
-header {
-  display: flex;
-  gap: 8px;
-  padding: 10px;
-}
-
-#search {
-  flex: 1;
-  padding: 8px;
-  font-size: 14px;
-}
-
-#exportBtn {
-  padding: 8px 12px;
-}
-
-#customFilter {
-  display: none;
-  gap: 6px;
-  padding: 0 10px 6px;
-}
-
-#customFilter input {
-  width: 80px;
-  padding: 4px;
-  font-size: 12px;
-}
-
-#tabs {
-  display: flex;
-  gap: 6px;
-  padding: 0 10px;
-  overflow-x: auto;
-}
-
-#tabs button {
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #ddd;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-#tabs button.active {
-  background: #222;
-  color: #fff;
-}
-
-#grid {
-  padding: 10px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--card-size), 1fr));
-  gap: 10px;
-}
-
-.card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px;
-  text-align: center;
-  position: relative;
-}
-
-.thumb {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: #bbb;
-  border-radius: 6px;
-  background-size: cover;
-  background-position: center;
-}
-
-.name {
-  font-size: 12px;
-}
-
-.point {
-  font-size: 11px;
-  color: #666;
-}
-
-.card.disabled {
-  opacity: 0.5;
-}
-
-.card.disabled::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    45deg,
-    transparent 45%,
-    rgba(200,0,0,.8) 45%,
-    rgba(200,0,0,.8) 55%,
-    transparent 55%
-  );
-  pointer-events: none;
-}
-
-#preview {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.6);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-#previewInner {
-  position: relative;
-  background: #fff;
-  padding: 10px;
-  max-width: 95vw;
-  max-height: 95vh;
-  text-align: center;
-}
-
-#previewImg {
-  max-width: 100%;
-  max-height: 80vh;
-  display: block;
-  margin: auto;
-}
-
-#closePreview {
-  position: absolute;
-  top: 4px;
-  right: 8px;
-  font-size: 24px;
-  background: none;
-  border: none;
-}
-
-#prevImg, #nextImg {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 32px;
-  background: none;
-  border: none;
-}
-
-#prevImg { left: -8px; }
-#nextImg { right: -8px; }
-
-#pageInfo {
-  font-size: 12px;
-  margin-bottom: 6px;
-}
+:root { --card-size: clamp(90px,10vw,140px); }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
+header { display:flex; gap:8px; padding:10px; }
+#search { flex:1; padding:8px; font-size:14px; }
+#exportBtn { padding:8px 12px; }
+#customFilter { display:none; gap:6px; padding:0 10px 6px; }
+#customFilter input { width:80px; padding:4px; font-size:12px; }
+#tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
+#tabs button { border:none; padding:6px 10px; border-radius:6px; background:#ddd; font-size:13px; white-space:nowrap; }
+#tabs button.active { background:#222; color:#fff; }
+#grid { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr)); gap:10px; }
+.card { background:#fff; border-radius:8px; padding:6px; text-align:center; position:relative; }
+.thumb { width:100%; aspect-ratio:1/1; background-color:#fff; border-radius:6px; background-size:cover; background-position:center; }
+.name { font-size:12px; }
+.point { font-size:11px; color:#666; }
+.card.disabled { opacity:0.5; }
+.card.disabled::after { content:""; position:absolute; inset:0; background:linear-gradient(45deg,transparent 45%, rgba(200,0,0,.8) 45%, rgba(200,0,0,.8) 55%, transparent 55%); pointer-events:none; }
+#preview { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:9999; }
+#previewInner { position:relative; background:#fff; padding:10px; max-width:95vw; max-height:95vh; text-align:center; }
+#previewImg { max-width:100%; max-height:80vh; display:block; margin:auto; }
+#closePreview { position:absolute; top:4px; right:8px; font-size:24px; background:none; border:none; }
+#prevImg, #nextImg { position:absolute; top:50%; transform:translateY(-50%); font-size:32px; background:none; border:none; }
+#prevImg { left:-8px; } #nextImg { right:-8px; }
+#pageInfo { font-size:12px; margin-bottom:6px; }
 </style>
 </head>
-
 <body>
 
 <header>
@@ -209,10 +70,8 @@ header {
 </div>
 
 <script>
-const DATA_URL =
-  "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
-const IMG_BASE =
-  "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
+const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
+const IMG_BASE = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
 
 let items = [];
 let activeTab = "全て";
@@ -227,126 +86,115 @@ fetch(DATA_URL + "?v=" + Date.now())
   .then(r => r.json())
   .then(data => { items = data; render(); });
 
-function getFiltered(ignoreSearch=false) {
-  return items.filter(i => {
-    if (!ignoreSearch && !i.name.includes(search.value)) return false;
-    if (activeTab === "カスタム") {
-      const min = minPointInput.value === "" ? -Infinity : Number(minPointInput.value);
-      const max = maxPointInput.value === "" ? Infinity : Number(maxPointInput.value);
-      return i.points >= min && i.points <= max;
+function getFiltered(ignoreSearch=false){
+  return items.filter(i=>{
+    if(!ignoreSearch && !i.name.includes(search.value)) return false;
+    if(activeTab==="カスタム"){
+      const min=minPointInput.value===""?-Infinity:Number(minPointInput.value);
+      const max=maxPointInput.value===""?Infinity:Number(maxPointInput.value);
+      return i.points>=min && i.points<=max;
     }
-    if (activeTab === "全て") return true;
+    if(activeTab==="全て") return true;
     return i.categories.includes(activeTab);
   });
 }
 
-function render() {
-  grid.innerHTML = "";
-  getFiltered().forEach(item => {
-    const c = document.createElement("div");
-    c.className = "card" + (item.disabled ? " disabled" : "");
-    // ここで拡張子 .PNG を付けて表示
-    c.innerHTML = `
-      <div class="thumb" style="background-image:url(${IMG_BASE + item.id}.PNG?v=${Date.now()})"></div>
+function render(){
+  grid.innerHTML="";
+  getFiltered().forEach(item=>{
+    const c=document.createElement("div");
+    c.className="card"+(item.disabled?" disabled":"");
+    const imgURL = IMG_BASE + item.id + ".PNG?v=" + Date.now();
+    c.innerHTML=`
+      <div class="thumb" style="background-image:url(${imgURL})"></div>
       <div class="name">${item.name}</div>
       <div class="point">${item.points}pt</div>
     `;
-    c.onclick = () => { item.disabled = !item.disabled; render(); };
+    c.onclick=()=>{ item.disabled=!item.disabled; render(); };
     grid.appendChild(c);
   });
 }
 
+/* タブ・検索・カスタムフィルタ */
 document.querySelectorAll("#tabs button").forEach(b=>{
-  b.onclick = () => {
+  b.onclick=()=>{
     document.querySelector("#tabs .active").classList.remove("active");
     b.classList.add("active");
-    activeTab = b.dataset.tab;
-    customFilter.style.display = activeTab === "カスタム" ? "flex" : "none";
+    activeTab=b.dataset.tab;
+    customFilter.style.display=activeTab==="カスタム"?"flex":"none";
     render();
   };
 });
+search.oninput=render;
+minPointInput.oninput=render;
+maxPointInput.oninput=render;
 
-search.oninput = render;
-minPointInput.oninput = render;
-maxPointInput.oninput = render;
+/* 画像出力 */
+let previewImages=[],currentPreviewIndex=0;
 
-let previewImages = [];
-let currentPreviewIndex = 0;
+document.getElementById("exportBtn").onclick=()=>{
+  const list=getFiltered(true);
+  if(!list.length) return;
 
-document.getElementById("exportBtn").onclick = () => {
-  const list = getFiltered(true);
-  if (!list.length) return;
+  const MAX_PER_IMAGE=100;
+  const promises=list.map(item=>loadImage(IMG_BASE+item.id+".PNG?v="+Date.now()).then(img=>{
+    return {item,img};
+  }));
 
-  previewImages = [];
-  currentPreviewIndex = 0;
-  const MAX_PER_IMAGE = 100;
-  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
-    previewImages.push(generateCanvasImage(list.slice(i, i + MAX_PER_IMAGE)));
-  }
-  showPreview();
-};
+  Promise.all(promises).then(imgList=>{
+    previewImages=[];
+    const W=1920,H=1080,padding=20,thumbSize=160,textHeight=56;
+    const cardW=thumbSize+padding*2, cardH=thumbSize+textHeight+padding*2;
+    const cols=Math.floor(W/cardW);
+    for(let i=0;i<imgList.length;i+=MAX_PER_IMAGE){
+      const slice=imgList.slice(i,i+MAX_PER_IMAGE);
+      const canvas=document.createElement("canvas");
+      canvas.width=W; canvas.height=H;
+      const ctx=canvas.getContext("2d");
+      ctx.fillStyle="#f6f6f6"; ctx.fillRect(0,0,W,H);
 
-function generateCanvasImage(list) {
-  const W = 1920, H = 1080;
-  const padding = 20;
-  const thumbSize = 160;
-  const textHeight = 56;
-  const cardW = thumbSize + padding * 2;
-  const cardH = thumbSize + textHeight + padding * 2;
-  const cols = Math.floor(W / cardW);
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#f6f6f6";
-  ctx.fillRect(0, 0, W, H);
-
-  list.forEach((item, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = col * cardW + padding;
-    const y = row * cardH + padding;
-
-    ctx.fillStyle = "#ccc";
-    ctx.fillRect(x, y, thumbSize, thumbSize);
-
-    ctx.fillStyle = "#000";
-    ctx.font = "18px sans-serif";
-    ctx.fillText(item.name, x, y + thumbSize + 24);
-    ctx.font = "14px sans-serif";
-    ctx.fillText(item.points + "pt", x, y + thumbSize + 44);
-
-    if (item.disabled) {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + thumbSize, y + thumbSize);
-      ctx.stroke();
+      slice.forEach((obj,index)=>{
+        const col=index%cols,row=Math.floor(index/cols);
+        const x=col*cardW+padding, y=row*cardH+padding;
+        // 背景白
+        ctx.fillStyle="#fff"; ctx.fillRect(x,y,thumbSize,thumbSize);
+        // 画像描画
+        ctx.drawImage(obj.img, x, y, thumbSize, thumbSize);
+        // 名前・ポイント描画
+        ctx.fillStyle="#000";
+        ctx.font="18px sans-serif"; ctx.fillText(obj.item.name,x,y+thumbSize+24);
+        ctx.font="14px sans-serif"; ctx.fillText(obj.item.points+"pt",x,y+thumbSize+44);
+        if(obj.item.disabled){
+          ctx.strokeStyle="red"; ctx.lineWidth=5;
+          ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+thumbSize,y+thumbSize); ctx.stroke();
+        }
+      });
+      previewImages.push(canvas.toDataURL("image/jpeg",0.85));
     }
+    currentPreviewIndex=0;
+    showPreview();
   });
+};
 
-  return canvas.toDataURL("image/jpeg", 0.85);
+// 画像ロードをPromiseで
+function loadImage(url){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.crossOrigin="anonymous";
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(url);
+    img.src=url;
+  });
 }
 
-function showPreview() {
-  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
-  document.getElementById("pageInfo").textContent =
-    `${currentPreviewIndex + 1} / ${previewImages.length}`;
-  document.getElementById("preview").style.display = "flex";
+function showPreview(){
+  document.getElementById("previewImg").src=previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent=`${currentPreviewIndex+1} / ${previewImages.length}`;
+  document.getElementById("preview").style.display="flex";
 }
-
-document.getElementById("prevImg").onclick = () => {
-  if (currentPreviewIndex > 0) { currentPreviewIndex--; showPreview(); }
-};
-document.getElementById("nextImg").onclick = () => {
-  if (currentPreviewIndex < previewImages.length - 1) { currentPreviewIndex++; showPreview(); }
-};
-document.getElementById("closePreview").onclick = () => {
-  document.getElementById("preview").style.display = "none";
-};
-
+document.getElementById("prevImg").onclick=()=>{ if(currentPreviewIndex>0){ currentPreviewIndex--; showPreview(); }};
+document.getElementById("nextImg").onclick=()=>{ if(currentPreviewIndex<previewImages.length-1){ currentPreviewIndex++; showPreview(); }};
+document.getElementById("closePreview").onclick=()=>{ document.getElementById("preview").style.display="none"; };
 </script>
 
 </body>
