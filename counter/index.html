@@ -11,10 +11,19 @@ body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; backgr
 header { display:flex; gap:8px; padding:10px; }
 #search { flex:1; padding:8px; font-size:14px; }
 #exportBtn { padding:8px 12px; }
+
 #customFilter { display:none; gap:6px; padding:0 10px 6px; }
 #customFilter input { width:80px; padding:4px; font-size:12px; }
+
 #tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
-#tabs button { border:none; padding:6px 10px; border-radius:6px; background:#ddd; font-size:13px; white-space:nowrap; }
+#tabs button {
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  background:#ddd;
+  font-size:13px;
+  white-space:nowrap;
+}
 #tabs button.active { background:#222; color:#fff; }
 
 #grid {
@@ -57,6 +66,7 @@ header { display:flex; gap:8px; padding:10px; }
   pointer-events:none;
 }
 
+/* プレビュー */
 #preview {
   position:fixed;
   inset:0;
@@ -153,12 +163,11 @@ const customFilter = document.getElementById("customFilter");
 const minPointInput = document.getElementById("minPoint");
 const maxPointInput = document.getElementById("maxPoint");
 
-/* ---------- データ取得 ---------- */
+/* ---------- データ取得（points昇順） ---------- */
 fetch(DATA_URL)
   .then(r => r.json())
   .then(data => {
-    // ★ points 昇順でソート
-    items = data.sort((a,b) => a.points - b.points);
+    items = data.sort((a,b)=>a.points-b.points);
     render();
   });
 
@@ -168,33 +177,32 @@ function getFiltered(ignoreSearch=false){
     const q = search.value.trim();
     if(!ignoreSearch && q && !i.name?.includes(q)) return false;
 
-    if(activeTab === "カスタム"){
-      const min = minPointInput.value === "" ? -Infinity : Number(minPointInput.value);
-      const max = maxPointInput.value === "" ? Infinity : Number(maxPointInput.value);
-      return i.points >= min && i.points <= max;
+    if(activeTab==="カスタム"){
+      const min=minPointInput.value===""?-Infinity:Number(minPointInput.value);
+      const max=maxPointInput.value===""?Infinity:Number(maxPointInput.value);
+      return i.points>=min && i.points<=max;
     }
-    if(activeTab === "全て") return true;
+    if(activeTab==="全て") return true;
     return i.categories.includes(activeTab);
   });
 }
 
 /* ---------- 表示 ---------- */
 function render(){
-  grid.innerHTML = "";
+  grid.innerHTML="";
   getFiltered().forEach(item=>{
-    const c = document.createElement("div");
-    c.className = "card" + (item.disabled ? " disabled" : "");
+    const c=document.createElement("div");
+    c.className="card"+(item.disabled?" disabled":"");
+    const imgURL=IMG_BASE+item.id+".PNG";
 
-    const imgURL = IMG_BASE + item.id + ".PNG";
-
-    c.innerHTML = `
+    c.innerHTML=`
       <div class="thumb" style="background-image:url(${imgURL})"></div>
       <div class="name">${item.name}</div>
       <div class="point">${item.points}pt</div>
     `;
 
-    c.onclick = () => {
-      item.disabled = !item.disabled;
+    c.onclick=()=>{
+      item.disabled=!item.disabled;
       render();
     };
 
@@ -208,74 +216,95 @@ document.querySelectorAll("#tabs button").forEach(b=>{
     document.querySelector("#tabs .active").classList.remove("active");
     b.classList.add("active");
     activeTab=b.dataset.tab;
-    customFilter.style.display = activeTab==="カスタム" ? "flex" : "none";
+    customFilter.style.display=activeTab==="カスタム"?"flex":"none";
     render();
   };
 });
 
-search.oninput = render;
-minPointInput.oninput = render;
-maxPointInput.oninput = render;
+search.oninput=render;
+minPointInput.oninput=render;
+maxPointInput.oninput=render;
 
-/* ---------- 画像出力 ---------- */
-let previewImages = [];
-let currentPreviewIndex = 0;
+/* ---------- 出力処理 ---------- */
+let previewImages=[];
+let currentPreviewIndex=0;
 
-document.getElementById("exportBtn").onclick = async ()=>{
-  const list = getFiltered(true);
+document.getElementById("exportBtn").onclick=async()=>{
+  const list=getFiltered(true);
   if(!list.length) return;
 
-  previewImages = [];
-  currentPreviewIndex = 0;
+  previewImages=[];
+  currentPreviewIndex=0;
 
-  const MAX_PER_IMAGE = 100;
-  for(let i=0;i<list.length;i+=MAX_PER_IMAGE){
-    const img = await generateCanvasImage(list.slice(i,i+MAX_PER_IMAGE));
-    previewImages.push(img);
+  const pages=splitByCanvasSize(list);
+  for(const page of pages){
+    previewImages.push(await generateCanvasImage(page));
   }
   showPreview();
 };
 
+/* ---------- キャンバス分割 ---------- */
+function splitByCanvasSize(list){
+  const W=1920,H=1080,padding=20,thumb=160,textH=56;
+  const cardW=thumb+padding*2;
+  const cardH=thumb+textH+padding*2;
+
+  const cols=Math.floor(W/cardW);
+  const rows=Math.floor(H/cardH);
+  const perPage=cols*rows;
+
+  const pages=[];
+  for(let i=0;i<list.length;i+=perPage){
+    pages.push(list.slice(i,i+perPage));
+  }
+  return pages;
+}
+
+/* ---------- Canvas描画 ---------- */
 async function generateCanvasImage(list){
-  const W=1920,H=1080,padding=20,thumbSize=160,textH=56;
-  const cardW=thumbSize+padding*2, cardH=thumbSize+textH+padding*2;
+  const W=1920,H=1080,padding=20,thumb=160,textH=56;
+  const cardW=thumb+padding*2;
+  const cardH=thumb+textH+padding*2;
   const cols=Math.floor(W/cardW);
 
   const canvas=document.createElement("canvas");
-  canvas.width=W; canvas.height=H;
+  canvas.width=W;
+  canvas.height=H;
   const ctx=canvas.getContext("2d");
 
   ctx.fillStyle="#f6f6f6";
   ctx.fillRect(0,0,W,H);
 
-  const images = await Promise.all(list.map(item=>{
+  const images=await Promise.all(list.map(item=>{
     return new Promise(resolve=>{
       const img=new Image();
       img.crossOrigin="anonymous";
-      img.src = IMG_BASE + item.id + ".PNG";
+      img.src=IMG_BASE+item.id+".PNG";
       img.onload=()=>resolve({item,img});
     });
   }));
 
   images.forEach(({item,img},i)=>{
-    const col=i%cols, row=Math.floor(i/cols);
+    const col=i%cols;
+    const row=Math.floor(i/cols);
     const x=col*cardW+padding;
     const y=row*cardH+padding;
 
-    ctx.drawImage(img,x,y,thumbSize,thumbSize);
+    ctx.drawImage(img,x,y,thumb,thumb);
 
     ctx.fillStyle="#000";
     ctx.font="18px sans-serif";
-    ctx.fillText(item.name,x,y+thumbSize+24);
+    ctx.fillText(item.name,x,y+thumb+24);
+
     ctx.font="14px sans-serif";
-    ctx.fillText(item.points+"pt",x,y+thumbSize+44);
+    ctx.fillText(item.points+"pt",x,y+thumb+44);
 
     if(item.disabled){
       ctx.strokeStyle="red";
       ctx.lineWidth=5;
       ctx.beginPath();
       ctx.moveTo(x,y);
-      ctx.lineTo(x+thumbSize,y+thumbSize);
+      ctx.lineTo(x+thumb,y+thumb);
       ctx.stroke();
     }
   });
@@ -285,8 +314,8 @@ async function generateCanvasImage(list){
 
 /* ---------- プレビュー ---------- */
 function showPreview(){
-  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
-  document.getElementById("pageInfo").textContent =
+  document.getElementById("previewImg").src=previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent=
     `${currentPreviewIndex+1} / ${previewImages.length}`;
   document.getElementById("preview").style.display="flex";
 }
