@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>画像管理サイト</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
 :root { --card-size: clamp(90px, 10vw, 140px); }
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
@@ -15,22 +16,92 @@ header { display:flex; gap:8px; padding:10px; }
 #tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
 #tabs button { border:none; padding:6px 10px; border-radius:6px; background:#ddd; font-size:13px; white-space:nowrap; }
 #tabs button.active { background:#222; color:#fff; }
-#grid { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr)); gap:10px; }
-.card { background:#fff; border-radius:8px; padding:6px; text-align:center; position:relative; }
-.thumb { width:100%; aspect-ratio:1/1; background:#fff; border-radius:6px; background-size:cover; background-position:center; }
+
+#grid {
+  padding:10px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr));
+  gap:10px;
+}
+
+.card {
+  background:#fff;
+  border-radius:8px;
+  padding:6px;
+  text-align:center;
+  position:relative;
+  cursor:pointer;
+}
+.thumb {
+  width:100%;
+  aspect-ratio:1/1;
+  background-size:cover;
+  background-position:center;
+  border-radius:6px;
+}
 .name { font-size:12px; }
 .point { font-size:11px; color:#666; }
+
 .card.disabled { opacity:0.5; }
-.card.disabled::after { content:""; position:absolute; inset:0; background:linear-gradient(45deg,transparent 45%, rgba(200,0,0,.8) 45%, rgba(200,0,0,.8) 55%, transparent 55%); pointer-events:none; }
-#preview { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:9999; }
-#previewInner { position:relative; background:#fff; padding:10px; max-width:95vw; max-height:95vh; text-align:center; }
-#previewImg { max-width:100%; max-height:80vh; display:block; margin:auto; }
-#closePreview { position:absolute; top:4px; right:8px; font-size:24px; background:none; border:none; }
-#prevImg, #nextImg { position:absolute; top:50%; transform:translateY(-50%); font-size:32px; background:none; border:none; }
-#prevImg { left:-8px; } #nextImg { right:-8px; }
+.card.disabled::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(
+    45deg,
+    transparent 45%,
+    rgba(200,0,0,.8) 45%,
+    rgba(200,0,0,.8) 55%,
+    transparent 55%
+  );
+  pointer-events:none;
+}
+
+#preview {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+#previewInner {
+  position:relative;
+  background:#fff;
+  padding:10px;
+  max-width:95vw;
+  max-height:95vh;
+  text-align:center;
+}
+#previewImg {
+  max-width:100%;
+  max-height:80vh;
+  display:block;
+  margin:auto;
+}
+#closePreview {
+  position:absolute;
+  top:4px;
+  right:8px;
+  font-size:24px;
+  background:none;
+  border:none;
+}
+#prevImg,#nextImg {
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:32px;
+  background:none;
+  border:none;
+}
+#prevImg { left:-8px; }
+#nextImg { right:-8px; }
 #pageInfo { font-size:12px; margin-bottom:6px; }
 </style>
 </head>
+
 <body>
 
 <header>
@@ -82,101 +153,154 @@ const customFilter = document.getElementById("customFilter");
 const minPointInput = document.getElementById("minPoint");
 const maxPointInput = document.getElementById("maxPoint");
 
-fetch(DATA_URL + "?v=" + Date.now())
+/* ---------- データ取得 ---------- */
+fetch(DATA_URL)
   .then(r => r.json())
-  .then(data => { items = data; render(); });
+  .then(data => {
+    // ★ points 昇順でソート
+    items = data.sort((a,b) => a.points - b.points);
+    render();
+  });
 
+/* ---------- フィルタ ---------- */
 function getFiltered(ignoreSearch=false){
   return items.filter(i=>{
-    if(!ignoreSearch && !i.name.includes(search.value)) return false;
-    if(activeTab==="カスタム"){
-      const min=minPointInput.value===""?-Infinity:Number(minPointInput.value);
-      const max=maxPointInput.value===""?Infinity:Number(maxPointInput.value);
-      return i.points>=min && i.points<=max;
+    const q = search.value.trim();
+    if(!ignoreSearch && q && !i.name?.includes(q)) return false;
+
+    if(activeTab === "カスタム"){
+      const min = minPointInput.value === "" ? -Infinity : Number(minPointInput.value);
+      const max = maxPointInput.value === "" ? Infinity : Number(maxPointInput.value);
+      return i.points >= min && i.points <= max;
     }
-    if(activeTab==="全て") return true;
+    if(activeTab === "全て") return true;
     return i.categories.includes(activeTab);
   });
 }
 
+/* ---------- 表示 ---------- */
 function render(){
-  grid.innerHTML="";
+  grid.innerHTML = "";
   getFiltered().forEach(item=>{
-    const c=document.createElement("div");
-    c.className="card"+(item.disabled?" disabled":"");
-    // 画像出力・表示ともに .PNG を付与 & キャッシュ回避
-    const imgURL = IMG_BASE + item.id + ".PNG?v=" + Date.now();
-    c.innerHTML=`
+    const c = document.createElement("div");
+    c.className = "card" + (item.disabled ? " disabled" : "");
+
+    const imgURL = IMG_BASE + item.id + ".PNG";
+
+    c.innerHTML = `
       <div class="thumb" style="background-image:url(${imgURL})"></div>
       <div class="name">${item.name}</div>
       <div class="point">${item.points}pt</div>
     `;
-    c.onclick=()=>{ item.disabled=!item.disabled; render(); };
+
+    c.onclick = () => {
+      item.disabled = !item.disabled;
+      render();
+    };
+
     grid.appendChild(c);
   });
 }
 
+/* ---------- UI ---------- */
 document.querySelectorAll("#tabs button").forEach(b=>{
   b.onclick=()=>{
     document.querySelector("#tabs .active").classList.remove("active");
     b.classList.add("active");
     activeTab=b.dataset.tab;
-    customFilter.style.display=activeTab==="カスタム"?"flex":"none";
+    customFilter.style.display = activeTab==="カスタム" ? "flex" : "none";
     render();
   };
 });
 
-search.oninput=render;
-minPointInput.oninput=render;
-maxPointInput.oninput=render;
+search.oninput = render;
+minPointInput.oninput = render;
+maxPointInput.oninput = render;
 
-/* 画像出力 */
-let previewImages=[],currentPreviewIndex=0;
+/* ---------- 画像出力 ---------- */
+let previewImages = [];
+let currentPreviewIndex = 0;
 
-document.getElementById("exportBtn").onclick=()=>{
-  const list=getFiltered(true);
+document.getElementById("exportBtn").onclick = async ()=>{
+  const list = getFiltered(true);
   if(!list.length) return;
-  previewImages=[];
-  currentPreviewIndex=0;
-  const MAX_PER_IMAGE=100;
+
+  previewImages = [];
+  currentPreviewIndex = 0;
+
+  const MAX_PER_IMAGE = 100;
   for(let i=0;i<list.length;i+=MAX_PER_IMAGE){
-    previewImages.push(generateCanvasImage(list.slice(i,i+MAX_PER_IMAGE)));
+    const img = await generateCanvasImage(list.slice(i,i+MAX_PER_IMAGE));
+    previewImages.push(img);
   }
   showPreview();
 };
 
-function generateCanvasImage(list){
-  const W=1920,H=1080,padding=20,thumbSize=160,textHeight=56,cardW=thumbSize+padding*2,cardH=thumbSize+textHeight+padding*2;
+async function generateCanvasImage(list){
+  const W=1920,H=1080,padding=20,thumbSize=160,textH=56;
+  const cardW=thumbSize+padding*2, cardH=thumbSize+textH+padding*2;
   const cols=Math.floor(W/cardW);
+
   const canvas=document.createElement("canvas");
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext("2d");
-  ctx.fillStyle="#f6f6f6"; ctx.fillRect(0,0,W,H);
 
-  list.forEach((item,i)=>{
-    const col=i%cols,row=Math.floor(i/cols),x=col*cardW+padding,y=row*cardH+padding;
-    ctx.fillStyle="#fff"; // 余白部分白に変更
-    ctx.fillRect(x,y,thumbSize,thumbSize);
+  ctx.fillStyle="#f6f6f6";
+  ctx.fillRect(0,0,W,H);
+
+  const images = await Promise.all(list.map(item=>{
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.crossOrigin="anonymous";
+      img.src = IMG_BASE + item.id + ".PNG";
+      img.onload=()=>resolve({item,img});
+    });
+  }));
+
+  images.forEach(({item,img},i)=>{
+    const col=i%cols, row=Math.floor(i/cols);
+    const x=col*cardW+padding;
+    const y=row*cardH+padding;
+
+    ctx.drawImage(img,x,y,thumbSize,thumbSize);
+
     ctx.fillStyle="#000";
-    ctx.font="18px sans-serif"; ctx.fillText(item.name,x,y+thumbSize+24);
-    ctx.font="14px sans-serif"; ctx.fillText(item.points+"pt",x,y+thumbSize+44);
+    ctx.font="18px sans-serif";
+    ctx.fillText(item.name,x,y+thumbSize+24);
+    ctx.font="14px sans-serif";
+    ctx.fillText(item.points+"pt",x,y+thumbSize+44);
+
     if(item.disabled){
-      ctx.strokeStyle="red"; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+thumbSize,y+thumbSize); ctx.stroke();
+      ctx.strokeStyle="red";
+      ctx.lineWidth=5;
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(x+thumbSize,y+thumbSize);
+      ctx.stroke();
     }
   });
 
   return canvas.toDataURL("image/jpeg",0.85);
 }
 
+/* ---------- プレビュー ---------- */
 function showPreview(){
-  document.getElementById("previewImg").src=previewImages[currentPreviewIndex];
-  document.getElementById("pageInfo").textContent=`${currentPreviewIndex+1} / ${previewImages.length}`;
+  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent =
+    `${currentPreviewIndex+1} / ${previewImages.length}`;
   document.getElementById("preview").style.display="flex";
 }
 
-document.getElementById("prevImg").onclick=()=>{ if(currentPreviewIndex>0){ currentPreviewIndex--; showPreview(); }};
-document.getElementById("nextImg").onclick=()=>{ if(currentPreviewIndex<previewImages.length-1){ currentPreviewIndex++; showPreview(); }};
-document.getElementById("closePreview").onclick=()=>{ document.getElementById("preview").style.display="none"; };
+document.getElementById("prevImg").onclick=()=>{
+  if(currentPreviewIndex>0){ currentPreviewIndex--; showPreview(); }
+};
+document.getElementById("nextImg").onclick=()=>{
+  if(currentPreviewIndex<previewImages.length-1){ currentPreviewIndex++; showPreview(); }
+};
+document.getElementById("closePreview").onclick=()=>{
+  document.getElementById("preview").style.display="none";
+};
 </script>
+
 </body>
 </html>
