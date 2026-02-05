@@ -5,7 +5,7 @@
 <title>画像管理サイト</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root { --card-size: clamp(90px,10vw,140px); }
+:root { --card-size: clamp(90px, 10vw, 140px); }
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
 header { display:flex; gap:8px; padding:10px; }
 #search { flex:1; padding:8px; font-size:14px; }
@@ -17,7 +17,7 @@ header { display:flex; gap:8px; padding:10px; }
 #tabs button.active { background:#222; color:#fff; }
 #grid { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr)); gap:10px; }
 .card { background:#fff; border-radius:8px; padding:6px; text-align:center; position:relative; }
-.thumb { width:100%; aspect-ratio:1/1; background-color:#fff; border-radius:6px; background-size:cover; background-position:center; }
+.thumb { width:100%; aspect-ratio:1/1; background:#fff; border-radius:6px; background-size:cover; background-position:center; }
 .name { font-size:12px; }
 .point { font-size:11px; color:#666; }
 .card.disabled { opacity:0.5; }
@@ -104,6 +104,7 @@ function render(){
   getFiltered().forEach(item=>{
     const c=document.createElement("div");
     c.className="card"+(item.disabled?" disabled":"");
+    // 画像出力・表示ともに .PNG を付与 & キャッシュ回避
     const imgURL = IMG_BASE + item.id + ".PNG?v=" + Date.now();
     c.innerHTML=`
       <div class="thumb" style="background-image:url(${imgURL})"></div>
@@ -115,7 +116,6 @@ function render(){
   });
 }
 
-/* タブ・検索・カスタムフィルタ */
 document.querySelectorAll("#tabs button").forEach(b=>{
   b.onclick=()=>{
     document.querySelector("#tabs .active").classList.remove("active");
@@ -125,6 +125,7 @@ document.querySelectorAll("#tabs button").forEach(b=>{
     render();
   };
 });
+
 search.oninput=render;
 minPointInput.oninput=render;
 maxPointInput.oninput=render;
@@ -135,56 +136,36 @@ let previewImages=[],currentPreviewIndex=0;
 document.getElementById("exportBtn").onclick=()=>{
   const list=getFiltered(true);
   if(!list.length) return;
-
+  previewImages=[];
+  currentPreviewIndex=0;
   const MAX_PER_IMAGE=100;
-  const promises=list.map(item=>loadImage(IMG_BASE+item.id+".PNG?v="+Date.now()).then(img=>{
-    return {item,img};
-  }));
-
-  Promise.all(promises).then(imgList=>{
-    previewImages=[];
-    const W=1920,H=1080,padding=20,thumbSize=160,textHeight=56;
-    const cardW=thumbSize+padding*2, cardH=thumbSize+textHeight+padding*2;
-    const cols=Math.floor(W/cardW);
-    for(let i=0;i<imgList.length;i+=MAX_PER_IMAGE){
-      const slice=imgList.slice(i,i+MAX_PER_IMAGE);
-      const canvas=document.createElement("canvas");
-      canvas.width=W; canvas.height=H;
-      const ctx=canvas.getContext("2d");
-      ctx.fillStyle="#f6f6f6"; ctx.fillRect(0,0,W,H);
-
-      slice.forEach((obj,index)=>{
-        const col=index%cols,row=Math.floor(index/cols);
-        const x=col*cardW+padding, y=row*cardH+padding;
-        // 背景白
-        ctx.fillStyle="#fff"; ctx.fillRect(x,y,thumbSize,thumbSize);
-        // 画像描画
-        ctx.drawImage(obj.img, x, y, thumbSize, thumbSize);
-        // 名前・ポイント描画
-        ctx.fillStyle="#000";
-        ctx.font="18px sans-serif"; ctx.fillText(obj.item.name,x,y+thumbSize+24);
-        ctx.font="14px sans-serif"; ctx.fillText(obj.item.points+"pt",x,y+thumbSize+44);
-        if(obj.item.disabled){
-          ctx.strokeStyle="red"; ctx.lineWidth=5;
-          ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+thumbSize,y+thumbSize); ctx.stroke();
-        }
-      });
-      previewImages.push(canvas.toDataURL("image/jpeg",0.85));
-    }
-    currentPreviewIndex=0;
-    showPreview();
-  });
+  for(let i=0;i<list.length;i+=MAX_PER_IMAGE){
+    previewImages.push(generateCanvasImage(list.slice(i,i+MAX_PER_IMAGE)));
+  }
+  showPreview();
 };
 
-// 画像ロードをPromiseで
-function loadImage(url){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    img.crossOrigin="anonymous";
-    img.onload=()=>resolve(img);
-    img.onerror=()=>reject(url);
-    img.src=url;
+function generateCanvasImage(list){
+  const W=1920,H=1080,padding=20,thumbSize=160,textHeight=56,cardW=thumbSize+padding*2,cardH=thumbSize+textHeight+padding*2;
+  const cols=Math.floor(W/cardW);
+  const canvas=document.createElement("canvas");
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#f6f6f6"; ctx.fillRect(0,0,W,H);
+
+  list.forEach((item,i)=>{
+    const col=i%cols,row=Math.floor(i/cols),x=col*cardW+padding,y=row*cardH+padding;
+    ctx.fillStyle="#fff"; // 余白部分白に変更
+    ctx.fillRect(x,y,thumbSize,thumbSize);
+    ctx.fillStyle="#000";
+    ctx.font="18px sans-serif"; ctx.fillText(item.name,x,y+thumbSize+24);
+    ctx.font="14px sans-serif"; ctx.fillText(item.points+"pt",x,y+thumbSize+44);
+    if(item.disabled){
+      ctx.strokeStyle="red"; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+thumbSize,y+thumbSize); ctx.stroke();
+    }
   });
+
+  return canvas.toDataURL("image/jpeg",0.85);
 }
 
 function showPreview(){
@@ -192,10 +173,10 @@ function showPreview(){
   document.getElementById("pageInfo").textContent=`${currentPreviewIndex+1} / ${previewImages.length}`;
   document.getElementById("preview").style.display="flex";
 }
+
 document.getElementById("prevImg").onclick=()=>{ if(currentPreviewIndex>0){ currentPreviewIndex--; showPreview(); }};
 document.getElementById("nextImg").onclick=()=>{ if(currentPreviewIndex<previewImages.length-1){ currentPreviewIndex++; showPreview(); }};
 document.getElementById("closePreview").onclick=()=>{ document.getElementById("preview").style.display="none"; };
 </script>
-
 </body>
 </html>
