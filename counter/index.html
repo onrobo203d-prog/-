@@ -85,6 +85,16 @@ header { display:flex; gap:8px; padding:10px; }
 </nav>
 
 <main id="grid"></main>
+  <div id="preview" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; z-index:9999;">
+  <div id="previewInner" style="position:relative; background:#fff; padding:10px; max-width:95vw; max-height:95vh; text-align:center;">
+    <button id="closePreview" style="position:absolute; top:4px; right:8px; font-size:24px; background:none; border:none;">×</button>
+    <button id="prevImg" style="position:absolute; top:50%; left:-8px; transform:translateY(-50%); font-size:32px; background:none; border:none;">‹</button>
+    <button id="nextImg" style="position:absolute; top:50%; right:-8px; transform:translateY(-50%); font-size:32px; background:none; border:none;">›</button>
+    <div id="pageInfo" style="font-size:12px; margin-bottom:6px;"></div>
+    <img id="previewImg" style="max-width:100%; max-height:80vh; display:block; margin:auto;">
+  </div>
+</div>
+
 
 <script>
 const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
