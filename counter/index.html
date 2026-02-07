@@ -122,63 +122,73 @@ function normalize(str){
     .toLowerCase();
 }
 
-function getFiltered(ignoreSearch=false) {
-  return items.filter(i => {
-    if (!ignoreSearch) {
-      const keyword = normalize(search.value);
-      const target = normalize(i.name);
-      if (!target.includes(keyword)) return false;
+async function generateCanvasImage(list) {
+
+  const W = 1920;
+  const H = 1080;
+  const padding = 20;
+  const count = Math.min(list.length, 100);
+
+  let cols = Math.ceil(Math.sqrt(count * (W / H)));
+  cols = Math.min(cols, 12);
+  let rows = Math.ceil(count / cols);
+
+  const thumbSizeW = (W / cols) - padding * 2;
+  const thumbSizeH = (H / rows) - padding * 2;
+  const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
+
+  const cardW = thumbSize + padding * 2;
+  const cardH = thumbSize + padding * 2;
+
+  cols = Math.floor(W / cardW);
+  rows = Math.ceil(count / cols);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  // ★ ここが重要：並列ロード
+  const imagePromises = list.slice(0, count).map(item =>
+    loadImage(IMG_BASE + item.id + ".PNG")
+      .then(img => ({ img, item }))
+      .catch(() => ({ img: null, item }))
+  );
+
+  const loadedImages = await Promise.all(imagePromises);
+
+  loadedImages.forEach((data, i) => {
+    const { img, item } = data;
+
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+
+    const x = col * cardW + padding;
+    const y = row * cardH + padding;
+
+    if (img) {
+      ctx.drawImage(img, x, y, thumbSize, thumbSize);
+    } else {
+      ctx.fillStyle = "#ccc";
+      ctx.fillRect(x, y, thumbSize, thumbSize);
     }
-    if (activeTab === "全て") return true;
-    return i.categories.includes(activeTab);
+
+    if (item.disabled) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + thumbSize, y + thumbSize);
+      ctx.stroke();
+    }
   });
+
+  return canvas.toDataURL("image/jpeg", 0.95);
 }
 
-function render() {
-  grid.innerHTML = "";
-
-  getFiltered().forEach(item => {
-    const c = document.createElement("div");
-    c.className = "card";
-    if (item.disabled) c.classList.add("disabled");
-
-    const img = document.createElement("img");
-    img.className = "thumb";
-    img.src = IMG_BASE + item.id + ".PNG";
-    img.loading = "lazy";
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = item.name;
-
-    const point = document.createElement("div");
-    point.className = "point";
-    point.textContent = item.points + "pt";
-
-    c.appendChild(img);
-    c.appendChild(name);
-    c.appendChild(point);
-
-    // 再描画しない
-    c.onclick = () => {
-      item.disabled = !item.disabled;
-      c.classList.toggle("disabled");
-    };
-
-    grid.appendChild(c);
-  });
-}
-
-document.querySelectorAll("#tabs button").forEach(b=>{
-  b.onclick = () => {
-    document.querySelector("#tabs .active").classList.remove("active");
-    b.classList.add("active");
-    activeTab = b.dataset.tab;
-    render();
-  };
-});
-
-search.oninput = render;
 
 /* ===== 画像出力機能 ===== */
 
