@@ -178,6 +178,22 @@ function getFiltered(ignoreSearch=false) {
   });
 }
 
+/* ===== 拡張子自動対応（表示側） ===== */
+function createImageElement(id) {
+  const img = document.createElement("img");
+  img.className = "thumb";
+  img.loading = "lazy";
+
+  img.src = IMG_BASE + id + ".PNG";
+
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = IMG_BASE + id + ".png";
+  };
+
+  return img;
+}
+
 function render() {
   grid.innerHTML = "";
 
@@ -186,10 +202,7 @@ function render() {
     c.className = "card";
     if (item.disabled) c.classList.add("disabled");
 
-    const img = document.createElement("img");
-    img.className = "thumb";
-    img.src = IMG_BASE + item.id + ".PNG";
-    img.loading = "lazy";
+    const img = createImageElement(item.id);
 
     const name = document.createElement("div");
     name.className = "name";
@@ -223,7 +236,30 @@ document.querySelectorAll("#tabs button").forEach(b=>{
 
 search.oninput = render;
 
-/* ===== 出力高速化版 ===== */
+/* ===== 出力用拡張子自動対応 ===== */
+
+function loadImageSmart(id){
+  return new Promise((resolve) => {
+
+    const tryLoad = (ext) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        if (ext === ".PNG") {
+          tryLoad(".png");
+        } else {
+          resolve(null);
+        }
+      };
+      img.src = IMG_BASE + id + ext;
+    };
+
+    tryLoad(".PNG");
+  });
+}
+
+/* ===== 出力（並列高速） ===== */
 
 let previewImages = [];
 let currentPreviewIndex = 0;
@@ -245,16 +281,6 @@ document.getElementById("exportBtn").onclick = async () => {
 
   showPreview();
 };
-
-function loadImage(src){
-  return new Promise((resolve,reject)=>{
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = ()=>resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
 
 async function generateCanvasImage(list) {
 
@@ -285,11 +311,9 @@ async function generateCanvasImage(list) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
 
-  // 並列ロード
   const imagePromises = list.slice(0, count).map(item =>
-    loadImage(IMG_BASE + item.id + ".PNG")
+    loadImageSmart(item.id)
       .then(img => ({ img, item }))
-      .catch(() => ({ img: null, item }))
   );
 
   const loadedImages = await Promise.all(imagePromises);
@@ -322,6 +346,8 @@ async function generateCanvasImage(list) {
 
   return canvas.toDataURL("image/jpeg", 0.95);
 }
+
+/* preview */
 
 function showPreview(){
   document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
