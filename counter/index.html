@@ -112,11 +112,13 @@ function normalize(str){
     .toLowerCase();
 }
 
-function getFiltered() {
+function getFiltered(ignoreSearch=false) {
   return items.filter(i => {
-    const keyword = normalize(search.value);
-    const target = normalize(i.name);
-    if (!target.includes(keyword)) return false;
+    if (!ignoreSearch) {
+      const keyword = normalize(search.value);
+      const target = normalize(i.name);
+      if (!target.includes(keyword)) return false;
+    }
     if (activeTab === "全て") return true;
     return i.categories.includes(activeTab);
   });
@@ -147,7 +149,7 @@ function render() {
     c.appendChild(name);
     c.appendChild(point);
 
-    // 再描画しない！！
+    // 再描画しない
     c.onclick = () => {
       item.disabled = !item.disabled;
       c.classList.toggle("disabled");
@@ -167,6 +169,126 @@ document.querySelectorAll("#tabs button").forEach(b=>{
 });
 
 search.oninput = render;
+
+/* ===== 画像出力機能 ===== */
+
+let previewImages = [];
+let currentPreviewIndex = 0;
+
+document.getElementById("exportBtn").onclick = async () => {
+  const list = getFiltered(true);
+  if (!list.length) return;
+
+  previewImages = [];
+  currentPreviewIndex = 0;
+
+  const MAX_PER_IMAGE = 100;
+
+  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
+    const slice = list.slice(i, i + MAX_PER_IMAGE);
+    const img = await generateCanvasImage(slice);
+    previewImages.push(img);
+  }
+
+  showPreview();
+};
+
+function loadImage(src){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function generateCanvasImage(list) {
+
+  const W = 1920;
+  const H = 1080;
+  const padding = 20;
+
+  const count = Math.min(list.length, 100);
+
+  let cols = Math.ceil(Math.sqrt(count * (W / H)));
+  cols = Math.min(cols, 12);
+
+  let rows = Math.ceil(count / cols);
+
+  const thumbSizeW = (W / cols) - padding * 2;
+  const thumbSizeH = (H / rows) - padding * 2;
+  const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
+
+  const cardW = thumbSize + padding * 2;
+  const cardH = thumbSize + padding * 2;
+
+  cols = Math.floor(W / cardW);
+  rows = Math.ceil(count / cols);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < count; i++) {
+
+    const item = list[i];
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+
+    const x = col * cardW + padding;
+    const y = row * cardH + padding;
+
+    try {
+      const img = await loadImage(IMG_BASE + item.id + ".PNG");
+      ctx.drawImage(img, x, y, thumbSize, thumbSize);
+    } catch {
+      ctx.fillStyle = "#ccc";
+      ctx.fillRect(x, y, thumbSize, thumbSize);
+    }
+
+    if (item.disabled) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + thumbSize, y + thumbSize);
+      ctx.stroke();
+    }
+  }
+
+  return canvas.toDataURL("image/jpeg",0.95);
+}
+
+/* プレビュー */
+function showPreview(){
+  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent =
+    `${currentPreviewIndex+1} / ${previewImages.length}`;
+  document.getElementById("preview").style.display="flex";
+}
+
+document.getElementById("prevImg").onclick=()=>{
+  if(currentPreviewIndex>0){
+    currentPreviewIndex--;
+    showPreview();
+  }
+};
+
+document.getElementById("nextImg").onclick=()=>{
+  if(currentPreviewIndex<previewImages.length-1){
+    currentPreviewIndex++;
+    showPreview();
+  }
+};
+
+document.getElementById("closePreview").onclick=()=>{
+  document.getElementById("preview").style.display="none";
+};
 </script>
 
 </body>
