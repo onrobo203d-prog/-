@@ -63,6 +63,50 @@ header { display:flex; gap:8px; padding:10px; }
   );
   pointer-events:none;
 }
+
+/* preview */
+#preview {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+#previewInner {
+  position:relative;
+  background:#fff;
+  padding:10px;
+  max-width:95vw;
+  max-height:95vh;
+  text-align:center;
+}
+#previewImg {
+  max-width:100%;
+  max-height:80vh;
+  display:block;
+  margin:auto;
+}
+#closePreview {
+  position:absolute;
+  top:4px;
+  right:8px;
+  font-size:24px;
+  background:none;
+  border:none;
+}
+#prevImg,#nextImg {
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:32px;
+  background:none;
+  border:none;
+}
+#prevImg { left:-8px; }
+#nextImg { right:-8px; }
+#pageInfo { font-size:12px; margin-bottom:6px; }
 </style>
 </head>
 
@@ -85,16 +129,16 @@ header { display:flex; gap:8px; padding:10px; }
 </nav>
 
 <main id="grid"></main>
-  <div id="preview" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; z-index:9999;">
-  <div id="previewInner" style="position:relative; background:#fff; padding:10px; max-width:95vw; max-height:95vh; text-align:center;">
-    <button id="closePreview" style="position:absolute; top:4px; right:8px; font-size:24px; background:none; border:none;">×</button>
-    <button id="prevImg" style="position:absolute; top:50%; left:-8px; transform:translateY(-50%); font-size:32px; background:none; border:none;">‹</button>
-    <button id="nextImg" style="position:absolute; top:50%; right:-8px; transform:translateY(-50%); font-size:32px; background:none; border:none;">›</button>
-    <div id="pageInfo" style="font-size:12px; margin-bottom:6px;"></div>
-    <img id="previewImg" style="max-width:100%; max-height:80vh; display:block; margin:auto;">
+
+<div id="preview">
+  <div id="previewInner">
+    <button id="closePreview">×</button>
+    <button id="prevImg">‹</button>
+    <button id="nextImg">›</button>
+    <div id="pageInfo"></div>
+    <img id="previewImg">
   </div>
 </div>
-
 
 <script>
 const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
@@ -122,75 +166,64 @@ function normalize(str){
     .toLowerCase();
 }
 
-async function generateCanvasImage(list) {
-
-  const W = 1920;
-  const H = 1080;
-  const padding = 20;
-  const count = Math.min(list.length, 100);
-
-  let cols = Math.ceil(Math.sqrt(count * (W / H)));
-  cols = Math.min(cols, 12);
-  let rows = Math.ceil(count / cols);
-
-  const thumbSizeW = (W / cols) - padding * 2;
-  const thumbSizeH = (H / rows) - padding * 2;
-  const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
-
-  const cardW = thumbSize + padding * 2;
-  const cardH = thumbSize + padding * 2;
-
-  cols = Math.floor(W / cardW);
-  rows = Math.ceil(count / cols);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, W, H);
-
-  // ★ ここが重要：並列ロード
-  const imagePromises = list.slice(0, count).map(item =>
-    loadImage(IMG_BASE + item.id + ".PNG")
-      .then(img => ({ img, item }))
-      .catch(() => ({ img: null, item }))
-  );
-
-  const loadedImages = await Promise.all(imagePromises);
-
-  loadedImages.forEach((data, i) => {
-    const { img, item } = data;
-
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-
-    const x = col * cardW + padding;
-    const y = row * cardH + padding;
-
-    if (img) {
-      ctx.drawImage(img, x, y, thumbSize, thumbSize);
-    } else {
-      ctx.fillStyle = "#ccc";
-      ctx.fillRect(x, y, thumbSize, thumbSize);
+function getFiltered(ignoreSearch=false) {
+  return items.filter(i => {
+    if (!ignoreSearch) {
+      const keyword = normalize(search.value);
+      const target = normalize(i.name);
+      if (!target.includes(keyword)) return false;
     }
-
-    if (item.disabled) {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + thumbSize, y + thumbSize);
-      ctx.stroke();
-    }
+    if (activeTab === "全て") return true;
+    return i.categories.includes(activeTab);
   });
-
-  return canvas.toDataURL("image/jpeg", 0.95);
 }
 
+function render() {
+  grid.innerHTML = "";
 
-/* ===== 画像出力機能 ===== */
+  getFiltered().forEach(item => {
+    const c = document.createElement("div");
+    c.className = "card";
+    if (item.disabled) c.classList.add("disabled");
+
+    const img = document.createElement("img");
+    img.className = "thumb";
+    img.src = IMG_BASE + item.id + ".PNG";
+    img.loading = "lazy";
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = item.name;
+
+    const point = document.createElement("div");
+    point.className = "point";
+    point.textContent = item.points + "pt";
+
+    c.appendChild(img);
+    c.appendChild(name);
+    c.appendChild(point);
+
+    c.onclick = () => {
+      item.disabled = !item.disabled;
+      c.classList.toggle("disabled");
+    };
+
+    grid.appendChild(c);
+  });
+}
+
+document.querySelectorAll("#tabs button").forEach(b=>{
+  b.onclick = () => {
+    document.querySelector("#tabs .active").classList.remove("active");
+    b.classList.add("active");
+    activeTab = b.dataset.tab;
+    render();
+  };
+});
+
+search.oninput = render;
+
+/* ===== 出力高速化版 ===== */
 
 let previewImages = [];
 let currentPreviewIndex = 0;
@@ -228,12 +261,10 @@ async function generateCanvasImage(list) {
   const W = 1920;
   const H = 1080;
   const padding = 20;
-
   const count = Math.min(list.length, 100);
 
   let cols = Math.ceil(Math.sqrt(count * (W / H)));
   cols = Math.min(cols, 12);
-
   let rows = Math.ceil(count / cols);
 
   const thumbSizeW = (W / cols) - padding * 2;
@@ -254,19 +285,27 @@ async function generateCanvasImage(list) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
 
-  for (let i = 0; i < count; i++) {
+  // 並列ロード
+  const imagePromises = list.slice(0, count).map(item =>
+    loadImage(IMG_BASE + item.id + ".PNG")
+      .then(img => ({ img, item }))
+      .catch(() => ({ img: null, item }))
+  );
 
-    const item = list[i];
+  const loadedImages = await Promise.all(imagePromises);
+
+  loadedImages.forEach((data, i) => {
+    const { img, item } = data;
+
     const col = i % cols;
     const row = Math.floor(i / cols);
 
     const x = col * cardW + padding;
     const y = row * cardH + padding;
 
-    try {
-      const img = await loadImage(IMG_BASE + item.id + ".PNG");
+    if (img) {
       ctx.drawImage(img, x, y, thumbSize, thumbSize);
-    } catch {
+    } else {
       ctx.fillStyle = "#ccc";
       ctx.fillRect(x, y, thumbSize, thumbSize);
     }
@@ -279,12 +318,11 @@ async function generateCanvasImage(list) {
       ctx.lineTo(x + thumbSize, y + thumbSize);
       ctx.stroke();
     }
-  }
+  });
 
-  return canvas.toDataURL("image/jpeg",0.95);
+  return canvas.toDataURL("image/jpeg", 0.95);
 }
 
-/* プレビュー */
 function showPreview(){
   document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
   document.getElementById("pageInfo").textContent =
