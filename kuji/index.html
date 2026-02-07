@@ -12,9 +12,6 @@ header { display:flex; gap:8px; padding:10px; }
 #search { flex:1; padding:8px; font-size:14px; }
 #exportBtn { padding:8px 12px; }
 
-#customFilter { display:none; gap:6px; padding:0 10px 6px; }
-#customFilter input { width:80px; padding:4px; font-size:12px; }
-
 #tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
 #tabs button {
   border:none;
@@ -216,9 +213,7 @@ document.querySelectorAll("#tabs button").forEach(b=>{
 
 search.oninput = render;
 
-/* =========================
-   画像出力（完成版）
-========================= */
+/* ===== 画像出力（画像のみ・最大100枚・自動調整） ===== */
 
 let previewImages = [];
 let currentPreviewIndex = 0;
@@ -256,21 +251,20 @@ async function generateCanvasImage(list) {
   const W = 1920;
   const H = 1080;
   const padding = 20;
-  const textHeight = 56;
 
   const count = Math.min(list.length, 100);
 
   let cols = Math.ceil(Math.sqrt(count * (W / H)));
-  cols = Math.min(cols, 10);
+  cols = Math.min(cols, 12);
 
   let rows = Math.ceil(count / cols);
 
   const thumbSizeW = (W / cols) - padding * 2;
-  const thumbSizeH = (H / rows) - textHeight - padding * 2;
+  const thumbSizeH = (H / rows) - padding * 2;
   const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
 
   const cardW = thumbSize + padding * 2;
-  const cardH = thumbSize + textHeight + padding * 2;
+  const cardH = thumbSize + padding * 2;
 
   cols = Math.floor(W / cardW);
   rows = Math.ceil(count / cols);
@@ -292,9 +286,6 @@ async function generateCanvasImage(list) {
     const x = col * cardW + padding;
     const y = row * cardH + padding;
 
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(x, y, thumbSize, thumbSize);
-
     try {
       const img = await loadImage(IMG_BASE + item.id + ".PNG?v=" + Date.now());
       ctx.drawImage(img, x, y, thumbSize, thumbSize);
@@ -302,13 +293,6 @@ async function generateCanvasImage(list) {
       ctx.fillStyle = "#ccc";
       ctx.fillRect(x, y, thumbSize, thumbSize);
     }
-
-    ctx.fillStyle = "#000";
-    ctx.font = "18px sans-serif";
-    ctx.fillText(item.name, x, y + thumbSize + 24);
-
-    ctx.font = "14px sans-serif";
-    ctx.fillText(item.points + "pt", x, y + thumbSize + 44);
 
     if (item.disabled) {
       ctx.strokeStyle = "red";
@@ -320,7 +304,7 @@ async function generateCanvasImage(list) {
     }
   }
 
-  return canvas.toDataURL("image/jpeg",0.9);
+  return canvas.toDataURL("image/jpeg",0.95);
 }
 
 function showPreview(){
