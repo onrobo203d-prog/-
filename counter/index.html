@@ -2,13 +2,39 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>画像管理サイト</title>
+<title>ギフト耐久管理及び作成ツール</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 :root { --card-size: clamp(90px, 10vw, 140px); }
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
-header { display:flex; gap:8px; padding:10px; }
+header {
+  padding: 10px;
+}
+
+#message {
+  font-size: 13px;
+  color: #555;
+  font-weight: bold;
+
+  white-space: pre-line;
+
+  line-height: 1.0;     
+  margin-bottom: 18px;  
+}
+
+
+.searchRow {
+  display: flex;
+  gap: 8px;
+}
+
+#search {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+}
+
 #search { flex:1; padding:8px; font-size:14px; }
 #exportBtn { padding:8px 12px; }
 
@@ -113,9 +139,17 @@ header { display:flex; gap:8px; padding:10px; }
 <body>
 
 <header>
-  <input id="search" placeholder="検索">
-  <button id="exportBtn">画像出力</button>
+  <div id="message">
+    画像をタップすると斜線が入ります<br>
+    画像出力は表示されるまで少し時間がかかります
+  </div>
+
+  <div class="searchRow">
+    <input id="search" placeholder="検索">
+    <button id="exportBtn">画像出力</button>
+  </div>
 </header>
+
 
 <nav id="tabs">
   <button class="active" data-tab="全て">全て</button>
