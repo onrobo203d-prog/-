@@ -230,7 +230,7 @@ header { padding: 10px; }
       株式会社イリアムの掲げる規約及びガイドラインに則って扱われます。<br>
       イリアムのガイドラインでの禁止事項に則り、ツール内の画像を用いてのグッズ販売等は禁止となります。<br>
       配信支援ツールとしてSNS等で画像を利用する行為にのみ活用して下さい。<br>
-      その他、利用範囲、権利等に関するご質問はお答え致しかねますのでご了承下さい。
+      その他、利用範囲、権利等に関するご質問にはお答え致しかねますのでご了承下さい。
     </p>
   </div>
 </div>
@@ -271,6 +271,8 @@ function getFiltered(ignoreSearch=false) {
     .sort((a,b)=>(Number(a.points)||0)-(Number(b.points)||0));
 }
 
+/* ===== 表示 ===== */
+
 function createImageElement(id) {
   const img = document.createElement("img");
   img.className = "thumb";
@@ -291,18 +293,22 @@ function render() {
     if (item.disabled) c.classList.add("disabled");
 
     const img = createImageElement(item.id);
+
     const name = document.createElement("div");
     name.className = "name";
     name.textContent = item.name;
+
     const point = document.createElement("div");
     point.className = "point";
     point.textContent = item.points + "pt";
 
     c.append(img,name,point);
+
     c.onclick = () => {
       item.disabled = !item.disabled;
       c.classList.toggle("disabled");
     };
+
     grid.appendChild(c);
   });
 }
@@ -318,7 +324,144 @@ document.querySelectorAll("#tabs button").forEach(b=>{
 
 search.oninput=render;
 
-/* ===== 注意モーダル制御 ===== */
+/* ===== 出力処理 ===== */
+
+function loadImageSmart(id){
+  return new Promise((resolve) => {
+
+    const tryLoad = (ext) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        if (ext === ".PNG") {
+          tryLoad(".png");
+        } else {
+          resolve(null);
+        }
+      };
+      img.src = IMG_BASE + id + ext;
+    };
+
+    tryLoad(".PNG");
+  });
+}
+
+let previewImages = [];
+let currentPreviewIndex = 0;
+
+document.getElementById("exportBtn").onclick = async () => {
+  const list = getFiltered(true);
+  if (!list.length) return;
+
+  previewImages = [];
+  currentPreviewIndex = 0;
+
+  const MAX_PER_IMAGE = 100;
+
+  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
+    const slice = list.slice(i, i + MAX_PER_IMAGE);
+    const img = await generateCanvasImage(slice);
+    previewImages.push(img);
+  }
+
+  showPreview();
+};
+
+async function generateCanvasImage(list) {
+
+  const W = 1920;
+  const H = 1080;
+  const padding = 20;
+  const count = Math.min(list.length, 100);
+
+  let cols = Math.ceil(Math.sqrt(count * (W / H)));
+  cols = Math.min(cols, 12);
+  let rows = Math.ceil(count / cols);
+
+  const thumbSizeW = (W / cols) - padding * 2;
+  const thumbSizeH = (H / rows) - padding * 2;
+  const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
+
+  const cardW = thumbSize + padding * 2;
+  const cardH = thumbSize + padding * 2;
+
+  cols = Math.floor(W / cardW);
+  rows = Math.ceil(count / cols);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  const imagePromises = list.slice(0, count).map(item =>
+    loadImageSmart(item.id)
+      .then(img => ({ img, item }))
+  );
+
+  const loadedImages = await Promise.all(imagePromises);
+
+  loadedImages.forEach((data, i) => {
+    const { img, item } = data;
+
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+
+    const x = col * cardW + padding;
+    const y = row * cardH + padding;
+
+    if (img) {
+      ctx.drawImage(img, x, y, thumbSize, thumbSize);
+    } else {
+      ctx.fillStyle = "#ccc";
+      ctx.fillRect(x, y, thumbSize, thumbSize);
+    }
+
+    if (item.disabled) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + thumbSize, y + thumbSize);
+      ctx.stroke();
+    }
+  });
+
+  return canvas.toDataURL("image/jpeg", 0.95);
+}
+
+/* ===== プレビュー制御 ===== */
+
+function showPreview(){
+  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
+  document.getElementById("pageInfo").textContent =
+    `${currentPreviewIndex+1} / ${previewImages.length}`;
+  document.getElementById("preview").style.display="flex";
+}
+
+document.getElementById("prevImg").onclick=()=>{
+  if(currentPreviewIndex>0){
+    currentPreviewIndex--;
+    showPreview();
+  }
+};
+
+document.getElementById("nextImg").onclick=()=>{
+  if(currentPreviewIndex<previewImages.length-1){
+    currentPreviewIndex++;
+    showPreview();
+  }
+};
+
+document.getElementById("closePreview").onclick=()=>{
+  document.getElementById("preview").style.display="none";
+};
+
+/* ===== 注意モーダル ===== */
+
 document.getElementById("noticeBtn").onclick = () => {
   document.getElementById("noticeModal").style.display="flex";
 };
@@ -331,6 +474,7 @@ document.getElementById("noticeModal").onclick = (e)=>{
   }
 };
 </script>
+
 
 </body>
 </html>
