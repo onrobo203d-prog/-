@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel Reveal</title>
-
+<title>Panel Reveal - 自動パネル化</title>
 <style>
 body{
   margin:0;
@@ -12,31 +11,26 @@ body{
   background:#f4f4f4;
   text-align:center;
 }
-
 .controls{
   margin:15px;
 }
-
 #canvasArea{
   display:flex;
   justify-content:center;
   align-items:center;
-  padding:60px 0; /* 広め余白 */
+  padding:60px 0;
 }
-
 canvas{
-  max-width:90vw;   /* 画面幅に合わせて縮小 */
+  max-width:90vw;
   height:auto;
   background:#999;
   box-shadow:0 0 10px rgba(0,0,0,0.2);
   touch-action:none;
 }
-
 button{
   margin:5px;
   padding:6px 12px;
 }
-
 input[type=color]{
   height:30px;
 }
@@ -44,7 +38,7 @@ input[type=color]{
 </head>
 <body>
 
-<h2>Panel Reveal Builder</h2>
+<h2>Panel Reveal Builder - 自動パネル化版</h2>
 
 <div class="controls">
 <input type="file" id="upload">
@@ -64,259 +58,216 @@ input[type=color]{
 </div>
 
 <script>
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-let image=new Image();
-let lines=[];
-let panels=[];
-let drawing=false;
-let mode="edit";
+let image = new Image();
+let lines = [];
+let panels = [];
+let drawing = false;
+let mode = "edit";
 
-let canvasW=0;
-let canvasH=0;
-
-const MAX_EDIT_SIZE=800;
+let canvasW = 0;
+let canvasH = 0;
+const MAX_EDIT_SIZE = 800;
+const CLOSE_DIST = 10; // 線端同士を接続判定する距離
 
 /* ============================= */
 /* 画像読み込み */
-/* ============================= */
-
-document.getElementById("upload").onchange=e=>{
- const file=e.target.files[0];
- const reader=new FileReader();
- reader.onload=ev=>{
-  image.src=ev.target.result;
- };
- reader.readAsDataURL(file);
+document.getElementById("upload").onchange = e => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = ev => { image.src = ev.target.result; };
+  reader.readAsDataURL(file);
 };
 
-image.onload=()=>{
- const ratio=Math.min(MAX_EDIT_SIZE/image.width,MAX_EDIT_SIZE/image.height);
- canvasW=image.width*ratio;
- canvasH=image.height*ratio;
+image.onload = () => {
+  const ratio = Math.min(MAX_EDIT_SIZE/image.width, MAX_EDIT_SIZE/image.height);
+  canvasW = image.width * ratio;
+  canvasH = image.height * ratio;
 
- canvas.width=canvasW;
- canvas.height=canvasH;
+  canvas.width = canvasW;
+  canvas.height = canvasH;
 
- lines=[];
- panels=[];
- drawAll();
+  lines = [];
+  panels = [];
+  drawAll();
 };
 
 /* ============================= */
 /* 描画 */
-/* ============================= */
-
 function drawAll(){
- ctx.clearRect(0,0,canvasW,canvasH);
+  ctx.clearRect(0,0,canvasW,canvasH);
+  ctx.drawImage(image,0,0,canvasW,canvasH);
 
- ctx.drawImage(image,0,0,canvasW,canvasH);
+  // 線描画
+  lines.forEach(line => {
+    ctx.strokeStyle = line.color;
+    ctx.lineWidth = line.width;
+    ctx.beginPath();
+    ctx.moveTo(line.points[0].x,line.points[0].y);
+    for(let i=1;i<line.points.length;i++){
+      ctx.lineTo(line.points[i].x,line.points[i].y);
+    }
+    ctx.stroke();
+  });
 
- lines.forEach(line=>{
-  ctx.strokeStyle=line.color;
-  ctx.lineWidth=line.width;
-  ctx.beginPath();
-  ctx.moveTo(line.points[0].x,line.points[0].y);
-  for(let i=1;i<line.points.length;i++){
-   ctx.lineTo(line.points[i].x,line.points[i].y);
-  }
-  ctx.stroke();
- });
-
- panels.forEach(p=>{
-  if(mode==="edit" || !p.unlocked){
-   ctx.fillStyle=p.color;
-   ctx.fill(p.path);
-  }
- });
+  // パネル描画
+  panels.forEach(p => {
+    if(mode==="edit" || !p.unlocked){
+      ctx.fillStyle = p.color;
+      ctx.fill(p.path);
+    }
+  });
 }
 
 /* ============================= */
-/* 座標補正（超重要） */
-/* ============================= */
-
+/* 座標補正 */
 function getPos(e){
- const rect=canvas.getBoundingClientRect();
- return{
-  x:(e.clientX-rect.left)*(canvas.width/rect.width),
-  y:(e.clientY-rect.top)*(canvas.height/rect.height)
- };
+  const rect = canvas.getBoundingClientRect();
+  return { x:(e.clientX-rect.left)*(canvas.width/rect.width),
+           y:(e.clientY-rect.top)*(canvas.height/rect.height) };
 }
 
 /* ============================= */
 /* 線描画 */
-/* ============================= */
+canvas.addEventListener("pointerdown", e => {
+  if(mode!=="edit") return;
+  drawing = true;
+  const pos = getPos(e);
+  lines.push({
+    color: document.getElementById("wallColor").value,
+    width: parseInt(document.getElementById("lineWidth").value),
+    points: [pos]
+  });
+});
+canvas.addEventListener("pointermove", e => {
+  if(!drawing) return;
+  const pos = getPos(e);
+  lines[lines.length-1].points.push(pos);
+  drawAll();
+});
+canvas.addEventListener("pointerup", ()=>drawing=false);
 
-canvas.addEventListener("pointerdown",e=>{
- if(mode!=="edit")return;
- drawing=true;
- const pos=getPos(e);
- lines.push({
-  color:document.getElementById("wallColor").value,
-  width:parseInt(document.getElementById("lineWidth").value),
-  points:[pos]
- });
+/* ============================= */
+/* パネル解放クリック */
+canvas.addEventListener("click", e => {
+  if(mode!=="play") return;
+  const pos = getPos(e);
+  panels.forEach(p => {
+    if(ctx.isPointInPath(p.path,pos.x,pos.y)){
+      p.unlocked = !p.unlocked;
+    }
+  });
+  drawAll();
 });
 
-canvas.addEventListener("pointermove",e=>{
- if(!drawing)return;
- const pos=getPos(e);
- lines[lines.length-1].points.push(pos);
- drawAll();
-});
-
-canvas.addEventListener("pointerup",()=>drawing=false);
-
 /* ============================= */
-/* パネル解放 */
-/* ============================= */
+/* パネル分割 - 自動閉じ領域検出 */
+document.getElementById("splitBtn").onclick = () => {
+  if(!image.src) return;
+  panels = [];
 
-canvas.addEventListener("click",e=>{
- if(mode!=="play")return;
- const pos=getPos(e);
+  // 1. 画像全体を初期パネルとして作成
+  const initialPath = new Path2D();
+  initialPath.rect(0,0,canvasW,canvasH);
+  panels.push({ path: initialPath, color:"#ffffff", unlocked:false });
 
- panels.forEach(p=>{
-  if(ctx.isPointInPath(p.path,pos.x,pos.y)){
-   p.unlocked=!p.unlocked;
+  // 2. 線から閉じた輪郭を自動検出してパネル化
+  // 簡易版：線端同士が近い場合に輪郭とみなし Path2D に変換
+  const used = new Set();
+
+  for(let i=0;i<lines.length;i++){
+    if(used.has(i)) continue;
+    const line = lines[i];
+    let contour = [...line.points];
+    used.add(i);
+
+    // 他の線端と接続されていれば輪郭を延長
+    let changed = true;
+    while(changed){
+      changed = false;
+      for(let j=0;j<lines.length;j++){
+        if(used.has(j)) continue;
+        const l2 = lines[j];
+        const d1 = distance(contour[0], l2.points[0]);
+        const d2 = distance(contour[0], l2.points[l2.points.length-1]);
+        const d3 = distance(contour[contour.length-1], l2.points[0]);
+        const d4 = distance(contour[contour.length-1], l2.points[l2.points.length-1]);
+        const minD = Math.min(d1,d2,d3,d4);
+        if(minD < CLOSE_DIST){
+          // 接続
+          if(minD===d1) contour = [...l2.points.reverse(), ...contour];
+          else if(minD===d2) contour = [...l2.points, ...contour];
+          else if(minD===d3) contour = [...contour, ...l2.points];
+          else contour = [...contour, ...l2.points.reverse()];
+          used.add(j);
+          changed = true;
+        }
+      }
+    }
+
+    // 閉じていれば Path2D に変換してパネル化
+    if(distance(contour[0], contour[contour.length-1])<CLOSE_DIST || touchesEdge(contour)){
+      const path = new Path2D();
+      path.moveTo(contour[0].x, contour[0].y);
+      for(let k=1;k<contour.length;k++) path.lineTo(contour[k].x, contour[k].y);
+      path.closePath();
+      panels.push({ path:path, color:"#ffffff", unlocked:false });
+    }
   }
- });
 
- drawAll();
-});
-
-/* ============================= */
-/* パネル分割（軽量版） */
-/* ============================= */
-
-document.getElementById("splitBtn").onclick=()=>{
- if(!image.src)return;
-
- const imgData=ctx.getImageData(0,0,canvasW,canvasH);
- const data=imgData.data;
- const visited=new Uint8Array(canvasW*canvasH);
- panels=[];
-
- const wallColor=hexToRgb(document.getElementById("wallColor").value);
-
- function isWall(x,y){
-  if(x<=0||y<=0||x>=canvasW-1||y>=canvasH-1)return true;
-  const i=(Math.floor(y)*canvasW+Math.floor(x))*4;
-  const r=data[i],g=data[i+1],b=data[i+2];
-  return Math.abs(r-wallColor.r)<8 &&
-         Math.abs(g-wallColor.g)<8 &&
-         Math.abs(b-wallColor.b)<8;
- }
-
- for(let y=0;y<canvasH;y++){
-  for(let x=0;x<canvasW;x++){
-
-   const idx=y*canvasW+x;
-   if(visited[idx]||isWall(x,y))continue;
-
-   const stack=[[x,y]];
-   const points=[];
-   visited[idx]=1;
-
-   while(stack.length){
-    const [sx,sy]=stack.pop();
-    points.push([sx,sy]);
-
-    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
-     const nx=sx+dx,ny=sy+dy;
-     const nidx=ny*canvasW+nx;
-     if(nx>=0&&ny>=0&&nx<canvasW&&ny<canvasH&&!visited[nidx]&&!isWall(nx,ny)){
-      visited[nidx]=1;
-      stack.push([nx,ny]);
-     }
-    });
-   }
-
-   const path=new Path2D();
-   points.forEach(([px,py])=>{
-    path.rect(px,py,1,1);
-   });
-
-   panels.push({
-    path,
-    color:"#ffffff",
-    unlocked:false
-   });
-  }
- }
-
- drawAll();
+  drawAll();
 };
 
 /* ============================= */
 /* リセット */
-/* ============================= */
-
-document.getElementById("resetBtn").onclick=()=>{
- lines=[];
- panels=[];
- drawAll();
-};
+document.getElementById("resetBtn").onclick = () => { lines=[]; panels=[]; drawAll(); };
 
 /* ============================= */
 /* モード切替 */
-/* ============================= */
-
-document.getElementById("modeBtn").onclick=function(){
- if(mode==="edit"){
-  mode="play";
-  this.textContent="編集";
- }else{
-  mode="edit";
-  this.textContent="保存";
- }
- drawAll();
+document.getElementById("modeBtn").onclick = function(){
+  if(mode==="edit"){ mode="play"; this.textContent="編集"; }
+  else{ mode="edit"; this.textContent="保存"; }
+  drawAll();
 };
 
 /* ============================= */
 /* プレビュー出力 */
-/* ============================= */
+document.getElementById("previewBtn").onclick = () => {
+  if(!image.src) return;
+  const max=1080;
+  const ratio=Math.min(max/image.width,max/image.height);
+  const outW=image.width*ratio;
+  const outH=image.height*ratio;
+  const out=document.createElement("canvas");
+  out.width=outW;
+  out.height=outH;
+  const octx=out.getContext("2d");
 
-document.getElementById("previewBtn").onclick=()=>{
- if(!image.src)return;
+  octx.drawImage(image,0,0,outW,outH);
 
- const max=1080;
- const ratio=Math.min(max/image.width,max/image.height);
- const outW=image.width*ratio;
- const outH=image.height*ratio;
+  panels.forEach(p=>{
+    if(!p.unlocked){
+      const scaleX=outW/canvasW;
+      const scaleY=outH/canvasH;
+      octx.save();
+      octx.scale(scaleX,scaleY);
+      octx.fillStyle=p.color;
+      octx.fill(p.path);
+      octx.restore();
+    }
+  });
 
- const out=document.createElement("canvas");
- out.width=outW;
- out.height=outH;
- const octx=out.getContext("2d");
-
- octx.drawImage(image,0,0,outW,outH);
-
- panels.forEach(p=>{
-  if(!p.unlocked){
-   const scaleX=outW/canvasW;
-   const scaleY=outH/canvasH;
-   octx.save();
-   octx.scale(scaleX,scaleY);
-   octx.fillStyle=p.color;
-   octx.fill(p.path);
-   octx.restore();
-  }
- });
-
- const win=window.open();
- win.document.body.appendChild(out);
+  const win=window.open();
+  win.document.body.appendChild(out);
 };
 
 /* ============================= */
-
-function hexToRgb(hex){
- const bigint=parseInt(hex.slice(1),16);
- return{
-  r:(bigint>>16)&255,
-  g:(bigint>>8)&255,
-  b:bigint&255
- };
+/* ヘルパー */
+function distance(p1,p2){ return Math.hypot(p1.x-p2.x,p1.y-p2.y); }
+function touchesEdge(points){
+  return points.some(p => p.x<=0 || p.y<=0 || p.x>=canvasW || p.y>=canvasH);
 }
 </script>
 
