@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel Reveal</title>
+
 <style>
 body{
   margin:0;
   font-family:sans-serif;
-  background:#f5f5f5;
+  background:#f4f4f4;
   text-align:center;
 }
 
@@ -20,10 +21,12 @@ body{
   display:flex;
   justify-content:center;
   align-items:center;
-  margin:60px 0;
+  padding:60px 0; /* 広め余白 */
 }
 
 canvas{
+  max-width:90vw;   /* 画面幅に合わせて縮小 */
+  height:auto;
   background:#999;
   box-shadow:0 0 10px rgba(0,0,0,0.2);
   touch-action:none;
@@ -75,6 +78,10 @@ let canvasH=0;
 
 const MAX_EDIT_SIZE=800;
 
+/* ============================= */
+/* 画像読み込み */
+/* ============================= */
+
 document.getElementById("upload").onchange=e=>{
  const file=e.target.files[0];
  const reader=new FileReader();
@@ -88,22 +95,29 @@ image.onload=()=>{
  const ratio=Math.min(MAX_EDIT_SIZE/image.width,MAX_EDIT_SIZE/image.height);
  canvasW=image.width*ratio;
  canvasH=image.height*ratio;
+
  canvas.width=canvasW;
  canvas.height=canvasH;
+
  lines=[];
  panels=[];
  drawAll();
 };
 
+/* ============================= */
+/* 描画 */
+/* ============================= */
+
 function drawAll(){
  ctx.clearRect(0,0,canvasW,canvasH);
+
  ctx.drawImage(image,0,0,canvasW,canvasH);
 
  lines.forEach(line=>{
   ctx.strokeStyle=line.color;
   ctx.lineWidth=line.width;
   ctx.beginPath();
-  ctx.moveTo(line.points[0].x, line.points[0].y);
+  ctx.moveTo(line.points[0].x,line.points[0].y);
   for(let i=1;i<line.points.length;i++){
    ctx.lineTo(line.points[i].x,line.points[i].y);
   }
@@ -118,13 +132,29 @@ function drawAll(){
  });
 }
 
+/* ============================= */
+/* 座標補正（超重要） */
+/* ============================= */
+
+function getPos(e){
+ const rect=canvas.getBoundingClientRect();
+ return{
+  x:(e.clientX-rect.left)*(canvas.width/rect.width),
+  y:(e.clientY-rect.top)*(canvas.height/rect.height)
+ };
+}
+
+/* ============================= */
+/* 線描画 */
+/* ============================= */
+
 canvas.addEventListener("pointerdown",e=>{
  if(mode!=="edit")return;
  drawing=true;
  const pos=getPos(e);
  lines.push({
   color:document.getElementById("wallColor").value,
-  width:document.getElementById("lineWidth").value,
+  width:parseInt(document.getElementById("lineWidth").value),
   points:[pos]
  });
 });
@@ -138,24 +168,26 @@ canvas.addEventListener("pointermove",e=>{
 
 canvas.addEventListener("pointerup",()=>drawing=false);
 
+/* ============================= */
+/* パネル解放 */
+/* ============================= */
+
 canvas.addEventListener("click",e=>{
  if(mode!=="play")return;
  const pos=getPos(e);
+
  panels.forEach(p=>{
   if(ctx.isPointInPath(p.path,pos.x,pos.y)){
    p.unlocked=!p.unlocked;
   }
  });
+
  drawAll();
 });
 
-function getPos(e){
- const rect=canvas.getBoundingClientRect();
- return{
-  x:(e.clientX-rect.left),
-  y:(e.clientY-rect.top)
- };
-}
+/* ============================= */
+/* パネル分割（軽量版） */
+/* ============================= */
 
 document.getElementById("splitBtn").onclick=()=>{
  if(!image.src)return;
@@ -165,18 +197,20 @@ document.getElementById("splitBtn").onclick=()=>{
  const visited=new Uint8Array(canvasW*canvasH);
  panels=[];
 
+ const wallColor=hexToRgb(document.getElementById("wallColor").value);
+
  function isWall(x,y){
   if(x<=0||y<=0||x>=canvasW-1||y>=canvasH-1)return true;
   const i=(Math.floor(y)*canvasW+Math.floor(x))*4;
   const r=data[i],g=data[i+1],b=data[i+2];
-  const wc=hexToRgb(document.getElementById("wallColor").value);
-  return Math.abs(r-wc.r)<8 &&
-         Math.abs(g-wc.g)<8 &&
-         Math.abs(b-wc.b)<8;
+  return Math.abs(r-wallColor.r)<8 &&
+         Math.abs(g-wallColor.g)<8 &&
+         Math.abs(b-wallColor.b)<8;
  }
 
  for(let y=0;y<canvasH;y++){
   for(let x=0;x<canvasW;x++){
+
    const idx=y*canvasW+x;
    if(visited[idx]||isWall(x,y))continue;
 
@@ -214,11 +248,19 @@ document.getElementById("splitBtn").onclick=()=>{
  drawAll();
 };
 
+/* ============================= */
+/* リセット */
+/* ============================= */
+
 document.getElementById("resetBtn").onclick=()=>{
  lines=[];
  panels=[];
  drawAll();
 };
+
+/* ============================= */
+/* モード切替 */
+/* ============================= */
 
 document.getElementById("modeBtn").onclick=function(){
  if(mode==="edit"){
@@ -230,6 +272,10 @@ document.getElementById("modeBtn").onclick=function(){
  }
  drawAll();
 };
+
+/* ============================= */
+/* プレビュー出力 */
+/* ============================= */
 
 document.getElementById("previewBtn").onclick=()=>{
  if(!image.src)return;
@@ -248,11 +294,11 @@ document.getElementById("previewBtn").onclick=()=>{
 
  panels.forEach(p=>{
   if(!p.unlocked){
-   octx.fillStyle=p.color;
    const scaleX=outW/canvasW;
    const scaleY=outH/canvasH;
    octx.save();
    octx.scale(scaleX,scaleY);
+   octx.fillStyle=p.color;
    octx.fill(p.path);
    octx.restore();
   }
@@ -261,6 +307,8 @@ document.getElementById("previewBtn").onclick=()=>{
  const win=window.open();
  win.document.body.appendChild(out);
 };
+
+/* ============================= */
 
 function hexToRgb(hex){
  const bigint=parseInt(hex.slice(1),16);
