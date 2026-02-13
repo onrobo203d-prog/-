@@ -6,33 +6,36 @@
 <title>Panel Reveal</title>
 <style>
 body{
-  font-family:sans-serif;
-  background:#f4f4f4;
   margin:0;
-  padding:20px;
+  font-family:sans-serif;
+  background:#f5f5f5;
   text-align:center;
 }
-#canvasWrapper{
-  margin:40px auto;
-  padding:40px;
-  background:#ddd;
-  display:inline-block;
+
+.controls{
+  margin:15px;
 }
+
+#canvasArea{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin:60px 0;
+}
+
 canvas{
-  border:1px solid #aaa;
+  background:#999;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
   touch-action:none;
 }
-.controls{
-  margin:10px 0;
-}
+
 button{
   margin:5px;
   padding:6px 12px;
 }
+
 input[type=color]{
-  width:50px;
   height:30px;
-  vertical-align:middle;
 }
 </style>
 </head>
@@ -43,7 +46,7 @@ input[type=color]{
 <div class="controls">
 <input type="file" id="upload">
 壁色 <input type="color" id="wallColor" value="#000000">
-線太さ <input type="range" id="lineWidth" min="2" max="50" value="10">
+線太さ <input type="range" id="lineWidth" min="2" max="30" value="8">
 <button id="splitBtn">パネル分割</button>
 <button id="resetBtn">リセット</button>
 </div>
@@ -51,13 +54,10 @@ input[type=color]{
 <div class="controls">
 <button id="modeBtn">編集</button>
 <button id="previewBtn">プレビュー出力</button>
-<button id="exportBtn">JSON出力</button>
-<input type="file" id="importFile" style="display:none">
-<button onclick="document.getElementById('importFile').click()">JSON読込</button>
 </div>
 
-<div id="canvasWrapper">
-<canvas id="canvas" width="1080" height="1080"></canvas>
+<div id="canvasArea">
+<canvas id="canvas"></canvas>
 </div>
 
 <script>
@@ -65,38 +65,15 @@ const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
 
 let image=new Image();
-let validArea=null;
-let drawing=false;
 let lines=[];
 let panels=[];
+let drawing=false;
 let mode="edit";
 
-const wallColorInput=document.getElementById("wallColor");
-const lineWidthInput=document.getElementById("lineWidth");
+let canvasW=0;
+let canvasH=0;
 
-function saveLocal(){
- localStorage.setItem("panelData",JSON.stringify({
-  lines,panels,validArea,imageSrc:image.src
- }));
-}
-
-function loadLocal(){
- const data=localStorage.getItem("panelData");
- if(!data)return false;
- const obj=JSON.parse(data);
- lines=obj.lines||[];
- panels=obj.panels||[];
- validArea=obj.validArea;
- image.src=obj.imageSrc;
- image.onload=()=>drawAll();
- return true;
-}
-
-if(loadLocal()){
- if(confirm("前回のデータを復旧しますか？")==false){
-  localStorage.removeItem("panelData");
- }
-}
+const MAX_EDIT_SIZE=800;
 
 document.getElementById("upload").onchange=e=>{
  const file=e.target.files[0];
@@ -108,35 +85,25 @@ document.getElementById("upload").onchange=e=>{
 };
 
 image.onload=()=>{
- const ratio=Math.min(1080/image.width,1080/image.height);
- const w=image.width*ratio;
- const h=image.height*ratio;
- validArea={
-  x:(1080-w)/2,
-  y:(1080-h)/2,
-  width:w,
-  height:h
- };
+ const ratio=Math.min(MAX_EDIT_SIZE/image.width,MAX_EDIT_SIZE/image.height);
+ canvasW=image.width*ratio;
+ canvasH=image.height*ratio;
+ canvas.width=canvasW;
+ canvas.height=canvasH;
  lines=[];
  panels=[];
  drawAll();
- saveLocal();
 };
 
 function drawAll(){
- ctx.clearRect(0,0,1080,1080);
- ctx.fillStyle="#999";
- ctx.fillRect(0,0,1080,1080);
-
- if(validArea){
-  ctx.drawImage(image,validArea.x,validArea.y,validArea.width,validArea.height);
- }
+ ctx.clearRect(0,0,canvasW,canvasH);
+ ctx.drawImage(image,0,0,canvasW,canvasH);
 
  lines.forEach(line=>{
   ctx.strokeStyle=line.color;
   ctx.lineWidth=line.width;
   ctx.beginPath();
-  ctx.moveTo(line.points[0].x,line.points[0].y);
+  ctx.moveTo(line.points[0].x, line.points[0].y);
   for(let i=1;i<line.points.length;i++){
    ctx.lineTo(line.points[i].x,line.points[i].y);
   }
@@ -147,23 +114,17 @@ function drawAll(){
   if(mode==="edit" || !p.unlocked){
    ctx.fillStyle=p.color;
    ctx.fill(p.path);
-   if(p.name){
-    ctx.fillStyle=p.textColor;
-    ctx.font="40px sans-serif";
-    ctx.textAlign="center";
-    ctx.fillText(p.name,p.cx,p.cy);
-   }
   }
  });
 }
 
 canvas.addEventListener("pointerdown",e=>{
- if(mode!=="edit"||!validArea)return;
+ if(mode!=="edit")return;
  drawing=true;
  const pos=getPos(e);
  lines.push({
-  color:wallColorInput.value,
-  width:lineWidthInput.value,
+  color:document.getElementById("wallColor").value,
+  width:document.getElementById("lineWidth").value,
   points:[pos]
  });
 });
@@ -175,10 +136,7 @@ canvas.addEventListener("pointermove",e=>{
  drawAll();
 });
 
-canvas.addEventListener("pointerup",()=>{
- drawing=false;
- saveLocal();
-});
+canvas.addEventListener("pointerup",()=>drawing=false);
 
 canvas.addEventListener("click",e=>{
  if(mode!=="play")return;
@@ -189,43 +147,39 @@ canvas.addEventListener("click",e=>{
   }
  });
  drawAll();
- saveLocal();
 });
 
 function getPos(e){
  const rect=canvas.getBoundingClientRect();
- const scaleX=1080/rect.width;
- const scaleY=1080/rect.height;
  return{
-  x:(e.clientX-rect.left)*scaleX,
-  y:(e.clientY-rect.top)*scaleY
+  x:(e.clientX-rect.left),
+  y:(e.clientY-rect.top)
  };
 }
 
 document.getElementById("splitBtn").onclick=()=>{
- if(!validArea)return;
+ if(!image.src)return;
 
- const imgData=ctx.getImageData(0,0,1080,1080);
+ const imgData=ctx.getImageData(0,0,canvasW,canvasH);
  const data=imgData.data;
- const visited=new Uint8Array(1080*1080);
+ const visited=new Uint8Array(canvasW*canvasH);
  panels=[];
- 
+
  function isWall(x,y){
-  if(x<validArea.x||x>validArea.x+validArea.width||
-     y<validArea.y||y>validArea.y+validArea.height)
-   return true;
-  const i=(Math.floor(y)*1080+Math.floor(x))*4;
+  if(x<=0||y<=0||x>=canvasW-1||y>=canvasH-1)return true;
+  const i=(Math.floor(y)*canvasW+Math.floor(x))*4;
   const r=data[i],g=data[i+1],b=data[i+2];
-  const wc=hexToRgb(wallColorInput.value);
-  return Math.abs(r-wc.r)<10 &&
-         Math.abs(g-wc.g)<10 &&
-         Math.abs(b-wc.b)<10;
+  const wc=hexToRgb(document.getElementById("wallColor").value);
+  return Math.abs(r-wc.r)<8 &&
+         Math.abs(g-wc.g)<8 &&
+         Math.abs(b-wc.b)<8;
  }
 
- for(let y=0;y<1080;y++){
-  for(let x=0;x<1080;x++){
-   const idx=y*1080+x;
+ for(let y=0;y<canvasH;y++){
+  for(let x=0;x<canvasW;x++){
+   const idx=y*canvasW+x;
    if(visited[idx]||isWall(x,y))continue;
+
    const stack=[[x,y]];
    const points=[];
    visited[idx]=1;
@@ -233,10 +187,11 @@ document.getElementById("splitBtn").onclick=()=>{
    while(stack.length){
     const [sx,sy]=stack.pop();
     points.push([sx,sy]);
+
     [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
      const nx=sx+dx,ny=sy+dy;
-     const nidx=ny*1080+nx;
-     if(nx>=0&&ny>=0&&nx<1080&&ny<1080&&!visited[nidx]&&!isWall(nx,ny)){
+     const nidx=ny*canvasW+nx;
+     if(nx>=0&&ny>=0&&nx<canvasW&&ny<canvasH&&!visited[nidx]&&!isWall(nx,ny)){
       visited[nidx]=1;
       stack.push([nx,ny]);
      }
@@ -248,32 +203,21 @@ document.getElementById("splitBtn").onclick=()=>{
     path.rect(px,py,1,1);
    });
 
-   const cx=points.reduce((a,b)=>a+b[0],0)/points.length;
-   const cy=points.reduce((a,b)=>a+b[1],0)/points.length;
-
    panels.push({
     path,
     color:"#ffffff",
-    textColor:"#000000",
-    name:"",
-    condition:"",
-    unlocked:false,
-    cx,cy
+    unlocked:false
    });
   }
  }
 
  drawAll();
- saveLocal();
 };
 
 document.getElementById("resetBtn").onclick=()=>{
- if(confirm("リセットしますか？")){
-  lines=[];
-  panels=[];
-  drawAll();
-  saveLocal();
- }
+ lines=[];
+ panels=[];
+ drawAll();
 };
 
 document.getElementById("modeBtn").onclick=function(){
@@ -285,47 +229,37 @@ document.getElementById("modeBtn").onclick=function(){
   this.textContent="保存";
  }
  drawAll();
- saveLocal();
 };
 
 document.getElementById("previewBtn").onclick=()=>{
+ if(!image.src)return;
+
+ const max=1080;
+ const ratio=Math.min(max/image.width,max/image.height);
+ const outW=image.width*ratio;
+ const outH=image.height*ratio;
+
  const out=document.createElement("canvas");
- out.width=validArea.width;
- out.height=validArea.height;
+ out.width=outW;
+ out.height=outH;
  const octx=out.getContext("2d");
 
- octx.drawImage(canvas,
-  validArea.x,validArea.y,
-  validArea.width,validArea.height,
-  0,0,
-  validArea.width,validArea.height
- );
+ octx.drawImage(image,0,0,outW,outH);
+
+ panels.forEach(p=>{
+  if(!p.unlocked){
+   octx.fillStyle=p.color;
+   const scaleX=outW/canvasW;
+   const scaleY=outH/canvasH;
+   octx.save();
+   octx.scale(scaleX,scaleY);
+   octx.fill(p.path);
+   octx.restore();
+  }
+ });
 
  const win=window.open();
  win.document.body.appendChild(out);
-};
-
-document.getElementById("exportBtn").onclick=()=>{
- const data=JSON.stringify({lines,panels,validArea,imageSrc:image.src});
- const blob=new Blob([data],{type:"application/json"});
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
- a.href=url;
- a.download="panelData.json";
- a.click();
-};
-
-document.getElementById("importFile").onchange=e=>{
- const file=e.target.files[0];
- const reader=new FileReader();
- reader.onload=ev=>{
-  const obj=JSON.parse(ev.target.result);
-  lines=obj.lines;
-  panels=obj.panels;
-  validArea=obj.validArea;
-  image.src=obj.imageSrc;
- };
- reader.readAsText(file);
 };
 
 function hexToRgb(hex){
