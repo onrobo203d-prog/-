@@ -2,203 +2,243 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>パネル解放ツール</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>パネル開けエディタ</title>
+
 <style>
-body { font-family: sans-serif; margin:0; background:#f5f5f5; text-align:center; }
-.controls { padding:10px; background:white; position:sticky; top:0; z-index:10; }
-canvas { background:#ddd; max-width:95vw; margin:10px auto; display:block; touch-action:manipulation; }
-button, input { margin:3px; padding:6px; }
-.status { margin:5px; font-weight:bold; }
+body{margin:0;font-family:sans-serif;background:#f4f4f4;text-align:center;}
+#topbar{padding:10px;background:#222;color:#fff;}
+button,input{margin:5px;}
+#canvasWrapper{position:relative;display:inline-block;}
+canvas{touch-action:none;border:1px solid #999;}
+.modal{
+ position:fixed;inset:0;background:rgba(0,0,0,.6);
+ display:flex;align-items:center;justify-content:center;
+}
+.modalContent{
+ background:#fff;padding:20px;border-radius:10px;
+}
+.hidden{display:none;}
+.panelForm{
+ position:fixed;right:0;top:0;background:#fff;
+ padding:10px;border-left:2px solid #ccc;
+}
 </style>
 </head>
 <body>
 
-<div class="controls">
-<input type="file" id="imageUpload" accept="image/*">
-<br>
-横 <input type="number" id="gridX" value="5" min="1" style="width:60px;">
-縦 <input type="number" id="gridY" value="5" min="1" style="width:60px;">
-パネル色 <input type="color" id="panelColor" value="#000000">
-文字色 <input type="color" id="textColor" value="#ffffff">
-<button id="generateBtn">パネル生成</button>
-<br>
-<button id="editToggle">編集</button>
+<div id="topbar">
+<input type="file" id="imageLoader" accept="image/*">
+<label>線の太さ</label>
+<input type="range" id="lineWidth" min="1" max="20" value="3">
+<button id="previewBtn">進捗</button>
 <button id="undoBtn">戻る</button>
-<button id="unlockAllBtn">全解放</button>
-<button id="exportBtn">画像出力</button>
+<button id="exportBtn">外部保存</button>
+<button id="importBtn">読み込み</button>
+<input type="file" id="importFile" accept=".json" hidden>
 </div>
 
-<canvas id="canvas" width="1080" height="1080"></canvas>
-<div class="status" id="progressText"></div>
+<div id="canvasWrapper">
+<canvas id="canvas"></canvas>
+</div>
+
+<!-- 起動モーダル -->
+<div id="startupModal" class="modal hidden">
+ <div class="modalContent">
+  <h3>前回データがあります</h3>
+  <button id="restoreBtn">復旧</button>
+  <button id="newBtn">新規作成</button>
+  <button id="importStartupBtn">外部読込</button>
+ </div>
+</div>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const STORAGE_KEY="panelPuzzleSave_v1";
 
-let appState = {
-  image: null,
-  panels: [],
-  history: []
-};
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const image=new Image();
 
-let editMode = false;
+let panels=[];
+let drawing=false;
+let currentPoints=[];
+let selectedPanel=null;
 
-function saveState() {
-  localStorage.setItem("panelAppData", JSON.stringify(appState));
+const lineWidthSlider=document.getElementById("lineWidth");
+
+function resizeCanvas(){
+ canvas.width=image.width;
+ canvas.height=image.height;
+ redraw();
 }
-
-function loadState() {
-  const data = localStorage.getItem("panelAppData");
-  if (data) {
-    if (confirm("前回のデータを復元しますか？")) {
-      appState = JSON.parse(data);
-      redraw();
-    } else {
-      localStorage.removeItem("panelAppData");
-    }
-  }
-}
-
-function pushHistory() {
-  appState.history.push(JSON.stringify(appState.panels));
-  if (appState.history.length > 50) appState.history.shift();
-}
-
-function undo() {
-  if (appState.history.length === 0) return;
-  const prev = appState.history.pop();
-  appState.panels = JSON.parse(prev);
-  redraw();
-  saveState();
-}
-
-function resizeTo1080(img) {
-  const temp = document.createElement("canvas");
-  temp.width = 1080;
-  temp.height = 1080;
-  const tctx = temp.getContext("2d");
-  tctx.drawImage(img, 0, 0, 1080, 1080);
-  return temp.toDataURL("image/png");
-}
-
-document.getElementById("imageUpload").addEventListener("change", e => {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    const img = new Image();
-    img.onload = function() {
-      appState.image = resizeTo1080(img);
-      appState.panels = [];
-      pushHistory();
-      redraw();
-      saveState();
-    }
-    img.src = evt.target.result;
-  };
-  reader.readAsDataURL(file);
-});
-
-document.getElementById("generateBtn").addEventListener("click", () => {
-  if (!appState.image) return alert("画像をアップロードしてください");
-  pushHistory();
-  const gx = parseInt(document.getElementById("gridX").value);
-  const gy = parseInt(document.getElementById("gridY").value);
-  const color = document.getElementById("panelColor").value;
-  appState.panels = [];
-  const w = 1080 / gx;
-  const h = 1080 / gy;
-  for (let y=0;y<gy;y++){
-    for (let x=0;x<gx;x++){
-      appState.panels.push({
-        x:x*w, y:y*h, w:w, h:h,
-        color:color,
-        text:"",
-        textColor: document.getElementById("textColor").value,
-        hidden:false
-      });
-    }
-  }
-  redraw();
-  saveState();
-});
-
-document.getElementById("editToggle").addEventListener("click", ()=>{
-  editMode = !editMode;
-  document.getElementById("editToggle").innerText = editMode ? "保存" : "編集";
-});
-
-document.getElementById("undoBtn").addEventListener("click", undo);
-
-document.getElementById("unlockAllBtn").addEventListener("click", ()=>{
-  pushHistory();
-  appState.panels.forEach(p=>p.hidden=true);
-  redraw();
-  saveState();
-});
-
-document.getElementById("exportBtn").addEventListener("click", ()=>{
-  const link = document.createElement("a");
-  link.download = "progress.png";
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-});
-
-canvas.addEventListener("click", e=>{
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.clientX - rect.left) * (1080 / rect.width);
-  const y = (e.clientY - rect.top) * (1080 / rect.height);
-
-  for (let p of appState.panels){
-    if (x>=p.x && x<=p.x+p.w && y>=p.y && y<=p.y+p.h){
-      pushHistory();
-      if (editMode){
-        const text = prompt("パネル文字を入力", p.text);
-        if (text !== null) {
-          p.text = text;
-          p.textColor = document.getElementById("textColor").value;
-        }
-      } else {
-        p.hidden = true;
-      }
-      redraw();
-      saveState();
-      break;
-    }
-  }
-});
 
 function redraw(){
-  if (!appState.image) return;
-  const img = new Image();
-  img.onload = function(){
-    ctx.clearRect(0,0,1080,1080);
-    ctx.drawImage(img,0,0);
-    let openCount=0;
-    for (let p of appState.panels){
-      if (!p.hidden){
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x,p.y,p.w,p.h);
-        ctx.strokeStyle="#ffffff";
-        ctx.strokeRect(p.x,p.y,p.w,p.h);
-        if (p.text){
-          ctx.fillStyle = p.textColor;
-          ctx.font = "bold 30px sans-serif";
-          ctx.textAlign="center";
-          ctx.textBaseline="middle";
-          ctx.fillText(p.text, p.x+p.w/2, p.y+p.h/2, p.w-10);
-        }
-      } else {
-        openCount++;
-      }
-    }
-    document.getElementById("progressText").innerText =
-      openCount + " / " + appState.panels.length + " 解放";
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ if(image.src) ctx.drawImage(image,0,0);
+
+ panels.forEach(p=>{
+  if(!p.unlocked){
+   ctx.fillStyle=p.color;
+   ctx.fill(p.path);
+   ctx.fillStyle=p.textColor;
+   ctx.font="16px sans-serif";
+   ctx.textAlign="center";
+   const b=p.points[0];
+   ctx.fillText(p.name,b.x,b.y);
   }
-  img.src = appState.image;
+ });
+
+ if(drawing && currentPoints.length>1){
+  ctx.strokeStyle="red";
+  ctx.lineWidth=lineWidthSlider.value;
+  ctx.beginPath();
+  ctx.moveTo(currentPoints[0].x,currentPoints[0].y);
+  currentPoints.forEach(pt=>ctx.lineTo(pt.x,pt.y));
+  ctx.stroke();
+ }
 }
 
-loadState();
+function createPath(points){
+ const path=new Path2D();
+ path.moveTo(points[0].x,points[0].y);
+ points.forEach(pt=>path.lineTo(pt.x,pt.y));
+ path.closePath();
+ return path;
+}
+
+canvas.addEventListener("pointerdown",e=>{
+ if(!image.src) return;
+ drawing=true;
+ currentPoints=[{x:e.offsetX,y:e.offsetY}];
+});
+
+canvas.addEventListener("pointermove",e=>{
+ if(!drawing) return;
+ currentPoints.push({x:e.offsetX,y:e.offsetY});
+ redraw();
+});
+
+canvas.addEventListener("pointerup",()=>{
+ if(!drawing) return;
+ drawing=false;
+ if(currentPoints.length>2){
+  const panel={
+   id:Date.now(),
+   name:"パネル",
+   condition:"",
+   color:"#000000",
+   textColor:"#ffffff",
+   unlocked:false,
+   points:currentPoints,
+   path:createPath(currentPoints)
+  };
+  panels.push(panel);
+  saveToStorage();
+ }
+ currentPoints=[];
+ redraw();
+});
+
+canvas.addEventListener("click",e=>{
+ panels.forEach(p=>{
+  if(ctx.isPointInPath(p.path,e.offsetX,e.offsetY)){
+   p.unlocked=!p.unlocked;
+   saveToStorage();
+  }
+ });
+ redraw();
+});
+
+document.getElementById("undoBtn").onclick=()=>{
+ panels.pop();
+ saveToStorage();
+ redraw();
+};
+
+document.getElementById("previewBtn").onclick=()=>{
+ const u=panels.filter(p=>p.unlocked).length;
+ alert(`進捗 ${u}/${panels.length}`);
+};
+
+document.getElementById("imageLoader").addEventListener("change",function(){
+ const reader=new FileReader();
+ reader.onload=e=>{
+  image.src=e.target.result;
+ };
+ reader.readAsDataURL(this.files[0]);
+});
+
+image.onload=()=>{
+ resizeCanvas();
+ saveToStorage();
+};
+
+function saveToStorage(){
+ const data={
+  image:image.src,
+  panels:panels.map(p=>({
+   ...p,
+   path:null
+  }))
+ };
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+}
+
+function loadFromStorage(){
+ const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
+ if(!saved) return;
+ image.src=saved.image;
+ panels=saved.panels.map(p=>({
+  ...p,
+  path:createPath(p.points)
+ }));
+}
+
+document.getElementById("exportBtn").onclick=()=>{
+ const blob=new Blob(
+  [localStorage.getItem(STORAGE_KEY)],
+  {type:"application/json"}
+ );
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="panelSave.json";
+ a.click();
+ URL.revokeObjectURL(url);
+};
+
+document.getElementById("importBtn").onclick=()=>{
+ document.getElementById("importFile").click();
+};
+
+document.getElementById("importStartupBtn").onclick=()=>{
+ document.getElementById("importFile").click();
+};
+
+document.getElementById("importFile").addEventListener("change",function(){
+ const reader=new FileReader();
+ reader.onload=e=>{
+  localStorage.setItem(STORAGE_KEY,e.target.result);
+  location.reload();
+ };
+ reader.readAsText(this.files[0]);
+});
+
+document.getElementById("restoreBtn").onclick=()=>{
+ document.getElementById("startupModal").classList.add("hidden");
+ loadFromStorage();
+};
+
+document.getElementById("newBtn").onclick=()=>{
+ localStorage.removeItem(STORAGE_KEY);
+ location.reload();
+};
+
+window.onload=()=>{
+ if(localStorage.getItem(STORAGE_KEY)){
+  document.getElementById("startupModal").classList.remove("hidden");
+ }
+};
 </script>
 
 </body>
