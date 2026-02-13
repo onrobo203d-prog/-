@@ -8,9 +8,16 @@
 <style>
 body{margin:0;font-family:sans-serif;background:#f4f4f4;text-align:center;}
 #topbar{padding:10px;background:#222;color:#fff;}
-button,input{margin:5px;}
-#canvasWrapper{position:relative;display:inline-block;}
-canvas{touch-action:none;border:1px solid #999;}
+button,input{margin:4px;}
+#canvasWrapper{width:100%;display:flex;justify-content:center;}
+canvas{
+ max-width:100vw;
+ max-height:80vh;
+ height:auto;
+ width:auto;
+ border:1px solid #999;
+ touch-action:none;
+}
 .modal{
  position:fixed;inset:0;background:rgba(0,0,0,.6);
  display:flex;align-items:center;justify-content:center;
@@ -19,9 +26,10 @@ canvas{touch-action:none;border:1px solid #999;}
  background:#fff;padding:20px;border-radius:10px;
 }
 .hidden{display:none;}
-.panelForm{
+#panelEditor{
  position:fixed;right:0;top:0;background:#fff;
  padding:10px;border-left:2px solid #ccc;
+ display:none;
 }
 </style>
 </head>
@@ -31,8 +39,10 @@ canvas{touch-action:none;border:1px solid #999;}
 <input type="file" id="imageLoader" accept="image/*">
 <label>線の太さ</label>
 <input type="range" id="lineWidth" min="1" max="20" value="3">
-<button id="previewBtn">進捗</button>
+<button id="toggleSplitMode">分割モード</button>
+<button id="splitBtn">パネル分割</button>
 <button id="undoBtn">戻る</button>
+<button id="previewBtn">進捗</button>
 <button id="exportBtn">外部保存</button>
 <button id="importBtn">読み込み</button>
 <input type="file" id="importFile" accept=".json" hidden>
@@ -52,50 +62,46 @@ canvas{touch-action:none;border:1px solid #999;}
  </div>
 </div>
 
+<!-- パネル編集UI -->
+<div id="panelEditor">
+<h3>パネル編集</h3>
+<label>名前</label><br>
+<input type="text" id="panelName"><br>
+<label>パネル色</label><br>
+<input type="color" id="panelColor"><br>
+<label>文字色</label><br>
+<input type="color" id="textColor"><br>
+<button id="closeEditor">閉じる</button>
+</div>
+
 <script>
-const STORAGE_KEY="panelPuzzleSave_v1";
+const STORAGE_KEY="panelPuzzleSave_v3";
 
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
 const image=new Image();
 
 let panels=[];
+let drawLines=[];
+let currentLine=[];
 let drawing=false;
-let currentPoints=[];
+let splitMode=false;
 let selectedPanel=null;
 
-const lineWidthSlider=document.getElementById("lineWidth");
+function getScaledPos(evt){
+ const rect=canvas.getBoundingClientRect();
+ const scaleX=canvas.width/rect.width;
+ const scaleY=canvas.height/rect.height;
+ return{
+  x:(evt.clientX-rect.left)*scaleX,
+  y:(evt.clientY-rect.top)*scaleY
+ };
+}
 
 function resizeCanvas(){
  canvas.width=image.width;
  canvas.height=image.height;
  redraw();
-}
-
-function redraw(){
- ctx.clearRect(0,0,canvas.width,canvas.height);
- if(image.src) ctx.drawImage(image,0,0);
-
- panels.forEach(p=>{
-  if(!p.unlocked){
-   ctx.fillStyle=p.color;
-   ctx.fill(p.path);
-   ctx.fillStyle=p.textColor;
-   ctx.font="16px sans-serif";
-   ctx.textAlign="center";
-   const b=p.points[0];
-   ctx.fillText(p.name,b.x,b.y);
-  }
- });
-
- if(drawing && currentPoints.length>1){
-  ctx.strokeStyle="red";
-  ctx.lineWidth=lineWidthSlider.value;
-  ctx.beginPath();
-  ctx.moveTo(currentPoints[0].x,currentPoints[0].y);
-  currentPoints.forEach(pt=>ctx.lineTo(pt.x,pt.y));
-  ctx.stroke();
- }
 }
 
 function createPath(points){
@@ -106,48 +112,133 @@ function createPath(points){
  return path;
 }
 
+function redraw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ if(image.src) ctx.drawImage(image,0,0);
+
+ panels.forEach(p=>{
+  if(!p.unlocked){
+   ctx.fillStyle=p.color;
+   ctx.fill(p.path);
+
+   ctx.fillStyle=p.textColor;
+   ctx.font="16px sans-serif";
+   ctx.textAlign="center";
+   const c=p.points[0];
+   ctx.fillText(p.name,c.x,c.y);
+  }
+ });
+
+ ctx.strokeStyle="red";
+ ctx.lineWidth=document.getElementById("lineWidth").value;
+
+ drawLines.forEach(line=>{
+  ctx.beginPath();
+  ctx.moveTo(line[0].x,line[0].y);
+  line.forEach(pt=>ctx.lineTo(pt.x,pt.y));
+  ctx.stroke();
+ });
+
+ if(currentLine.length>1){
+  ctx.beginPath();
+  ctx.moveTo(currentLine[0].x,currentLine[0].y);
+  currentLine.forEach(pt=>ctx.lineTo(pt.x,pt.y));
+  ctx.stroke();
+ }
+}
+
 canvas.addEventListener("pointerdown",e=>{
- if(!image.src) return;
+ if(!splitMode) return;
  drawing=true;
- currentPoints=[{x:e.offsetX,y:e.offsetY}];
+ currentLine=[getScaledPos(e)];
 });
 
 canvas.addEventListener("pointermove",e=>{
- if(!drawing) return;
- currentPoints.push({x:e.offsetX,y:e.offsetY});
+ if(!drawing || !splitMode) return;
+ currentLine.push(getScaledPos(e));
  redraw();
 });
 
 canvas.addEventListener("pointerup",()=>{
- if(!drawing) return;
+ if(!drawing || !splitMode) return;
  drawing=false;
- if(currentPoints.length>2){
+ if(currentLine.length>2){
+  drawLines.push(currentLine);
+ }
+ currentLine=[];
+ redraw();
+});
+
+canvas.addEventListener("click",e=>{
+ const pos=getScaledPos(e);
+
+ panels.forEach(p=>{
+  if(ctx.isPointInPath(p.path,pos.x,pos.y)){
+   selectedPanel=p;
+   p.unlocked=!p.unlocked;
+   openEditor(p);
+   saveToStorage();
+  }
+ });
+
+ redraw();
+});
+
+function openEditor(panel){
+ document.getElementById("panelEditor").style.display="block";
+ document.getElementById("panelName").value=panel.name;
+ document.getElementById("panelColor").value=panel.color;
+ document.getElementById("textColor").value=panel.textColor;
+}
+
+document.getElementById("panelName").oninput=e=>{
+ if(!selectedPanel) return;
+ selectedPanel.name=e.target.value;
+ saveToStorage();
+ redraw();
+};
+
+document.getElementById("panelColor").oninput=e=>{
+ if(!selectedPanel) return;
+ selectedPanel.color=e.target.value;
+ saveToStorage();
+ redraw();
+};
+
+document.getElementById("textColor").oninput=e=>{
+ if(!selectedPanel) return;
+ selectedPanel.textColor=e.target.value;
+ saveToStorage();
+ redraw();
+};
+
+document.getElementById("closeEditor").onclick=()=>{
+ document.getElementById("panelEditor").style.display="none";
+};
+
+document.getElementById("splitBtn").onclick=()=>{
+ drawLines.forEach(line=>{
   const panel={
-   id:Date.now(),
+   id:Date.now()+Math.random(),
    name:"パネル",
    condition:"",
    color:"#000000",
    textColor:"#ffffff",
    unlocked:false,
-   points:currentPoints,
-   path:createPath(currentPoints)
+   points:line,
+   path:createPath(line)
   };
   panels.push(panel);
-  saveToStorage();
- }
- currentPoints=[];
- redraw();
-});
-
-canvas.addEventListener("click",e=>{
- panels.forEach(p=>{
-  if(ctx.isPointInPath(p.path,e.offsetX,e.offsetY)){
-   p.unlocked=!p.unlocked;
-   saveToStorage();
-  }
  });
+ drawLines=[];
+ splitMode=false;
+ saveToStorage();
  redraw();
-});
+};
+
+document.getElementById("toggleSplitMode").onclick=()=>{
+ splitMode=!splitMode;
+};
 
 document.getElementById("undoBtn").onclick=()=>{
  panels.pop();
@@ -162,9 +253,7 @@ document.getElementById("previewBtn").onclick=()=>{
 
 document.getElementById("imageLoader").addEventListener("change",function(){
  const reader=new FileReader();
- reader.onload=e=>{
-  image.src=e.target.result;
- };
+ reader.onload=e=>{ image.src=e.target.result; };
  reader.readAsDataURL(this.files[0]);
 });
 
@@ -176,10 +265,7 @@ image.onload=()=>{
 function saveToStorage(){
  const data={
   image:image.src,
-  panels:panels.map(p=>({
-   ...p,
-   path:null
-  }))
+  panels:panels.map(p=>({...p,path:null}))
  };
  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
 }
@@ -188,10 +274,7 @@ function loadFromStorage(){
  const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
  if(!saved) return;
  image.src=saved.image;
- panels=saved.panels.map(p=>({
-  ...p,
-  path:createPath(p.points)
- }));
+ panels=saved.panels.map(p=>({...p,path:createPath(p.points)}));
 }
 
 document.getElementById("exportBtn").onclick=()=>{
