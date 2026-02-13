@@ -2,418 +2,203 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ギフト耐久管理及び作成ツール</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>パネル解放ツール</title>
 <style>
-:root { --card-size: clamp(90px, 10vw, 140px); }
-body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
-header {
-  padding: 10px;
-}
-
-#message {
-  font-size: 13px;
-  color: #555;
-  font-weight: bold;
-
-  white-space: pre-line;
-
-  line-height: 1.0;     
-  margin-bottom: 18px;  
-}
-
-
-.searchRow {
-  display: flex;
-  gap: 8px;
-}
-
-#search {
-  flex: 1;
-  padding: 8px;
-  font-size: 14px;
-}
-
-#search { flex:1; padding:8px; font-size:14px; }
-#exportBtn { padding:8px 12px; }
-
-#tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
-#tabs button {
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
-  background:#ddd;
-  font-size:13px;
-  white-space:nowrap;
-}
-#tabs button.active { background:#222; color:#fff; }
-
-#grid {
-  padding:10px;
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr));
-  gap:10px;
-}
-
-.card {
-  background:#fff;
-  border-radius:8px;
-  padding:6px;
-  text-align:center;
-  position:relative;
-  cursor:pointer;
-}
-
-.thumb {
-  width:100%;
-  aspect-ratio:1/1;
-  object-fit:contain;
-  border-radius:6px;
-}
-
-.name { font-size:12px; }
-.point { font-size:11px; color:#666; }
-
-.card.disabled { opacity:0.5; }
-.card.disabled::after {
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(
-    45deg,
-    transparent 45%,
-    rgba(200,0,0,.8) 45%,
-    rgba(200,0,0,.8) 55%,
-    transparent 55%
-  );
-  pointer-events:none;
-}
-
-/* preview */
-#preview {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-}
-#previewInner {
-  position:relative;
-  background:#fff;
-  padding:10px;
-  max-width:95vw;
-  max-height:95vh;
-  text-align:center;
-}
-#previewImg {
-  max-width:100%;
-  max-height:80vh;
-  display:block;
-  margin:auto;
-}
-#closePreview {
-  position:absolute;
-  top:4px;
-  right:8px;
-  font-size:24px;
-  background:none;
-  border:none;
-}
-#prevImg,#nextImg {
-  position:absolute;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:32px;
-  background:none;
-  border:none;
-}
-#prevImg { left:-8px; }
-#nextImg { right:-8px; }
-#pageInfo { font-size:12px; margin-bottom:6px; }
+body { font-family: sans-serif; margin:0; background:#f5f5f5; text-align:center; }
+.controls { padding:10px; background:white; position:sticky; top:0; z-index:10; }
+canvas { background:#ddd; max-width:95vw; margin:10px auto; display:block; touch-action:manipulation; }
+button, input { margin:3px; padding:6px; }
+.status { margin:5px; font-weight:bold; }
 </style>
 </head>
-
 <body>
 
-<header>
-  <div id="message">
-    画像をタップすると斜線が入ります<br>
-    画像出力は表示されるまで少し時間がかかります
-  </div>
-
-  <div class="searchRow">
-    <input id="search" placeholder="検索">
-    <button id="exportBtn">画像出力</button>
-  </div>
-</header>
-
-
-<nav id="tabs">
-  <button class="active" data-tab="全て">全て</button>
-  <button data-tab="ネタ">ネタ</button>
-  <button data-tab="笑">笑</button>
-  <button data-tab="定番">定番</button>
-  <button data-tab="えらい">えらい</button>
-  <button data-tab="挨拶">挨拶</button>
-  <button data-tab="ステージ">ステージ</button>
-  <button data-tab="LOVE">LOVE</button>
-</nav>
-
-<main id="grid"></main>
-
-<div id="preview">
-  <div id="previewInner">
-    <button id="closePreview">×</button>
-    <button id="prevImg">‹</button>
-    <button id="nextImg">›</button>
-    <div id="pageInfo"></div>
-    <img id="previewImg">
-  </div>
+<div class="controls">
+<input type="file" id="imageUpload" accept="image/*">
+<br>
+横 <input type="number" id="gridX" value="5" min="1" style="width:60px;">
+縦 <input type="number" id="gridY" value="5" min="1" style="width:60px;">
+パネル色 <input type="color" id="panelColor" value="#000000">
+文字色 <input type="color" id="textColor" value="#ffffff">
+<button id="generateBtn">パネル生成</button>
+<br>
+<button id="editToggle">編集</button>
+<button id="undoBtn">戻る</button>
+<button id="unlockAllBtn">全解放</button>
+<button id="exportBtn">画像出力</button>
 </div>
 
+<canvas id="canvas" width="1080" height="1080"></canvas>
+<div class="status" id="progressText"></div>
+
 <script>
-const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
-const IMG_BASE = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-let items = [];
-let activeTab = "全て";
+let appState = {
+  image: null,
+  panels: [],
+  history: []
+};
 
-const grid = document.getElementById("grid");
-const search = document.getElementById("search");
+let editMode = false;
 
-fetch(DATA_URL)
-  .then(r => r.json())
-  .then(data => {
-    items = data;
-    render();
-  });
-
-function normalize(str){
-  return str
-    .normalize("NFKC")
-    .replace(/[\u30A1-\u30F6]/g, ch =>
-      String.fromCharCode(ch.charCodeAt(0) - 0x60)
-    )
-    .toLowerCase();
+function saveState() {
+  localStorage.setItem("panelAppData", JSON.stringify(appState));
 }
 
-function getFiltered(ignoreSearch=false) {
-  return items
-    .filter(i => {
-      if (!ignoreSearch) {
-        const keyword = normalize(search.value);
-        const target = normalize(i.name);
-        if (!target.includes(keyword)) return false;
-      }
-      if (activeTab === "全て") return true;
-      return i.categories.includes(activeTab);
-    })
-    .sort((a, b) => {
-      const pa = Number(a.points) || 0;
-      const pb = Number(b.points) || 0;
-      return pa - pb; // ← 昇順（小さい順）
-    });
+function loadState() {
+  const data = localStorage.getItem("panelAppData");
+  if (data) {
+    if (confirm("前回のデータを復元しますか？")) {
+      appState = JSON.parse(data);
+      redraw();
+    } else {
+      localStorage.removeItem("panelAppData");
+    }
+  }
 }
 
+function pushHistory() {
+  appState.history.push(JSON.stringify(appState.panels));
+  if (appState.history.length > 50) appState.history.shift();
+}
 
-/* ===== 拡張子自動対応（表示側） ===== */
-function createImageElement(id) {
-  const img = document.createElement("img");
-  img.className = "thumb";
-  img.loading = "lazy";
+function undo() {
+  if (appState.history.length === 0) return;
+  const prev = appState.history.pop();
+  appState.panels = JSON.parse(prev);
+  redraw();
+  saveState();
+}
 
-  img.src = IMG_BASE + id + ".PNG";
+function resizeTo1080(img) {
+  const temp = document.createElement("canvas");
+  temp.width = 1080;
+  temp.height = 1080;
+  const tctx = temp.getContext("2d");
+  tctx.drawImage(img, 0, 0, 1080, 1080);
+  return temp.toDataURL("image/png");
+}
 
-  img.onerror = () => {
-    img.onerror = null;
-    img.src = IMG_BASE + id + ".png";
+document.getElementById("imageUpload").addEventListener("change", e => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const img = new Image();
+    img.onload = function() {
+      appState.image = resizeTo1080(img);
+      appState.panels = [];
+      pushHistory();
+      redraw();
+      saveState();
+    }
+    img.src = evt.target.result;
   };
-
-  return img;
-}
-
-function render() {
-  grid.innerHTML = "";
-
-  getFiltered().forEach(item => {
-    const c = document.createElement("div");
-    c.className = "card";
-    if (item.disabled) c.classList.add("disabled");
-
-    const img = createImageElement(item.id);
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = item.name;
-
-    const point = document.createElement("div");
-    point.className = "point";
-    point.textContent = item.points + "pt";
-
-    c.appendChild(img);
-    c.appendChild(name);
-    c.appendChild(point);
-
-    c.onclick = () => {
-      item.disabled = !item.disabled;
-      c.classList.toggle("disabled");
-    };
-
-    grid.appendChild(c);
-  });
-}
-
-document.querySelectorAll("#tabs button").forEach(b=>{
-  b.onclick = () => {
-    document.querySelector("#tabs .active").classList.remove("active");
-    b.classList.add("active");
-    activeTab = b.dataset.tab;
-    render();
-  };
+  reader.readAsDataURL(file);
 });
 
-search.oninput = render;
+document.getElementById("generateBtn").addEventListener("click", () => {
+  if (!appState.image) return alert("画像をアップロードしてください");
+  pushHistory();
+  const gx = parseInt(document.getElementById("gridX").value);
+  const gy = parseInt(document.getElementById("gridY").value);
+  const color = document.getElementById("panelColor").value;
+  appState.panels = [];
+  const w = 1080 / gx;
+  const h = 1080 / gy;
+  for (let y=0;y<gy;y++){
+    for (let x=0;x<gx;x++){
+      appState.panels.push({
+        x:x*w, y:y*h, w:w, h:h,
+        color:color,
+        text:"",
+        textColor: document.getElementById("textColor").value,
+        hidden:false
+      });
+    }
+  }
+  redraw();
+  saveState();
+});
 
-/* ===== 出力用拡張子自動対応 ===== */
+document.getElementById("editToggle").addEventListener("click", ()=>{
+  editMode = !editMode;
+  document.getElementById("editToggle").innerText = editMode ? "保存" : "編集";
+});
 
-function loadImageSmart(id){
-  return new Promise((resolve) => {
+document.getElementById("undoBtn").addEventListener("click", undo);
 
-    const tryLoad = (ext) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => {
-        if (ext === ".PNG") {
-          tryLoad(".png");
-        } else {
-          resolve(null);
+document.getElementById("unlockAllBtn").addEventListener("click", ()=>{
+  pushHistory();
+  appState.panels.forEach(p=>p.hidden=true);
+  redraw();
+  saveState();
+});
+
+document.getElementById("exportBtn").addEventListener("click", ()=>{
+  const link = document.createElement("a");
+  link.download = "progress.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+});
+
+canvas.addEventListener("click", e=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (1080 / rect.width);
+  const y = (e.clientY - rect.top) * (1080 / rect.height);
+
+  for (let p of appState.panels){
+    if (x>=p.x && x<=p.x+p.w && y>=p.y && y<=p.y+p.h){
+      pushHistory();
+      if (editMode){
+        const text = prompt("パネル文字を入力", p.text);
+        if (text !== null) {
+          p.text = text;
+          p.textColor = document.getElementById("textColor").value;
         }
-      };
-      img.src = IMG_BASE + id + ext;
-    };
-
-    tryLoad(".PNG");
-  });
-}
-
-/* ===== 出力（並列高速） ===== */
-
-let previewImages = [];
-let currentPreviewIndex = 0;
-
-document.getElementById("exportBtn").onclick = async () => {
-  const list = getFiltered(true);
-  if (!list.length) return;
-
-  previewImages = [];
-  currentPreviewIndex = 0;
-
-  const MAX_PER_IMAGE = 100;
-
-  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
-    const slice = list.slice(i, i + MAX_PER_IMAGE);
-    const img = await generateCanvasImage(slice);
-    previewImages.push(img);
-  }
-
-  showPreview();
-};
-
-async function generateCanvasImage(list) {
-
-  const W = 1920;
-  const H = 1080;
-  const padding = 20;
-  const count = Math.min(list.length, 100);
-
-  let cols = Math.ceil(Math.sqrt(count * (W / H)));
-  cols = Math.min(cols, 12);
-  let rows = Math.ceil(count / cols);
-
-  const thumbSizeW = (W / cols) - padding * 2;
-  const thumbSizeH = (H / rows) - padding * 2;
-  const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
-
-  const cardW = thumbSize + padding * 2;
-  const cardH = thumbSize + padding * 2;
-
-  cols = Math.floor(W / cardW);
-  rows = Math.ceil(count / cols);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, W, H);
-
-  const imagePromises = list.slice(0, count).map(item =>
-    loadImageSmart(item.id)
-      .then(img => ({ img, item }))
-  );
-
-  const loadedImages = await Promise.all(imagePromises);
-
-  loadedImages.forEach((data, i) => {
-    const { img, item } = data;
-
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-
-    const x = col * cardW + padding;
-    const y = row * cardH + padding;
-
-    if (img) {
-      ctx.drawImage(img, x, y, thumbSize, thumbSize);
-    } else {
-      ctx.fillStyle = "#ccc";
-      ctx.fillRect(x, y, thumbSize, thumbSize);
+      } else {
+        p.hidden = true;
+      }
+      redraw();
+      saveState();
+      break;
     }
+  }
+});
 
-    if (item.disabled) {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + thumbSize, y + thumbSize);
-      ctx.stroke();
+function redraw(){
+  if (!appState.image) return;
+  const img = new Image();
+  img.onload = function(){
+    ctx.clearRect(0,0,1080,1080);
+    ctx.drawImage(img,0,0);
+    let openCount=0;
+    for (let p of appState.panels){
+      if (!p.hidden){
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x,p.y,p.w,p.h);
+        ctx.strokeStyle="#ffffff";
+        ctx.strokeRect(p.x,p.y,p.w,p.h);
+        if (p.text){
+          ctx.fillStyle = p.textColor;
+          ctx.font = "bold 30px sans-serif";
+          ctx.textAlign="center";
+          ctx.textBaseline="middle";
+          ctx.fillText(p.text, p.x+p.w/2, p.y+p.h/2, p.w-10);
+        }
+      } else {
+        openCount++;
+      }
     }
-  });
-
-  return canvas.toDataURL("image/jpeg", 0.95);
+    document.getElementById("progressText").innerText =
+      openCount + " / " + appState.panels.length + " 解放";
+  }
+  img.src = appState.image;
 }
 
-/* preview */
-
-function showPreview(){
-  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
-  document.getElementById("pageInfo").textContent =
-    `${currentPreviewIndex+1} / ${previewImages.length}`;
-  document.getElementById("preview").style.display="flex";
-}
-
-document.getElementById("prevImg").onclick=()=>{
-  if(currentPreviewIndex>0){
-    currentPreviewIndex--;
-    showPreview();
-  }
-};
-
-document.getElementById("nextImg").onclick=()=>{
-  if(currentPreviewIndex<previewImages.length-1){
-    currentPreviewIndex++;
-    showPreview();
-  }
-};
-
-document.getElementById("closePreview").onclick=()=>{
-  document.getElementById("preview").style.display="none";
-};
+loadState();
 </script>
 
 </body>
