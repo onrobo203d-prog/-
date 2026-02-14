@@ -2,30 +2,30 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Grid Panel Reveal Builder</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Curved Panel Reveal</title>
 <style>
-body{margin:0;font-family:sans-serif;text-align:center;background:#f2f2f2}
-.controls{margin:10px}
-canvas{background:#999;max-width:95vw;touch-action:none}
+body{margin:0;font-family:sans-serif;background:#f2f2f2;text-align:center}
+.controls{margin:8px}
+canvas{max-width:95vw;background:#999;touch-action:none}
 button,input{margin:4px}
 </style>
 </head>
 <body>
 
-<h2>Grid Panel Reveal</h2>
+<h3>Curved Panel Reveal</h3>
 
 <div class="controls">
 横 <input type="number" id="cols" value="4" min="1">
 縦 <input type="number" id="rows" value="4" min="1">
-合計 <span id="total">16</span> 枚
+合計 <span id="total">16</span>
 <button id="build">グリッド生成</button>
+<input type="file" id="upload">
 </div>
 
 <div class="controls">
 <button id="modeBtn">▶ プレイ</button>
 <button id="undoBtn">↩ 戻る</button>
-<button id="previewBtn">プレビュー出力</button>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -33,82 +33,150 @@ button,input{margin:4px}
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+
+const colsInput = document.getElementById("cols");
+const rowsInput = document.getElementById("rows");
+const totalSpan = document.getElementById("total");
+
 let img = new Image();
-
 let cols=4, rows=4;
-let vLines=[], hLines=[];
-let panels=[];
-let undoStack=[];
 let mode="edit";
+let undoStack=[];
 
-const LINE_HIT=8;
-const MIN_SIZE=20;
-const MAX=800;
+/* ===== グリッド点 & 曲線 ===== */
+let points = [];   // 格子点
+let edges = [];    // 辺（共有）
 
-document.getElementById("cols").oninput =
-document.getElementById("rows").oninput = ()=>{
-  cols=+colsInput.value; rows=+rowsInput.value;
-  total.textContent=cols*rows;
+const MAX = 800;
+const HIT = 12;
+
+colsInput.oninput = rowsInput.oninput = ()=>{
+  totalSpan.textContent = colsInput.value * rowsInput.value;
 };
 
-const colsInput=document.getElementById("cols");
-const rowsInput=document.getElementById("rows");
-const total=document.getElementById("total");
+document.getElementById("upload").onchange = e=>{
+  const r = new FileReader();
+  r.onload = ev => img.src = ev.target.result;
+  r.readAsDataURL(e.target.files[0]);
+};
 
-document.getElementById("build").onclick=()=>initGrid();
-
-img.onload=()=>{
-  const r=Math.min(MAX/img.width,MAX/img.height);
-  canvas.width=img.width*r;
-  canvas.height=img.height*r;
+img.onload = ()=>{
+  const r = Math.min(MAX/img.width, MAX/img.height);
+  canvas.width = img.width*r;
+  canvas.height = img.height*r;
   initGrid();
 };
 
-img.src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z8BQDwAF/wJ/lKXcZQAAAABJRU5ErkJggg==";
+document.getElementById("build").onclick = ()=> initGrid();
 
 function initGrid(){
-  cols=+colsInput.value;
-  rows=+rowsInput.value;
-  total.textContent=cols*rows;
+  cols = +colsInput.value;
+  rows = +rowsInput.value;
+  totalSpan.textContent = cols*rows;
+  undoStack=[];
 
-  vLines=[]; hLines=[]; panels=[]; undoStack=[];
-  for(let i=0;i<=cols;i++) vLines.push(canvas.width*i/cols);
-  for(let i=0;i<=rows;i++) hLines.push(canvas.height*i/rows);
+  points=[];
+  edges=[];
+
+  for(let y=0;y<=rows;y++){
+    for(let x=0;x<=cols;x++){
+      points.push({
+        x: canvas.width * x / cols,
+        y: canvas.height * y / rows
+      });
+    }
+  }
+
+  function p(x,y){ return points[y*(cols+1)+x]; }
 
   for(let y=0;y<rows;y++){
     for(let x=0;x<cols;x++){
-      panels.push({x,y,visible:true});
+      if(!edges.find(e=>e.id===`t${x}_${y}`))
+        edges.push(makeEdge(p(x,y),p(x+1,y)));
+      if(!edges.find(e=>e.id===`b${x}_${y}`))
+        edges.push(makeEdge(p(x,y+1),p(x+1,y+1)));
+      if(!edges.find(e=>e.id===`l${x}_${y}`))
+        edges.push(makeEdge(p(x,y),p(x,y+1)));
+      if(!edges.find(e=>e.id===`r${x}_${y}`))
+        edges.push(makeEdge(p(x+1,y),p(x+1,y+1)));
     }
   }
   draw();
 }
 
+function makeEdge(a,b){
+  return {
+    a,b,
+    cx:(a.x+b.x)/2,
+    cy:(a.y+b.y)/2,
+    panels:[],
+  };
+}
+
+/* ===== 描画 ===== */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  if(img.src) ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-  panels.forEach(p=>{
-    if(p.visible){
-      const x1=vLines[p.x], x2=vLines[p.x+1];
-      const y1=hLines[p.y], y2=hLines[p.y+1];
-      ctx.fillStyle="#000";
-      ctx.fillRect(x1,y1,x2-x1,y2-y1);
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      if(isHidden(x,y)){
+        drawPanel(x,y,true);
+      }
     }
-  });
+  }
 
   if(mode==="edit"){
     ctx.strokeStyle="#0ff";
-    ctx.lineWidth=2;
-    vLines.forEach(x=>{
-      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
-    });
-    hLines.forEach(y=>{
-      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+    edges.forEach(e=>{
+      ctx.beginPath();
+      ctx.moveTo(e.a.x,e.a.y);
+      ctx.quadraticCurveTo(e.cx,e.cy,e.b.x,e.b.y);
+      ctx.stroke();
     });
   }
 }
 
-let dragLine=null;
+let hidden = new Set();
+
+function panelKey(x,y){ return x+"_"+y; }
+
+function isHidden(x,y){
+  return hidden.has(panelKey(x,y));
+}
+
+function drawPanel(x,y,fill){
+  const path = new Path2D();
+  const top = getEdge(x,y,"top");
+  const right = getEdge(x,y,"right");
+  const bottom = getEdge(x,y,"bottom");
+  const left = getEdge(x,y,"left");
+
+  path.moveTo(top.a.x,top.a.y);
+  path.quadraticCurveTo(top.cx,top.cy,top.b.x,top.b.y);
+  path.quadraticCurveTo(right.cx,right.cy,right.b.x,right.b.y);
+  path.quadraticCurveTo(bottom.cx,bottom.cy,bottom.b.x,bottom.b.y);
+  path.quadraticCurveTo(left.cx,left.cy,left.b.x,left.b.y);
+  path.closePath();
+
+  if(fill){
+    ctx.fillStyle="#000";
+    ctx.fill(path);
+  }
+  return path;
+}
+
+function getEdge(x,y,dir){
+  const ax = dir==="left"?x:dir==="right"?x+1:x;
+  const ay = dir==="top"?y:dir==="bottom"?y+1:y;
+  const bx = dir==="top"?x+1:dir==="bottom"?x:x;
+  const by = dir==="left"?y+1:dir==="right"?y:y;
+  return edges.find(e=>e.a===points[ay*(cols+1)+ax] && e.b===points[by*(cols+1)+bx]
+                || e.b===points[ay*(cols+1)+ax] && e.a===points[by*(cols+1)+bx]);
+}
+
+/* ===== 辺ドラッグ ===== */
+let dragEdge=null;
 
 canvas.onpointerdown=e=>{
   if(mode!=="edit") return;
@@ -116,74 +184,57 @@ canvas.onpointerdown=e=>{
   const x=(e.clientX-r.left)*(canvas.width/r.width);
   const y=(e.clientY-r.top)*(canvas.height/r.height);
 
-  vLines.forEach((lx,i)=>{
-    if(i>0 && i<cols && Math.abs(lx-x)<LINE_HIT) dragLine={type:"v",i};
-  });
-  hLines.forEach((ly,i)=>{
-    if(i>0 && i<rows && Math.abs(ly-y)<LINE_HIT) dragLine={type:"h",i};
+  edges.forEach(ed=>{
+    const mx=(ed.a.x+ed.b.x)/2;
+    const my=(ed.a.y+ed.b.y)/2;
+    if(Math.hypot(mx-x,my-y)<HIT) dragEdge=ed;
   });
 };
 
 canvas.onpointermove=e=>{
-  if(!dragLine) return;
+  if(!dragEdge) return;
   const r=canvas.getBoundingClientRect();
-  const pos=(dragLine.type==="v"
-    ? (e.clientX-r.left)*(canvas.width/r.width)
-    : (e.clientY-r.top)*(canvas.height/r.height)
-  );
-  const arr=dragLine.type==="v"?vLines:hLines;
-  const i=dragLine.i;
-  arr[i]=Math.max(arr[i-1]+MIN_SIZE,Math.min(arr[i+1]-MIN_SIZE,pos));
+  dragEdge.cx=(e.clientX-r.left)*(canvas.width/r.width);
+  dragEdge.cy=(e.clientY-r.top)*(canvas.height/r.height);
   draw();
 };
 
-canvas.onpointerup=()=>dragLine=null;
+canvas.onpointerup=()=> dragEdge=null;
 
+/* ===== パネルタップ ===== */
 canvas.onclick=e=>{
   if(mode!=="play") return;
   const r=canvas.getBoundingClientRect();
   const x=(e.clientX-r.left)*(canvas.width/r.width);
   const y=(e.clientY-r.top)*(canvas.height/r.height);
-  panels.forEach(p=>{
-    if(!p.visible) return;
-    const x1=vLines[p.x], x2=vLines[p.x+1];
-    const y1=hLines[p.y], y2=hLines[p.y+1];
-    if(x>x1&&x<x2&&y>y1&&y<y2){
-      p.visible=false;
-      undoStack.push(p);
-      draw();
+
+  for(let py=0;py<rows;py++){
+    for(let px=0;px<cols;px++){
+      if(isHidden(px,py)) continue;
+      const path=drawPanel(px,py,false);
+      if(ctx.isPointInPath(path,x,y)){
+        hidden.add(panelKey(px,py));
+        undoStack.push(panelKey(px,py));
+        draw();
+        return;
+      }
     }
-  });
+  }
 };
 
+/* ===== Undo ===== */
 document.getElementById("undoBtn").onclick=()=>{
-  const p=undoStack.pop();
-  if(p){ p.visible=true; draw(); }
+  const k=undoStack.pop();
+  if(k){ hidden.delete(k); draw(); }
 };
 
+/* ===== モード ===== */
 document.getElementById("modeBtn").onclick=function(){
-  mode=mode==="edit"?"play":"edit";
-  this.textContent=mode==="edit"?"▶ プレイ":"✏ 編集";
+  mode = mode==="edit"?"play":"edit";
+  this.textContent = mode==="edit"?"▶ プレイ":"✏ 編集";
   draw();
 };
-
-document.getElementById("previewBtn").onclick=()=>{
-  const out=document.createElement("canvas");
-  out.width=canvas.width;
-  out.height=canvas.height;
-  const o=out.getContext("2d");
-  o.drawImage(img,0,0,out.width,out.height);
-  panels.forEach(p=>{
-    if(p.visible){
-      o.fillStyle="#000";
-      o.fillRect(vLines[p.x],hLines[p.y],
-        vLines[p.x+1]-vLines[p.x],
-        hLines[p.y+1]-hLines[p.y]);
-    }
-  });
-  const w=window.open();
-  w.document.body.appendChild(out);
-};
 </script>
+
 </body>
 </html>
