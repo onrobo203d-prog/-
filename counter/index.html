@@ -2,14 +2,14 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel Mask Controller</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Panel Mask Controller FIX</title>
 <style>
 body{margin:0;font-family:sans-serif;background:#f2f2f2}
-.controls{padding:8px;text-align:center}
+.controls{text-align:center;padding:8px}
 canvas{display:block;margin:auto;max-width:95vw;background:#aaa;touch-action:none}
 button,input,textarea{margin:4px}
-.panel-ui{border:1px solid #ccc;background:#fff;margin:6px;padding:6px}
+.panel-ui{background:#fff;border:1px solid #ccc;margin:6px;padding:6px}
 .panel-ui input,.panel-ui textarea{width:95%}
 </style>
 </head>
@@ -33,34 +33,28 @@ button,input,textarea{margin:4px}
 </div>
 
 <canvas id="canvas"></canvas>
-
 <div id="panelTexts"></div>
 
 <script>
-/* ===== 基本 ===== */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-let img = new Image();
-let mode = "edit"; // edit / play
+let img=new Image();
 let cols=4, rows=4;
+let mode="edit";
 let panels=[];
+let fixedPaths=[];   // ★再生用確定Path
 let undoStack=[];
 let drag=null;
 
 const MAX=900;
 const HIT=12;
 
-/* ===== 入力 ===== */
-const colsInput = document.getElementById("cols");
-const rowsInput = document.getElementById("rows");
-const total = document.getElementById("total");
-
+/* ---------- 入力 ---------- */
 colsInput.oninput = rowsInput.oninput = ()=>{
   total.textContent = colsInput.value * rowsInput.value;
 };
 
-/* ===== 画像 ===== */
 upload.onchange=e=>{
   const r=new FileReader();
   r.onload=ev=>img.src=ev.target.result;
@@ -74,40 +68,21 @@ img.onload=()=>{
   initGrid();
 };
 
-/* ===== グリッド生成 ===== */
-panelBuild.onclick=()=>{
-  mode="play";
-  colsInput.disabled=true;
-  rowsInput.disabled=true;
-  draw();
-};
-
-panelEdit.onclick=()=>{
-  mode="edit";
-  panels.forEach(p=>p.visible=true);
-  undoStack=[];
-  draw();
-};
-
+/* ---------- 初期化 ---------- */
 function initGrid(){
   cols=+colsInput.value;
   rows=+rowsInput.value;
   total.textContent=cols*rows;
   panels=[];
+  fixedPaths=[];
   undoStack=[];
   panelTexts.innerHTML="";
-
-  const w=canvas.width/cols;
-  const h=canvas.height/rows;
 
   for(let y=0;y<rows;y++){
     for(let x=0;x<cols;x++){
       panels.push({
-        x,y,
-        visible:true,
-        name:"",
-        condition:"",
-        textColor:"#ffffff",
+        x,y,visible:true,
+        name:"",condition:"",textColor:"#fff",
         edges:{
           top:{dx:0,dy:0},
           right:{dx:0,dy:0},
@@ -121,7 +96,27 @@ function initGrid(){
   draw();
 }
 
-/* ===== テキストUI ===== */
+/* ---------- パネル生成（再生突入） ---------- */
+panelBuild.onclick=()=>{
+  mode="play";
+  colsInput.disabled=true;
+  rowsInput.disabled=true;
+  fixedPaths = panels.map(p=>getPanelPath(p)); // ★ここで確定
+  draw();
+};
+
+/* ---------- パネル編集に戻る ---------- */
+panelEdit.onclick=()=>{
+  mode="edit";
+  colsInput.disabled=false;
+  rowsInput.disabled=false;
+  panels.forEach(p=>p.visible=true);
+  undoStack=[];
+  fixedPaths=[];
+  draw();
+};
+
+/* ---------- UI ---------- */
 function createTextUI(x,y){
   const i=y*cols+x;
   const d=document.createElement("div");
@@ -142,14 +137,14 @@ function createTextUI(x,y){
   panelTexts.appendChild(d);
 }
 
-/* ===== 描画 ===== */
+/* ---------- 描画 ---------- */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if(img.src) ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-  panels.forEach(p=>{
+  panels.forEach((p,i)=>{
     if(!p.visible) return;
-    const path=getPanelPath(p);
+    const path = (mode==="play" && fixedPaths[i]) ? fixedPaths[i] : getPanelPath(p);
     ctx.fillStyle=panelColor.value;
     ctx.fill(path);
     if(lineVisible.checked){
@@ -179,17 +174,17 @@ function getPanelPath(p){
 function drawText(p){
   const w=canvas.width/cols;
   const h=canvas.height/rows;
-  const cx=p.x*w+w/2;
-  const cy=p.y*h+h/2;
   ctx.fillStyle=p.textColor;
   ctx.textAlign="center";
   ctx.textBaseline="middle";
   ctx.font="14px sans-serif";
+  const cx=p.x*w+w/2;
+  const cy=p.y*h+h/2;
   if(p.name) ctx.fillText(p.name,cx,cy-8);
   if(p.condition) ctx.fillText(p.condition,cx,cy+8);
 }
 
-/* ===== 編集時 辺ドラッグ ===== */
+/* ---------- 編集：辺ドラッグ ---------- */
 canvas.onpointerdown=e=>{
   if(mode!=="edit") return;
   const r=canvas.getBoundingClientRect();
@@ -220,43 +215,44 @@ canvas.onpointermove=e=>{
   p.edges[drag.edge].dy=Math.max(-h/2,Math.min(h/2,y-(p.y*h+h/2)));
   draw();
 };
-
 canvas.onpointerup=()=>drag=null;
 
-/* ===== 再生（解放） ===== */
+/* ---------- 再生：判定 ---------- */
 canvas.onclick=e=>{
   if(mode!=="play") return;
   const r=canvas.getBoundingClientRect();
   const x=(e.clientX-r.left)*(canvas.width/r.width);
   const y=(e.clientY-r.top)*(canvas.height/r.height);
-  for(const p of panels){
-    if(!p.visible) continue;
-    const path=getPanelPath(p);
+
+  fixedPaths.forEach((path,i)=>{
+    if(!panels[i].visible) return;
     if(ctx.isPointInPath(path,x,y)){
-      p.visible=false;
-      undoStack.push(p);
+      panels[i].visible=false;
+      undoStack.push(i);
       draw();
-      break;
     }
-  }
+  });
 };
 
 undoBtn.onclick=()=>{
-  const p=undoStack.pop();
-  if(p){ p.visible=true; draw(); }
+  const i=undoStack.pop();
+  if(i!==undefined){
+    panels[i].visible=true;
+    draw();
+  }
 };
 
-/* ===== プレビュー ===== */
+/* ---------- プレビュー ---------- */
 previewBtn.onclick=()=>{
   const c=document.createElement("canvas");
   c.width=canvas.width;
   c.height=canvas.height;
   const o=c.getContext("2d");
   o.drawImage(img,0,0,c.width,c.height);
-  panels.forEach(p=>{
-    if(p.visible){
+  fixedPaths.forEach((p,i)=>{
+    if(panels[i].visible){
       o.fillStyle=panelColor.value;
-      o.fill(getPanelPath(p));
+      o.fill(p);
     }
   });
   const w=window.open();
