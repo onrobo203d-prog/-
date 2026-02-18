@@ -2,67 +2,34 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ギフト耐久管理及び作成ツール</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ギフト管理ツール</title>
 
 <style>
 :root { --card-size: clamp(90px, 10vw, 140px); }
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
-header { padding: 10px; }
+header { padding:10px; }
 
 #messageRow {
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:10px;
+  display:flex; justify-content:space-between; align-items:flex-start;
   margin-bottom:10px;
 }
 
-#messageText {
-  font-size:13px;
-  color:#555;
-  font-weight:bold;
-  white-space:pre-line;
-  line-height:1.0;
+#noticeBtn { padding:6px 10px; font-size:12px; }
+
+.resetWrap { text-align:center; margin-bottom:10px; }
+.resetWrap button {
+  padding:8px 14px;
+  background:#ff6666; color:#fff;
+  border:none; border-radius:8px;
 }
 
-#noticeBtn {
-  font-size:12px;
-  padding:6px 10px;
-  border-radius:6px;
-  border:none;
-  background:#444;
-  color:#fff;
-}
+.searchRow { display:flex; gap:8px; margin-bottom:10px; }
+#search { flex:1; padding:8px; }
 
-.resetWrap {
-  text-align:center;
-  margin-bottom:15px;
-}
-
-.resetWrap button{
-  padding:8px 16px;
-  border-radius:8px;
-  border:none;
-  background:#ff6666;
-  color:#fff;
-  font-weight:bold;
-}
-
-.searchRow { display:flex; gap:8px; }
-#search { flex:1; padding:8px; font-size:14px; }
-#exportBtn { padding:8px 12px; }
-
-#tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
-#tabs button {
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
-  background:#ddd;
-  font-size:13px;
-  white-space:nowrap;
-}
-#tabs button.active { background:#222; color:#fff; }
+#tabs { display:flex; gap:6px; overflow-x:auto; padding:0 10px; }
+#tabs button { padding:6px 10px; border:none; border-radius:6px; background:#ddd; }
+#tabs .active { background:#222; color:#fff; }
 
 #grid {
   padding:10px;
@@ -73,9 +40,8 @@ header { padding: 10px; }
 
 .card {
   background:#fff;
-  border-radius:8px;
   padding:6px;
-  text-align:center;
+  border-radius:8px;
   position:relative;
   cursor:pointer;
 }
@@ -84,13 +50,9 @@ header { padding: 10px; }
   width:100%;
   aspect-ratio:1/1;
   object-fit:contain;
-  border-radius:6px;
 }
 
-.name { font-size:12px; }
-.point { font-size:11px; color:#666; }
-
-.card.disabled { opacity:0.5; }
+.card.disabled { opacity:.5; }
 .card.disabled::after {
   content:"";
   position:absolute;
@@ -102,19 +64,30 @@ header { padding: 10px; }
     rgba(200,0,0,.8) 55%,
     transparent 55%
   );
-  pointer-events:none;
+}
+
+/* モーダル */
+#noticeModal,#preview {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.6);
+  display:none; align-items:center; justify-content:center;
+  z-index:9999;
+}
+.modalInner {
+  background:#fff; padding:20px;
+  max-width:90vw; width:320px;
+  border-radius:10px;
 }
 </style>
 </head>
-
 <body>
 
 <header>
 
 <div id="messageRow">
-  <div id="messageText">
+  <div style="font-size:13px;">
     画像をタップすると斜線が入ります<br>
-    画像出力は表示されるまで少し時間がかかります
+    画像出力は少し時間がかかります
   </div>
   <button id="noticeBtn">使用前にお読み下さい</button>
 </div>
@@ -132,140 +105,85 @@ header { padding: 10px; }
 
 <nav id="tabs">
   <button class="active" data-tab="全て">全て</button>
-  <button data-tab="ネタ">ネタ</button>
-  <button data-tab="笑">笑</button>
-  <button data-tab="定番">定番</button>
-  <button data-tab="えらい">えらい</button>
-  <button data-tab="挨拶">挨拶</button>
-  <button data-tab="ステージ">ステージ</button>
-  <button data-tab="LOVE">LOVE</button>
 </nav>
 
 <main id="grid"></main>
 
+<!-- 注意 -->
+<div id="noticeModal">
+  <div class="modalInner">
+    <h3>ご利用前の注意事項</h3>
+    <p>
+      本ツールはファン制作の非公式ツールです。<br>
+      公式とは無関係です。
+    </p>
+    <button onclick="closeNotice()">閉じる</button>
+  </div>
+</div>
+
 <script>
-const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
-const IMG_BASE = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
-const STORAGE_KEY = "gift_state_v2";
-const AUTO_LIMIT = 60 * 60 * 1000; //1時間
+const DATA_URL="https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
+const IMG_BASE="https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
+const STORAGE_KEY="gift_state_v3";
+const AUTO_LIMIT=60*60*1000;
 
-let items = [];
-let activeTab = "全て";
+let items=[];
+let activeTab="全て";
 
-const grid = document.getElementById("grid");
-const search = document.getElementById("search");
+const grid=document.getElementById("grid");
+const search=document.getElementById("search");
 
-/* ===== 保存 ===== */
+/* 保存 */
 function saveState(){
-  const state = items.map(i=>({
-    id:i.id,
-    disabled:!!i.disabled
-  }));
-
-  const data = {
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({
     updated:Date.now(),
-    state:state
-  };
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    state:items.map(i=>({id:i.id,disabled:!!i.disabled}))
+  }));
 }
 
-/* ===== 復元 ===== */
+/* 復元 */
 function restoreState(){
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if(!saved) return;
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(!saved)return;
+  const data=JSON.parse(saved);
+  const diff=Date.now()-data.updated;
+  if(diff>AUTO_LIMIT&&!confirm("前回の状態を復元しますか？"))return;
 
-  const data = JSON.parse(saved);
-  const diff = Date.now() - data.updated;
-
-  const shouldRestore =
-    diff < AUTO_LIMIT ||
-    confirm("前回の状態を復元しますか？");
-
-  if(!shouldRestore){
-    localStorage.removeItem(STORAGE_KEY);
-    return;
-  }
-
-  const map = new Map(data.state.map(s=>[s.id,s.disabled]));
-
-  items.forEach(item=>{
-    if(map.has(item.id)){
-      item.disabled = map.get(item.id);
-    }
-  });
+  const map=new Map(data.state.map(s=>[s.id,s.disabled]));
+  items.forEach(i=>{if(map.has(i.id))i.disabled=map.get(i.id)});
 }
 
-/* ===== リセット ===== */
+/* リセット */
 function resetState(){
-  if(confirm("本当に状態をリセットしますか？")){
+  if(confirm("本当にリセットしますか？")){
     localStorage.removeItem(STORAGE_KEY);
     items.forEach(i=>i.disabled=false);
     render();
   }
 }
 
-/* ===== データ取得 ===== */
-fetch(DATA_URL)
-  .then(r=>r.json())
-  .then(data=>{
-    items = data;
-    restoreState();
-    render();
-  });
+/* データ取得 */
+fetch(DATA_URL).then(r=>r.json()).then(data=>{
+  items=data;
+  restoreState();
+  render();
+});
 
-function normalize(str){
-  return str.normalize("NFKC")
-    .replace(/[\u30A1-\u30F6]/g,ch=>
-      String.fromCharCode(ch.charCodeAt(0)-0x60)
-    )
-    .toLowerCase();
-}
-
-function getFiltered(ignoreSearch=false){
-  return items
-    .filter(i=>{
-      if(!ignoreSearch){
-        const keyword = normalize(search.value);
-        const target = normalize(i.name);
-        if(!target.includes(keyword)) return false;
-      }
-      if(activeTab==="全て") return true;
-      return i.categories.includes(activeTab);
-    })
-    .sort((a,b)=>(Number(a.points)||0)-(Number(b.points)||0));
-}
-
-function createImageElement(id){
-  const img=document.createElement("img");
-  img.className="thumb";
-  img.loading="lazy";
-  img.src=IMG_BASE+id+".PNG";
-  img.onerror=()=>{
-    img.onerror=null;
-    img.src=IMG_BASE+id+".png";
-  };
-  return img;
-}
-
+/* 描画 */
 function render(){
   grid.innerHTML="";
-  getFiltered().forEach(item=>{
+  items.forEach(item=>{
     const c=document.createElement("div");
     c.className="card";
-    if(item.disabled) c.classList.add("disabled");
+    if(item.disabled)c.classList.add("disabled");
 
-    const img=createImageElement(item.id);
+    const img=document.createElement("img");
+    img.className="thumb";
+    img.loading="lazy";
+    img.src=IMG_BASE+item.id+".PNG";
+    img.onerror=()=>img.src=IMG_BASE+item.id+".png";
 
-    const name=document.createElement("div");
-    name.className="name";
-    name.textContent=item.name;
-
-    const point=document.createElement("div");
-    point.className="point";
-    point.textContent=item.points+"pt";
-
-    c.append(img,name,point);
+    c.appendChild(img);
 
     c.onclick=()=>{
       item.disabled=!item.disabled;
@@ -277,22 +195,62 @@ function render(){
   });
 }
 
-document.querySelectorAll("#tabs button").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelector("#tabs .active").classList.remove("active");
-    b.classList.add("active");
-    activeTab=b.dataset.tab;
-    render();
-  };
-});
+/* 注意 */
+document.getElementById("noticeBtn").onclick=()=>{
+  document.getElementById("noticeModal").style.display="flex";
+};
+function closeNotice(){
+  document.getElementById("noticeModal").style.display="none";
+}
 
-search.oninput=render;
+/* ===== 画像出力 ===== */
+document.getElementById("exportBtn").onclick=async()=>{
+  const enabled=items.filter(i=>!i.disabled);
+  if(enabled.length===0)return alert("画像がありません");
 
-/* アプリ切替時も保存 */
-document.addEventListener("visibilitychange",()=>{
-  if(document.hidden) saveState();
-});
+  const perPage=100;
+  const pages=Math.ceil(enabled.length/perPage);
+
+  for(let p=0;p<pages;p++){
+    const slice=enabled.slice(p*perPage,(p+1)*perPage);
+    await generatePage(slice,p+1);
+  }
+};
+
+async function generatePage(list,pageNum){
+  const size=200;
+  const cols=10;
+  const rows=Math.ceil(list.length/cols);
+
+  const canvas=document.createElement("canvas");
+  canvas.width=cols*size;
+  canvas.height=rows*size;
+
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  for(let i=0;i<list.length;i++){
+    const img=await loadImg(IMG_BASE+list[i].id+".png");
+    const x=(i%cols)*size;
+    const y=Math.floor(i/cols)*size;
+    ctx.drawImage(img,x,y,size,size);
+  }
+
+  const link=document.createElement("a");
+  link.download="gift_page_"+pageNum+".png";
+  link.href=canvas.toDataURL();
+  link.click();
+}
+
+function loadImg(src){
+  return new Promise(res=>{
+    const img=new Image();
+    img.crossOrigin="anonymous";
+    img.onload=()=>res(img);
+    img.src=src;
+  });
+}
 </script>
-
 </body>
 </html>
