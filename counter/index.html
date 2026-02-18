@@ -6,6 +6,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+
+/* ===== 上部アクションボタン ===== */
+.actionRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#exportBtn {
+  background: #6ec8ff;
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+#resetBtn {
+  background: #ff4d4d;
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+  
 :root { --card-size: clamp(90px, 10vw, 140px); }
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
 
@@ -185,12 +212,12 @@ header { padding: 10px; }
     </div>
     <button id="noticeBtn">使用前にお読み下さい</button>
   </div>
-
-<button onclick="resetState()">状態をリセット</button>
-
+<div class="actionRow">
+  <button id="exportBtn">画像出力</button>
+  <button id="resetBtn" onclick="resetState()">状態をリセット</button>
+</div>
   <div class="searchRow">
     <input id="search" placeholder="検索">
-    <button id="exportBtn">画像出力</button>
   </div>
 
 </header>
