@@ -228,15 +228,74 @@ let players=[],
     customRates1 = null,
     customRates2 = null;
 
+/* ---------- 景品登録 ---------- */
+function addItem(){
+  const div=document.createElement("div");
+  div.style.marginTop='8px';
+  div.innerHTML=`
+    <input type="text" placeholder="景品名">
+    <select>
+      <option>N</option><option>R</option><option>SR</option>
+      <option>UR</option><option>LR</option>
+    </select>
+    <button onclick="this.parentNode.remove(); saveToLocal();">×</button>
+  `;
+  document.getElementById('items').appendChild(div);
+
+  const input = div.querySelector("input");
+  const select = div.querySelector("select");
+
+  input.addEventListener("keydown", e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      select.focus();
+    }
+  });
+
+  input.addEventListener("change", saveToLocal);
+  select.addEventListener("change", saveToLocal);
+
+  saveToLocal();
+}
+
+/* ---------- プレイヤー管理 ---------- */
+function addPlayer(){
+  const name=document.getElementById("playerName").value.trim();
+  if(!name || players.includes(name)) return;
+  players.push(name);
+  ceilingCounter[name]=0;
+  updatePlayerUI();
+  document.getElementById("playerName").value="";
+  saveToLocal();
+}
+
+function updatePlayerUI(){
+  const sel=document.getElementById("playerSelect");
+  const filter=document.getElementById("logFilter");
+  sel.innerHTML="";
+  filter.innerHTML='<option value="">全員</option>';
+  players.forEach(name=>{
+    let opt=document.createElement("option");
+    opt.value=name;
+    opt.text=name;
+    sel.add(opt);
+
+    let opt2=document.createElement("option");
+    opt2.value=name;
+    opt2.text=name;
+    filter.add(opt2);
+  });
+}
+
 /* ---------- ローカル保存 ---------- */
 function saveToLocal(){
   const state = {
     rates:{
-      N: rateN.value,
-      R: rateR.value,
-      SR: rateSR.value,
-      UR: rateUR.value,
-      LR: rateLR.value
+      N: document.getElementById("rateN").value,
+      R: document.getElementById("rateR").value,
+      SR: document.getElementById("rateSR").value,
+      UR: document.getElementById("rateUR").value,
+      LR: document.getElementById("rateLR").value
     },
     items:[],
     players: players,
@@ -245,9 +304,9 @@ function saveToLocal(){
     customRates1: customRates1,
     customRates2: customRates2,
     ceiling:{
-      enabled: ceilingSwitch.checked,
-      count: ceilingCount.value,
-      rarities: [...ceilingRarity.selectedOptions].map(o=>o.value)
+      enabled: document.getElementById("ceilingSwitch").checked,
+      count: document.getElementById("ceilingCount").value,
+      rarities: [...document.getElementById("ceilingRarity").selectedOptions].map(o=>o.value)
     }
   };
 
@@ -260,131 +319,67 @@ function saveToLocal(){
   localStorage.setItem("gachaState", JSON.stringify(state));
 }
 
-/* ---------- ローカル復元 ---------- */
 function loadFromLocal(){
   const saved = localStorage.getItem("gachaState");
-  if(!saved) return;
+  if(!saved){
+    addItem();
+    return;
+  }
 
   try{
     const state = JSON.parse(saved);
 
     if(state.rates){
-      rateN.value = state.rates.N;
-      rateR.value = state.rates.R;
-      rateSR.value = state.rates.SR;
-      rateUR.value = state.rates.UR;
-      rateLR.value = state.rates.LR;
+      document.getElementById("rateN").value = state.rates.N;
+      document.getElementById("rateR").value = state.rates.R;
+      document.getElementById("rateSR").value = state.rates.SR;
+      document.getElementById("rateUR").value = state.rates.UR;
+      document.getElementById("rateLR").value = state.rates.LR;
     }
 
-    items.innerHTML="";
+    const itemsDiv=document.getElementById("items");
+    itemsDiv.innerHTML="";
     (state.items||[]).forEach(it=>{
       addItem();
       const last=document.querySelector("#items > div:last-child");
-      last.querySelector("input").value = it.name;
-      last.querySelector("select").value = it.rarity;
+      last.querySelector("input").value=it.name;
+      last.querySelector("select").value=it.rarity;
     });
 
-    players = state.players || [];
-    ceilingCounter = state.ceilingCounter || {};
+    if((state.items||[]).length===0) addItem();
+
+    players = state.players||[];
+    ceilingCounter = state.ceilingCounter||{};
+    logData = state.logData||[];
+    customRates1 = state.customRates1||null;
+    customRates2 = state.customRates2||null;
+
     updatePlayerUI();
-
-    logData = state.logData || [];
-
-    customRates1 = state.customRates1 || null;
-    customRates2 = state.customRates2 || null;
+    displayLog();
 
     if(state.ceiling){
-      ceilingSwitch.checked = state.ceiling.enabled;
+      document.getElementById("ceilingSwitch").checked=state.ceiling.enabled;
+      document.getElementById("ceilingCount").value=state.ceiling.count;
       toggleCeiling();
-      ceilingCount.value = state.ceiling.count;
-      const sel = ceilingRarity;
+      const sel=document.getElementById("ceilingRarity");
       for(let i=0;i<sel.options.length;i++){
         sel.options[i].selected =
           state.ceiling.rarities.includes(sel.options[i].value);
       }
     }
 
-    displayLog();
   }catch(e){
-    console.error("復元失敗", e);
+    console.error("復元失敗",e);
+    addItem();
   }
 }
 
-/* 初期景品1個 */
-addItem();
+/* ---------- 初期処理 ---------- */
+updatePlayerUI();
+loadFromLocal();
+displayLog();
 
-/* ---------- プレイヤー ---------- */
-function addPlayer(){
-  const name=playerName.value.trim();
-  if(!name || players.includes(name)) return;
-  players.push(name);
-  ceilingCounter[name]=0;
-  updatePlayerUI();
-  playerName.value="";
-  saveToLocal();
-}
-function updatePlayerUI(){
-  playerSelect.innerHTML="";
-  logFilter.innerHTML='<option value="">全員</option>';
-  players.forEach(name=>{
-    let opt=new Option(name,name);
-    playerSelect.add(opt);
-    let opt2=new Option(name,name);
-    logFilter.add(opt2);
-  });
-}
-
-/* ---------- 景品 ---------- */
-function addItem(){
-  const div=document.createElement("div");
-  div.style.marginTop='8px';
-  div.innerHTML=`
-    <input type="text" placeholder="景品名">
-    <select>
-      <option>N</option><option>R</option><option>SR</option>
-      <option>UR</option><option>LR</option>
-    </select>
-    <button onclick="this.parentNode.remove(); saveToLocal();">×</button>
-  `;
-  items.appendChild(div);
-
-  const input=div.querySelector("input");
-  const select=div.querySelector("select");
-  input.addEventListener("keydown",e=>{
-    if(e.key==="Enter"){e.preventDefault();select.focus();}
-  });
-
-  input.addEventListener("input",saveToLocal);
-  select.addEventListener("change",saveToLocal);
-
-  saveToLocal();
-}
-
-/* ---------- ログ ---------- */
-function addLog(player,results,times){
-  logData.push({player,results,times});
-  saveToLocal();
-  displayLog();
-}
-
-/* ---------- clearLog 修正 ---------- */
-function clearLog(){
-  if(confirm("全ログと登録名を削除しますか？")){
-    logData=[];
-    players=[];
-    ceilingCounter={};
-    updatePlayerUI();
-    displayLog();
-    saveToLocal();
-  }
-}
-
-/* ---------- ページ読み込み ---------- */
-document.addEventListener("DOMContentLoaded",()=>{
-  loadFromLocal();
-  updatePlayerUI();
-  displayLog();
-});
 </script>
+
 </body>
 </html>
