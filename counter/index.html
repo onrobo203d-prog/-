@@ -2,568 +2,147 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ギフト耐久管理及び作成ツール</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>擬似コラボボイス</title>
 
 <style>
-
-/* ===== 上部アクションボタン ===== */
-.actionRow {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-#exportBtn {
-  background: #6ec8ff;
-  border: none;
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-weight: bold;
-}
-
-#resetBtn {
-  background: #ff4d4d;
-  border: none;
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-weight: bold;
-}
-
-  
-:root { --card-size: clamp(90px, 10vw, 140px); }
-body { margin:0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f6f6f6; }
-
-header { padding: 10px; }
-
-/* ===== メッセージ行 ===== */
-#messageRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-#messageText {
-  font-size: 13px;
-  color: #555;
-  font-weight: bold;
-  white-space: pre-line;
-  line-height: 1.0;
-}
-
-#noticeBtn {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
-  background: #444;
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* ===== 検索 ===== */
-.searchRow { display: flex; gap: 8px; }
-#search { flex:1; padding:8px; font-size:14px; }
-#exportBtn { padding:8px 12px; }
-
-/* ===== タブ ===== */
-#tabs { display:flex; gap:6px; padding:0 10px; overflow-x:auto; }
-#tabs button {
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
-  background:#ddd;
-  font-size:13px;
-  white-space:nowrap;
-}
-#tabs button.active { background:#222; color:#fff; }
-
-/* ===== グリッド ===== */
-#grid {
-  padding:10px;
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr));
-  gap:10px;
-}
-
-.card {
-  background:#fff;
-  border-radius:8px;
-  padding:6px;
-  text-align:center;
-  position:relative;
-  cursor:pointer;
-}
-
-.thumb {
-  width:100%;
-  aspect-ratio:1/1;
-  object-fit:contain;
-  border-radius:6px;
-}
-
-.name { font-size:12px; }
-.point { font-size:11px; color:#666; }
-
-.card.disabled { opacity:0.5; }
-.card.disabled::after {
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(
-    45deg,
-    transparent 45%,
-    rgba(200,0,0,.8) 45%,
-    rgba(200,0,0,.8) 55%,
-    transparent 55%
-  );
-  pointer-events:none;
-}
-
-/* ===== プレビュー ===== */
-#preview {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-}
-#previewInner {
-  position:relative;
-  background:#fff;
-  padding:10px;
-  max-width:95vw;
-  max-height:95vh;
-  text-align:center;
-}
-#previewImg {
-  max-width:100%;
-  max-height:80vh;
-  display:block;
-  margin:auto;
-}
-#closePreview {
-  position:absolute;
-  top:4px;
-  right:8px;
-  font-size:24px;
-  background:none;
-  border:none;
-}
-#prevImg,#nextImg {
-  position:absolute;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:32px;
-  background:none;
-  border:none;
-}
-#prevImg { left:-8px; }
-#nextImg { right:-8px; }
-#pageInfo { font-size:12px; margin-bottom:6px; }
-
-/* ===== 注意モーダル ===== */
-#noticeModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.6);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-}
-
-#noticeInner {
-  background: #fff;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 20px;
-  max-width: 90vw;
-  width: 320px;
-  border-radius: 10px;
-  position: relative;
-  font-size: 14px;
-  line-height: 1.6;
+  background: #111;
+  color: white;
 }
 
-#closeNotice {
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  font-size: 20px;
+select, button, input {
+  width: 100%;
+  margin: 10px 0;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 8px;
   border: none;
-  background: none;
+}
+
+button {
+  background: #4da6ff;
+  color: white;
+}
+
+button.stop {
+  background: #ff5c5c;
+}
+
+input[type="range"] {
+  padding: 0;
 }
 </style>
 </head>
-
 <body>
 
-<header>
+<h2>キャラクター選択</h2>
+<select id="characterSelect"></select>
 
-  <div id="messageRow">
-    <div id="messageText">
-      画像をタップすると斜線が入ります<br>
-      画像出力は表示されるまで少し時間がかかります
-    </div>
-    <button id="noticeBtn">使用前にお読み下さい</button>
-  </div>
-<div class="actionRow">
-  <button id="exportBtn">画像出力</button>
-  <button id="resetBtn" onclick="resetState()">状態をリセット</button>
-</div>
-  <div class="searchRow">
-    <input id="search" placeholder="検索">
-  </div>
+<h2>BGM選択</h2>
+<select id="bgmSelect">
+  <option value="bgm1.mp3">BGM 1</option>
+  <option value="bgm2.mp3">BGM 2</option>
+  <option value="bgm3.mp3">BGM 3</option>
+</select>
 
-</header>
+<button id="bgmToggle">BGM 再生</button>
 
-<nav id="tabs">
-  <button class="active" data-tab="全て">全て</button>
-  <button data-tab="ネタ">ネタ</button>
-  <button data-tab="笑">笑</button>
-  <button data-tab="定番">定番</button>
-  <button data-tab="えらい">えらい</button>
-  <button data-tab="挨拶">挨拶</button>
-  <button data-tab="ステージ">ステージ</button>
-  <button data-tab="LOVE">LOVE</button>
-</nav>
+<h3>BGM音量</h3>
+<input type="range" id="bgmVolume" min="0" max="1" step="0.01" value="0.4">
 
-<main id="grid"></main>
+<hr>
 
-<!-- プレビュー -->
-<div id="preview">
-  <div id="previewInner">
-    <button id="closePreview">×</button>
-    <button id="prevImg">‹</button>
-    <button id="nextImg">›</button>
-    <div id="pageInfo"></div>
-    <img id="previewImg">
-  </div>
-</div>
+<button id="playVoice">セリフ再生</button>
 
-<!-- 注意事項 -->
-<div id="noticeModal">
-  <div id="noticeInner">
-    <button id="closeNotice">×</button>
-    <h3>ご利用前の注意事項</h3>
-    <p>
-      本ツールはイリアム内で配信を行うライバーの支援を目的として制作された非営利のツールです。<br>
-     株式会社イリアムとは無関係のファンツールとなります。<br>
-      本ツール内で表示されるギフト画像は株式会社イリアムが著作権を保有しており<br>
-      画像出力された一覧画像及び表示されているギフト画像の利用に関する規約は<br>
-      株式会社イリアムの掲げる規約及びガイドラインに則って扱われます。<br>
-      イリアムのガイドラインでの禁止事項に則り、ツール内の画像を用いてのグッズ販売等は禁止となります。<br>
-      配信支援ツールとしてSNS等で画像を利用する行為にのみ活用して下さい。<br>
-      その他、利用範囲、権利等に関するご質問にはお答え致しかねますのでご了承下さい。
-    </p>
-  </div>
-</div>
+<h3>ボイス音量</h3>
+<input type="range" id="voiceVolume" min="0" max="1" step="0.01" value="0.8">
+
+<audio id="bgmPlayer" loop></audio>
+<audio id="voicePlayer"></audio>
 
 <script>
+let characters = {};
+let currentCharacter = null;
+let recentHistory = [];
 
-/* ===== 状態保存設定 ===== */
-const STORAGE_KEY = "gift_state_v4";
-const AUTO_LIMIT = 60 * 60 * 1000; // 1時間
+const bgmPlayer = document.getElementById("bgmPlayer");
+const voicePlayer = document.getElementById("voicePlayer");
 
-
-const DATA_URL = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/data.json";
-const IMG_BASE = "https://raw.githubusercontent.com/onrobo203d-prog/gifts-image/main/images/";
-
-let items = [];
-let activeTab = "全て";
-
-const grid = document.getElementById("grid");
-const search = document.getElementById("search");
-
-fetch(DATA_URL)
-  .then(r => r.json())
-  .then(data => { items = data; restoreState(); render(); });
-
-function normalize(str){
-  return str.normalize("NFKC")
-    .replace(/[\u30A1-\u30F6]/g, ch =>
-      String.fromCharCode(ch.charCodeAt(0) - 0x60)
-    )
-    .toLowerCase();
-}
-
-function getFiltered(ignoreSearch=false) {
-  return items
-    .filter(i => {
-      if (!ignoreSearch) {
-        const keyword = normalize(search.value);
-        const target = normalize(i.name);
-        if (!target.includes(keyword)) return false;
-      }
-      if (activeTab === "全て") return true;
-      return i.categories.includes(activeTab);
-    })
-    .sort((a,b)=>(Number(a.points)||0)-(Number(b.points)||0));
-}
-
-/* ===== 表示 ===== */
-
-function createImageElement(id) {
-  const img = document.createElement("img");
-  img.className = "thumb";
-  img.loading = "lazy";
-  img.src = IMG_BASE + id + ".PNG";
-  img.onerror = () => {
-    img.onerror = null;
-    img.src = IMG_BASE + id + ".png";
-  };
-  return img;
-}
-
-function render() {
-  grid.innerHTML = "";
-  getFiltered().forEach(item => {
-    const c = document.createElement("div");
-    c.className = "card";
-    if (item.disabled) c.classList.add("disabled");
-
-    const img = createImageElement(item.id);
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = item.name;
-
-    const point = document.createElement("div");
-    point.className = "point";
-    point.textContent = item.points + "pt";
-
-    c.append(img,name,point);
-
-    c.onclick = () => {
-      item.disabled = !item.disabled;
-      c.classList.toggle("disabled");
-
-saveState();
-
-    };
-
-    grid.appendChild(c);
+fetch("data/characters.json")
+  .then(res => res.json())
+  .then(data => {
+    characters = data;
+    const select = document.getElementById("characterSelect");
+    Object.keys(characters).forEach(char => {
+      const option = document.createElement("option");
+      option.value = char;
+      option.textContent = char;
+      select.appendChild(option);
+    });
+    currentCharacter = select.value;
   });
-}
 
-document.querySelectorAll("#tabs button").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelector("#tabs .active").classList.remove("active");
-    b.classList.add("active");
-    activeTab=b.dataset.tab;
-    render();
-  };
+document.getElementById("characterSelect").addEventListener("change", e => {
+  currentCharacter = e.target.value;
+  recentHistory = [];
 });
 
-search.oninput=render;
-
-/* ===== 出力処理 ===== */
-
-function loadImageSmart(id){
-  return new Promise((resolve) => {
-
-    const tryLoad = (ext) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => {
-        if (ext === ".PNG") {
-          tryLoad(".png");
-        } else {
-          resolve(null);
-        }
-      };
-      img.src = IMG_BASE + id + ext;
-    };
-
-    tryLoad(".PNG");
-  });
-}
-
-let previewImages = [];
-let currentPreviewIndex = 0;
-
-document.getElementById("exportBtn").onclick = async () => {
-  const list = getFiltered(true);
-  if (!list.length) return;
-
-  previewImages = [];
-  currentPreviewIndex = 0;
-
-  const MAX_PER_IMAGE = 100;
-
-  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
-    const slice = list.slice(i, i + MAX_PER_IMAGE);
-    const img = await generateCanvasImage(slice);
-    previewImages.push(img);
+document.getElementById("bgmToggle").addEventListener("click", () => {
+  if (bgmPlayer.paused) {
+    bgmPlayer.src = "bgm/" + document.getElementById("bgmSelect").value;
+    bgmPlayer.play();
+    document.getElementById("bgmToggle").textContent = "BGM 停止";
+  } else {
+    bgmPlayer.pause();
+    document.getElementById("bgmToggle").textContent = "BGM 再生";
   }
+});
 
-  showPreview();
-};
-
-async function generateCanvasImage(list) {
-
-  const W = 1920;
-  const H = 1080;
-  const padding = 20;
-  const count = Math.min(list.length, 100);
-
-  let cols = Math.ceil(Math.sqrt(count * (W / H)));
-  cols = Math.min(cols, 12);
-  let rows = Math.ceil(count / cols);
-
-  const thumbSizeW = (W / cols) - padding * 2;
-  const thumbSizeH = (H / rows) - padding * 2;
-  const thumbSize = Math.floor(Math.min(thumbSizeW, thumbSizeH));
-
-  const cardW = thumbSize + padding * 2;
-  const cardH = thumbSize + padding * 2;
-
-  cols = Math.floor(W / cardW);
-  rows = Math.ceil(count / cols);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, W, H);
-
-  const imagePromises = list.slice(0, count).map(item =>
-    loadImageSmart(item.id)
-      .then(img => ({ img, item }))
-  );
-
-  const loadedImages = await Promise.all(imagePromises);
-
-  loadedImages.forEach((data, i) => {
-    const { img, item } = data;
-
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-
-    const x = col * cardW + padding;
-    const y = row * cardH + padding;
-
-    if (img) {
-      ctx.drawImage(img, x, y, thumbSize, thumbSize);
-    } else {
-      ctx.fillStyle = "#ccc";
-      ctx.fillRect(x, y, thumbSize, thumbSize);
-    }
-
-    if (item.disabled) {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + thumbSize, y + thumbSize);
-      ctx.stroke();
-    }
-  });
-
-  return canvas.toDataURL("image/jpeg", 0.95);
-}
-
-/* ===== プレビュー制御 ===== */
-
-function showPreview(){
-  document.getElementById("previewImg").src = previewImages[currentPreviewIndex];
-  document.getElementById("pageInfo").textContent =
-    `${currentPreviewIndex+1} / ${previewImages.length}`;
-  document.getElementById("preview").style.display="flex";
-}
-
-document.getElementById("prevImg").onclick=()=>{
-  if(currentPreviewIndex>0){
-    currentPreviewIndex--;
-    showPreview();
+document.getElementById("bgmSelect").addEventListener("change", () => {
+  if (!bgmPlayer.paused) {
+    bgmPlayer.pause();
+    bgmPlayer.src = "bgm/" + document.getElementById("bgmSelect").value;
+    bgmPlayer.play();
   }
-};
+});
 
-document.getElementById("nextImg").onclick=()=>{
-  if(currentPreviewIndex<previewImages.length-1){
-    currentPreviewIndex++;
-    showPreview();
-  }
-};
+document.getElementById("bgmVolume").addEventListener("input", e => {
+  bgmPlayer.volume = e.target.value;
+});
 
-document.getElementById("closePreview").onclick=()=>{
-  document.getElementById("preview").style.display="none";
-};
+document.getElementById("voiceVolume").addEventListener("input", e => {
+  voicePlayer.volume = e.target.value;
+});
 
-/* ===== 注意モーダル ===== */
+document.getElementById("playVoice").addEventListener("click", () => {
+  if (!currentCharacter) return;
 
-document.getElementById("noticeBtn").onclick = () => {
-  document.getElementById("noticeModal").style.display="flex";
-};
-document.getElementById("closeNotice").onclick = () => {
-  document.getElementById("noticeModal").style.display="none";
-};
-document.getElementById("noticeModal").onclick = (e)=>{
-  if(e.target.id==="noticeModal"){
-    document.getElementById("noticeModal").style.display="none";
-  }
-};
+  const tierRand = Math.random();
+  let tier = "N";
+  if (tierRand >= 0.95) tier = "SR";
+  else if (tierRand >= 0.7) tier = "R";
 
-function saveState() {
-  const state = items.map(i => ({
-    id: i.id,
-    disabled: !!i.disabled
-  }));
+  let pool = characters[currentCharacter][tier];
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    updated: Date.now(),
-    state
-  }));
-}
+  if (!pool || pool.length === 0) return;
 
-function restoreState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return;
+  let candidates = pool.filter(id => !recentHistory.includes(id));
+  if (candidates.length === 0) candidates = pool;
 
-  try {
-    const data = JSON.parse(raw);
-    const diff = Date.now() - data.updated;
+  const id = candidates[Math.floor(Math.random() * candidates.length)];
 
-    if (diff > AUTO_LIMIT) {
-      const ok = confirm("前回の状態を復元しますか？");
-      if (!ok) return;
-    }
+  voicePlayer.pause();
+  voicePlayer.currentTime = 0;
+  voicePlayer.src = `voices/${currentCharacter}/${tier}/${id}.mp3`;
+  voicePlayer.play();
 
-    const map = new Map(data.state.map(s => [s.id, s.disabled]));
-    items.forEach(i => {
-      if (map.has(i.id)) {
-        i.disabled = map.get(i.id);
-      }
-    });
-
-  } catch (e) {
-    console.warn("復元失敗", e);
-  }
-}
-
-function resetState() {
-  if (!confirm("本当に状態をリセットしますか？")) return;
-
-  localStorage.removeItem(STORAGE_KEY);
-
-  items.forEach(i => i.disabled = false);
-
-  if (typeof render === "function") {
-    render();
-  }
-}
-
-
+  recentHistory.push(id);
+  if (recentHistory.length > 3) recentHistory.shift();
+});
 </script>
-
 
 </body>
 </html>
