@@ -136,7 +136,7 @@ document.getElementById("playVoice").addEventListener("click", () => {
 
   voicePlayer.pause();
   voicePlayer.currentTime = 0;
-  voicePlayer.src = `voices/${currentCharacter}/${tier}/${id}.mp3`;
+  voicePlayer.src = `voices/${currentCharacter}/${tier}/${id}.wav`;
   voicePlayer.play();
 
   recentHistory.push(id);
