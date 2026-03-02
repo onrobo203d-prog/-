@@ -14,35 +14,35 @@ body{
 }
 #clock{
   font-size:clamp(40px,8vw,72px);
-  margin:30px 0;
+  margin:20px 0;
   transition:0.3s;
 }
 .red{ color:red; }
 
-.bgm-block{
+.bgm-container{
+  display:flex;
+  justify-content:center;
+  gap:40px;
   margin-bottom:30px;
 }
 
-.controls-row{
+.bgm-block{
   display:flex;
+  flex-direction:column;
+  align-items:center;
   gap:10px;
-  justify-content:center;
-  margin-bottom:5px;
 }
 
-input,button{
-  padding:10px;
-  font-size:16px;
+input, button{
+  padding:8px 12px;
+  font-size:14px;
+  width:200px;
 }
 
-iframe{
-  border:0;
-}
-
-/* プレーヤー小さく表示 */
 .ytPlayer{
   width:200px;
   height:50px;
+  border:0;
 }
 </style>
 </head>
@@ -51,39 +51,44 @@ iframe{
 <h1>BGM & 跳ねタイマー</h1>
 <div id="clock">--:--:--</div>
 
-<div class="bgm-block" id="normalBGM">
-  <h3>通常BGM</h3>
-  <div class="controls-row">
-    <button class="playBtn" id="normalBtn">再生</button>
-    <input type="text" class="ytUrl" id="normalInput" placeholder="YouTubeリンク">
-  </div>
-  <iframe class="ytPlayer" id="normalPlayer"></iframe>
-</div>
+<div class="bgm-container">
 
-<div class="bgm-block" id="zuiBGM">
-  <h3>ズイズイBGM</h3>
-  <div class="controls-row">
-    <button class="playBtn" id="zuiBtn">再生</button>
-    <input type="text" class="ytUrl" id="zuiInput" placeholder="YouTubeリンク">
+  <div class="bgm-block" id="normalBGM">
+    <h3>通常BGM</h3>
+    <button id="normalBtn">再生</button>
+    <input type="text" id="normalInput" placeholder="YouTubeリンク">
+    <div id="normalPlayer"></div>
   </div>
-  <iframe class="ytPlayer" id="zuiPlayer"></iframe>
+
+  <div class="bgm-block" id="zuiBGM">
+    <h3>ズイズイBGM</h3>
+    <button id="zuiBtn">再生</button>
+    <input type="text" id="zuiInput" placeholder="YouTubeリンク">
+    <div id="zuiPlayer"></div>
+  </div>
+
 </div>
 
 <h5>跳ねるタイミングで時間表示が赤く表示されます。</h5>
 
+<!-- YouTube Iframe API読み込み -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
 <script>
-// ===== ローカル保存読み込み =====
+// ===== ローカル保存 =====
 const normalInput = document.getElementById("normalInput");
 const zuiInput = document.getElementById("zuiInput");
 
 normalInput.value = localStorage.getItem("normalYT") || "";
 zuiInput.value = localStorage.getItem("zuiYT") || "";
 
-// 入力変更で即保存
-normalInput.addEventListener("input",e=>localStorage.setItem("normalYT",e.target.value));
-zuiInput.addEventListener("input",e=>localStorage.setItem("zuiYT",e.target.value));
+normalInput.addEventListener("input",e=>localStorage.setItem("normalYT", e.target.value));
+zuiInput.addEventListener("input",e=>localStorage.setItem("zuiYT", e.target.value));
 
-// ===== YouTube動画ID取得 =====
+// ===== YouTube Player API =====
+let normalPlayer, zuiPlayer;
+let state = "IDLE";
+
 function extractVideoId(url){
   try{
     const u = new URL(url);
@@ -94,41 +99,54 @@ function extractVideoId(url){
   }
 }
 
-// ===== プレーヤー＆状態管理 =====
-const normalPlayer = document.getElementById("normalPlayer");
-const zuiPlayer = document.getElementById("zuiPlayer");
+function createPlayer(id, container){
+  return new YT.Player(container, {
+    height: '50',
+    width: '200',
+    videoId: id,
+    playerVars: {
+      autoplay: 0,
+      loop: 1,
+      playlist: id,
+      playsinline: 1
+    }
+  });
+}
 
-let state="IDLE";
-
-// ===== 再生関数 =====
-function playBGM(player,url,btn,otherPlayer,otherBtn){
-  const id = extractVideoId(url.trim());
+// 再生/停止関数
+function playBGM(playerVar, inputElem, btnElem, otherPlayerVar, otherBtn){
+  const id = extractVideoId(inputElem.value.trim());
   if(!id){ alert("正しいYouTubeリンクを入力してください"); return; }
 
   // もう片方停止
-  otherPlayer.src="";
-  otherBtn.textContent="再生";
+  if(otherPlayerVar && otherPlayerVar.pauseVideo) otherPlayerVar.pauseVideo();
+  if(otherBtn) otherBtn.textContent="再生";
 
-  // 自分が再生中なら停止
-  if(state === btn.id){
-    player.src="";
-    btn.textContent="再生";
+  if(state === btnElem.id){
+    if(playerVar && playerVar.pauseVideo) playerVar.pauseVideo();
+    btnElem.textContent="再生";
     state="IDLE";
     return;
   }
 
-  // 再生
-  player.src=`https://www.youtube.com/embed/${id}?autoplay=1&loop=1&playlist=${id}&playsinline=1`;
-  btn.textContent="停止";
-  state=btn.id;
+  // プレイヤーが未作成か動画IDが変わった場合
+  if(!playerVar || playerVar.getVideoData().video_id !== id){
+    playerVar = createPlayer(id, playerVar===normalPlayer?"normalPlayer":"zuiPlayer");
+    if(btnElem.id==="normalBtn") normalPlayer = playerVar;
+    else zuiPlayer = playerVar;
+  }
+
+  playerVar.playVideo();
+  btnElem.textContent="停止";
+  state=btnElem.id;
 }
 
-// ===== ボタンイベント =====
-document.getElementById("normalBtn").addEventListener("click",()=>{
-  playBGM(normalPlayer, normalInput.value, normalBtn, zuiPlayer, zuiBtn);
+// ボタンイベント
+document.getElementById("normalBtn").addEventListener("click", ()=>{
+  playBGM(normalPlayer, normalInput, normalBtn, zuiPlayer, zuiBtn);
 });
-document.getElementById("zuiBtn").addEventListener("click",()=>{
-  playBGM(zuiPlayer, zuiInput.value, zuiBtn, normalPlayer, normalBtn);
+document.getElementById("zuiBtn").addEventListener("click", ()=>{
+  playBGM(zuiPlayer, zuiInput, zuiBtn, normalPlayer, normalBtn);
 });
 
 // ===== 時計 =====
@@ -149,6 +167,5 @@ function updateClock(){
 setInterval(updateClock,1000);
 updateClock();
 </script>
-
 </body>
 </html>
