@@ -71,9 +71,8 @@ input, button{
 
 <h5>跳ねるタイミングで時間表示が赤く表示されます。</h5>
 
-<!-- YouTube Iframe API読み込み -->
+<!-- YouTube Iframe API -->
 <script src="https://www.youtube.com/iframe_api"></script>
-
 <script>
 // ===== ローカル保存 =====
 const normalInput = document.getElementById("normalInput");
@@ -89,6 +88,7 @@ zuiInput.addEventListener("input",e=>localStorage.setItem("zuiYT", e.target.valu
 let normalPlayer, zuiPlayer;
 let state = "IDLE";
 
+// 動画ID取得
 function extractVideoId(url){
   try{
     const u = new URL(url);
@@ -99,29 +99,31 @@ function extractVideoId(url){
   }
 }
 
-function createPlayer(id, container){
-  return new YT.Player(container, {
-    height: '50',
-    width: '200',
-    videoId: id,
+// プレイヤー作成
+function createPlayer(containerId, videoId){
+  return new YT.Player(containerId, {
+    height:'50',
+    width:'200',
+    videoId: videoId,
     playerVars: {
-      autoplay: 0,
-      loop: 1,
-      playlist: id,
-      playsinline: 1
+      autoplay:0,
+      loop:1,
+      playlist: videoId,
+      playsinline:1
     }
   });
 }
 
-// 再生/停止関数
-function playBGM(playerVar, inputElem, btnElem, otherPlayerVar, otherBtn){
+// 再生/停止共通関数
+function toggleBGM(playerVar, inputElem, btnElem, otherPlayerVar, otherBtn, playerContainer){
   const id = extractVideoId(inputElem.value.trim());
   if(!id){ alert("正しいYouTubeリンクを入力してください"); return; }
 
-  // もう片方停止
+  // 他方停止（バッファ残す）
   if(otherPlayerVar && otherPlayerVar.pauseVideo) otherPlayerVar.pauseVideo();
   if(otherBtn) otherBtn.textContent="再生";
 
+  // 自分が再生中なら停止
   if(state === btnElem.id){
     if(playerVar && playerVar.pauseVideo) playerVar.pauseVideo();
     btnElem.textContent="再生";
@@ -129,24 +131,26 @@ function playBGM(playerVar, inputElem, btnElem, otherPlayerVar, otherBtn){
     return;
   }
 
-  // プレイヤーが未作成か動画IDが変わった場合
-  if(!playerVar || playerVar.getVideoData().video_id !== id){
-    playerVar = createPlayer(id, playerVar===normalPlayer?"normalPlayer":"zuiPlayer");
-    if(btnElem.id==="normalBtn") normalPlayer = playerVar;
+  // プレイヤー未作成または動画が変わった場合は作り直す
+  if(!playerVar){
+    playerVar = createPlayer(playerContainer, id);
+    if(btnElem.id === "normalBtn") normalPlayer = playerVar;
     else zuiPlayer = playerVar;
+  } else {
+    playerVar.seekTo(0); // 頭から再生
   }
 
   playerVar.playVideo();
   btnElem.textContent="停止";
-  state=btnElem.id;
+  state = btnElem.id;
 }
 
 // ボタンイベント
-document.getElementById("normalBtn").addEventListener("click", ()=>{
-  playBGM(normalPlayer, normalInput, normalBtn, zuiPlayer, zuiBtn);
+document.getElementById("normalBtn").addEventListener("click",()=>{
+  toggleBGM(normalPlayer, normalInput, normalBtn, zuiPlayer, zuiBtn, "normalPlayer");
 });
-document.getElementById("zuiBtn").addEventListener("click", ()=>{
-  playBGM(zuiPlayer, zuiInput, zuiBtn, normalPlayer, normalBtn);
+document.getElementById("zuiBtn").addEventListener("click",()=>{
+  toggleBGM(zuiPlayer, zuiInput, zuiBtn, normalPlayer, normalBtn, "zuiPlayer");
 });
 
 // ===== 時計 =====
