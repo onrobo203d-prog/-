@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BGM & 跳ねタイマー（アップロード版）</title>
+<title>BGM & 跳ねタイマー（アップロード版 修正版）</title>
 <style>
 body{
   margin:0;
@@ -21,8 +21,9 @@ body{
 
 .bgm-container{
   display:flex;
+  flex-wrap:wrap;
   justify-content:center;
-  gap:40px;
+  gap:5vw;
   margin-bottom:30px;
 }
 
@@ -31,19 +32,21 @@ body{
   flex-direction:column;
   align-items:center;
   gap:8px;
+  width: clamp(200px,40%,300px);
 }
 
 input[type=file], button{
   padding:8px 12px;
-  font-size:14px;
-  width:200px;
+  font-size:clamp(12px,1.5vw,16px);
+  width:100%;
+  box-sizing:border-box;
 }
 
 .audio-player{
-  width:200px;
+  width:100%;
 }
 .file-name{
-  font-size:12px;
+  font-size:clamp(10px,1vw,12px);
   color:#ccc;
   text-align:center;
   word-break: break-word;
@@ -61,7 +64,7 @@ input[type=file], button{
     <h3>通常BGM</h3>
     <button id="normalBtn">再生</button>
     <div class="file-name" id="normalFileName">未登録</div>
-    <input type="file" id="normalUpload" accept="audio/*">
+    <input type="file" id="normalUpload" accept=".mp3,.ogg">
     <audio id="normalPlayer" class="audio-player" controls></audio>
   </div>
 
@@ -69,7 +72,7 @@ input[type=file], button{
     <h3>ズイズイBGM</h3>
     <button id="zuiBtn">再生</button>
     <div class="file-name" id="zuiFileName">未登録</div>
-    <input type="file" id="zuiUpload" accept="audio/*">
+    <input type="file" id="zuiUpload" accept=".mp3,.ogg">
     <audio id="zuiPlayer" class="audio-player" controls></audio>
   </div>
 
@@ -161,7 +164,6 @@ normalBtn.addEventListener("click", ()=>{
     normalBtn.textContent="再生";
     return;
   }
-  // 片方停止
   zuiPlayer.pause();
   zuiBtn.textContent="再生";
 
@@ -178,7 +180,6 @@ zuiBtn.addEventListener("click", ()=>{
     zuiBtn.textContent="再生";
     return;
   }
-  // 片方停止
   normalPlayer.pause();
   normalBtn.textContent="再生";
 
@@ -205,7 +206,6 @@ function updateClock(){
 }
 setInterval(updateClock,1000);
 updateClock();
-
 </script>
 </body>
 </html>
