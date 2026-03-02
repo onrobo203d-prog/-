@@ -67,157 +67,118 @@ input,button{
 
 <script>
 
-// =====================
-// 初期ロード（ローカル保存読込）
-// =====================
+// ===== ローカル保存 =====
+normalInput.value = localStorage.getItem("normalYT") || "";
+zuiInput.value = localStorage.getItem("zuiYT") || "";
 
-document.getElementById("normalInput").value =
-  localStorage.getItem("normalYT") || "";
-
-document.getElementById("zuiInput").value =
-  localStorage.getItem("zuiYT") || "";
-
-// 入力したら即保存
-document.getElementById("normalInput").addEventListener("input",(e)=>{
-  localStorage.setItem("normalYT", e.target.value);
+normalInput.addEventListener("input",e=>{
+  localStorage.setItem("normalYT",e.target.value);
+});
+zuiInput.addEventListener("input",e=>{
+  localStorage.setItem("zuiYT",e.target.value);
 });
 
-document.getElementById("zuiInput").addEventListener("input",(e)=>{
-  localStorage.setItem("zuiYT", e.target.value);
-});
-
-// =====================
-// YouTube関連
-// =====================
-
-let normalPlayer = null;
-let zuiPlayer = null;
-
-let state = "IDLE";
-let redTimeout = null;
+// ===== YouTube =====
+let normalPlayer=null;
+let zuiPlayer=null;
+let state="IDLE";
+let redTimeout=null;
 
 function extractVideoId(url){
-  if(url.includes("watch?v=")){
-    return url.split("watch?v=")[1].split("&")[0];
+  try{
+    const u = new URL(url);
+    if(u.hostname.includes("youtu.be")){
+      return u.pathname.slice(1);
+    }
+    return u.searchParams.get("v");
+  }catch{
+    return null;
   }
-  if(url.includes("youtu.be/")){
-    return url.split("youtu.be/")[1].split("?")[0];
-  }
-  return null;
 }
 
-function createPlayer(){
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.allow = "autoplay";
+function createPlayer(videoId){
+  const iframe=document.createElement("iframe");
+  iframe.style.display="none";
+  iframe.width="0";
+  iframe.height="0";
+  iframe.allow="autoplay; encrypted-media";
+  iframe.src=
+    `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&playsinline=1`;
   document.body.appendChild(iframe);
   return iframe;
 }
 
 function stopNormal(){
   if(normalPlayer){
-    normalPlayer.src = "";
+    normalPlayer.remove();
+    normalPlayer=null;
   }
-  document.getElementById("normalBtn").textContent = "再生";
+  normalBtn.textContent="再生";
 }
 
 function stopZui(){
   if(zuiPlayer){
-    zuiPlayer.src = "";
+    zuiPlayer.remove();
+    zuiPlayer=null;
   }
-  document.getElementById("zuiBtn").textContent = "再生";
+  zuiBtn.textContent="再生";
 }
 
-// =====================
-// 通常BGM
-// =====================
+// ===== 通常 =====
+normalBtn.addEventListener("click",()=>{
 
-document.getElementById("normalBtn").addEventListener("click",()=>{
-
-  const btn = document.getElementById("normalBtn");
-
-  if(state === "NORMAL"){
+  if(state==="NORMAL"){
     stopNormal();
-    state = "IDLE";
+    state="IDLE";
     return;
   }
 
-  const url = document.getElementById("normalInput").value.trim();
-  const videoId = extractVideoId(url);
-
-  if(!videoId){
-    alert("正しいYouTubeリンクを入力してください");
-    return;
-  }
+  const id=extractVideoId(normalInput.value.trim());
+  if(!id){ alert("正しいYouTubeリンクを入力してください"); return; }
 
   stopZui();
-
-  if(!normalPlayer){
-    normalPlayer = createPlayer();
-  }
-
-  normalPlayer.src =
-    `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
-
-  state = "NORMAL";
-  btn.textContent = "停止";
-});
-
-// =====================
-// ズイズイBGM
-// =====================
-
-document.getElementById("zuiBtn").addEventListener("click",()=>{
-
-  const btn = document.getElementById("zuiBtn");
-
-  if(state === "ZUI"){
-    stopZui();
-    state = "IDLE";
-    return;
-  }
-
-  const url = document.getElementById("zuiInput").value.trim();
-  const videoId = extractVideoId(url);
-
-  if(!videoId){
-    alert("正しいYouTubeリンクを入力してください");
-    return;
-  }
-
   stopNormal();
 
-  if(!zuiPlayer){
-    zuiPlayer = createPlayer();
-  }
+  normalPlayer=createPlayer(id);
 
-  zuiPlayer.src =
-    `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
-
-  state = "ZUI";
-  btn.textContent = "停止";
+  state="NORMAL";
+  normalBtn.textContent="停止";
 });
 
-// =====================
-// 時計
-// =====================
+// ===== ズイズイ =====
+zuiBtn.addEventListener("click",()=>{
 
+  if(state==="ZUI"){
+    stopZui();
+    state="IDLE";
+    return;
+  }
+
+  const id=extractVideoId(zuiInput.value.trim());
+  if(!id){ alert("正しいYouTubeリンクを入力してください"); return; }
+
+  stopNormal();
+  stopZui();
+
+  zuiPlayer=createPlayer(id);
+
+  state="ZUI";
+  zuiBtn.textContent="停止";
+});
+
+// ===== 時計 =====
 function updateClock(){
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,"0");
+  const m=String(now.getMinutes()).padStart(2,"0");
+  const s=String(now.getSeconds()).padStart(2,"0");
 
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2,"0");
-  const m = String(now.getMinutes()).padStart(2,"0");
-  const s = String(now.getSeconds()).padStart(2,"0");
+  clock.textContent=`${h}:${m}:${s}`;
 
-  const clock = document.getElementById("clock");
-  clock.textContent = `${h}:${m}:${s}`;
-
-  if(now.getMinutes() % 3 === 0 && now.getSeconds() === 0){
-
+  if(now.getMinutes()%3===0 && now.getSeconds()===0){
     clock.classList.add("red");
-
-    if(redTimeout) clearTimeout(redTimeout);
-    redTimeout = setTimeout(()=>{
+    if(redTimeout)clearTimeout(redTimeout);
+    redTimeout=setTimeout(()=>{
       clock.classList.remove("red");
     },6000);
   }
