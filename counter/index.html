@@ -3,163 +3,270 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voice Player</title>
+<title>BGM & 跳ねタイマー</title>
 
 <style>
-body {
-  font-family: sans-serif;
-  text-align: center;
-  background: #111;
-  color: white;
-  padding: 20px;
+body{
+  margin:0;
+  background:#111;
+  color:white;
+  text-align:center;
+  font-family:sans-serif;
 }
 
-select, button, input {
-  margin: 8px;
-  padding: 8px;
-  font-size: 16px;
+#clock{
+  font-size:clamp(40px,8vw,72px);
+  margin:30px 0;
+  transition:0.3s;
 }
 
-button {
-  background: #444;
-  color: white;
-  border: none;
-  border-radius: 6px;
+.red{ color:red; }
+
+.controls{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
 }
 
-.volume-box {
-  margin-top: 10px;
+select,button,input{
+  padding:10px;
+  font-size:16px;
+  min-width:220px;
+}
+
+.minute-list h6{
+  margin:0; 
+  line-height:1.1; 
 }
 </style>
 </head>
-
 <body>
 
-<h2>Voice Gacha</h2>
+<h1>BGM & 跳ねタイマー</h1>
+<div id="clock">--:--:--</div>
 
-<select id="characterSelect"></select>
-<button id="playVoice">🎤 セリフ再生</button>
+<div class="minute-list">
+  <h6>00、03、06、09、12、15、18、21、24、27</h6>
+  <h6>30、33、36、39、42、45、48、51、54、57</h6>
+</div>
+  
+<div class="controls">
 
-<hr>
+  <h3>通常BGM</h3>
+  <select id="normalSelect"></select>
+  <input type="text" id="ytInput" placeholder="YouTubeリンクを貼る（優先再生）">
+  <button id="normalBtn" disabled>再生</button>
 
-<h3>BGM</h3>
-<select id="bgmSelect">
-  <option value="bgm1.mp3">BGM1</option>
-  <option value="bgm2.mp3">BGM2</option>
-  <option value="bgm3.mp3">BGM3</option>
-</select>
-<button id="toggleBgm">▶ 再生</button>
+  <h3>ズイズイBGM</h3>
+  <select id="zuiSelect"></select>
+  <button id="zuiBtn" disabled>再生</button>
 
-<div class="volume-box">
-  🎤 Voice音量
-  <input type="range" id="voiceVolume" min="0" max="1" step="0.01" value="0.8">
 </div>
 
-<div class="volume-box">
-  🎵 BGM音量
-  <input type="range" id="bgmVolume" min="0" max="1" step="0.01" value="0.4">
-</div>
-
-<audio id="voicePlayer"></audio>
-<audio id="bgmPlayer" loop></audio>
+<h5>登録されているBGMは全てフリー音源として使用できます。</h5>
+<h5>跳ねるタイミングで時間表示が赤く表示されます。</h5>
 
 <script>
-let voiceData = {};
-let history = [];
-const MAX_HISTORY = 3;
 
-const voicePlayer = document.getElementById("voicePlayer");
-const bgmPlayer = document.getElementById("bgmPlayer");
+// =====================
+// Audio
+// =====================
+const normalAudio = new Audio();
+normalAudio.loop = true;
 
-const characterSelect = document.getElementById("characterSelect");
-const bgmSelect = document.getElementById("bgmSelect");
-const toggleBgm = document.getElementById("toggleBgm");
+const zuiAudio = new Audio();
 
-voicePlayer.volume = 0.8;
-bgmPlayer.volume = 0.4;
+let ytPlayer = null;
+let isYouTube = false;
 
+let state = "IDLE";
+let redTimeout = null;
+
+normalAudio.volume = 1;
+zuiAudio.volume = 1;
+
+// =====================
+// YouTube処理
+// =====================
+function extractVideoId(url){
+  if(url.includes("watch?v=")){
+    return url.split("watch?v=")[1].split("&")[0];
+  }
+  if(url.includes("youtu.be/")){
+    return url.split("youtu.be/")[1].split("?")[0];
+  }
+  return null;
+}
+
+// =====================
 // JSON読み込み
-fetch("voices.json")
-  .then(res => res.json())
-  .then(data => {
-    voiceData = data;
-    initCharacters();
-  });
+// =====================
+fetch("bgm.json")
+.then(res => res.json())
+.then(data => {
 
-function initCharacters() {
-  for (let char in voiceData) {
-    let option = document.createElement("option");
-    option.value = char;
-    option.textContent = char;
-    characterSelect.appendChild(option);
-  }
-}
+  populateSelect("normalSelect", data.normal, "BGM");
+  populateSelect("zuiSelect", data.zui, "zuizui");
 
-// レア抽選
-function getRandomTier() {
-  const rand = Math.random() * 100;
-  if (rand < 70) return "N";
-  if (rand < 95) return "R";
-  return "SR";
-}
+  document.getElementById("normalBtn").disabled = false;
+  document.getElementById("zuiBtn").disabled = false;
 
-// ID抽選（直近3回除外）
-function getRandomVoice(character) {
-  let tier = getRandomTier();
-  let list = voiceData[character][tier];
-
-  if (!list || list.length === 0) return null;
-
-  let filtered = list.filter(id => !history.includes(id));
-
-  if (filtered.length === 0) {
-    history = [];
-    filtered = list;
-  }
-
-  const id = filtered[Math.floor(Math.random() * filtered.length)];
-
-  history.push(id);
-  if (history.length > MAX_HISTORY) {
-    history.shift();
-  }
-
-  return { tier, id };
-}
-
-document.getElementById("playVoice").addEventListener("click", () => {
-  const character = characterSelect.value;
-  if (!character) return;
-
-  const result = getRandomVoice(character);
-  if (!result) return;
-
-  voicePlayer.src = `voices/${character}/${result.tier}/${result.id}.wav`;
-  voicePlayer.play();
+})
+.catch(err=>{
+  alert("bgm.json読み込み失敗");
+  console.error(err);
 });
 
-// BGM制御
-toggleBgm.addEventListener("click", () => {
-  if (bgmPlayer.paused) {
-    bgmPlayer.src = `bgm/${bgmSelect.value}`;
-    bgmPlayer.play();
-    toggleBgm.textContent = "⏸ 停止";
-  } else {
-    bgmPlayer.pause();
-    toggleBgm.textContent = "▶ 再生";
+function populateSelect(selectId, list, folder){
+  const select = document.getElementById(selectId);
+  select.innerHTML = "";
+
+  list.forEach(file=>{
+    const option = document.createElement("option");
+
+    option.value = folder + "/" + encodeURIComponent(file);
+    const displayName = file.replace(/\.[^/.]+$/, "");
+    option.textContent = displayName;
+
+    select.appendChild(option);
+  });
+}
+
+// =====================
+// 通常BGM（YouTube対応）
+// =====================
+document.getElementById("normalBtn").addEventListener("click",()=>{
+
+  const btn = document.getElementById("normalBtn");
+
+  if(state === "NORMAL"){
+    stopNormal();
+    state = "IDLE";
+    btn.textContent = "再生";
+    return;
   }
+
+  if(state !== "IDLE") return;
+
+  stopZui();
+
+  const ytUrl = document.getElementById("ytInput").value.trim();
+
+  // ===== YouTube優先 =====
+  if(ytUrl){
+    const videoId = extractVideoId(ytUrl);
+    if(!videoId){
+      alert("正しいYouTubeリンクを入力してください");
+      return;
+    }
+
+    stopNormal();
+
+    const embedUrl =
+      `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
+
+    if(!ytPlayer){
+      ytPlayer = document.createElement("iframe");
+      ytPlayer.style.display = "none";
+      ytPlayer.allow = "autoplay";
+      document.body.appendChild(ytPlayer);
+    }
+
+    ytPlayer.src = embedUrl;
+
+    isYouTube = true;
+    state = "NORMAL";
+    btn.textContent = "停止";
+    return;
+  }
+
+  // ===== 通常mp3 =====
+  const src = document.getElementById("normalSelect").value;
+  if(!src) return;
+
+  normalAudio.src = src;
+  normalAudio.currentTime = 0;
+  normalAudio.play();
+
+  isYouTube = false;
+  state = "NORMAL";
+  btn.textContent = "停止";
 });
 
-document.getElementById("voiceVolume")
-  .addEventListener("input", e => {
-    voicePlayer.volume = e.target.value;
-  });
+function stopNormal(){
 
-document.getElementById("bgmVolume")
-  .addEventListener("input", e => {
-    bgmPlayer.volume = e.target.value;
-  });
+  if(isYouTube && ytPlayer){
+    ytPlayer.src = "";
+  }
+
+  normalAudio.pause();
+  normalAudio.currentTime = 0;
+  document.getElementById("normalBtn").textContent = "再生";
+}
+
+// =====================
+// ズイズイBGM
+// =====================
+document.getElementById("zuiBtn").addEventListener("click",()=>{
+
+  const btn = document.getElementById("zuiBtn");
+
+  if(state === "ZUI"){
+    stopZui();
+    state = "IDLE";
+    btn.textContent = "再生";
+    return;
+  }
+
+  if(state !== "IDLE" && state !== "NORMAL") return;
+
+  stopNormal();
+
+  const src = document.getElementById("zuiSelect").value;
+  if(!src) return;
+
+  zuiAudio.src = src;
+  zuiAudio.currentTime = 0;
+  zuiAudio.play();
+
+  state = "ZUI";
+  btn.textContent = "停止";
+});
+
+function stopZui(){
+  zuiAudio.pause();
+  zuiAudio.currentTime = 0;
+  document.getElementById("zuiBtn").textContent = "再生";
+}
+
+// =====================
+// 時計
+// =====================
+function updateClock(){
+
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,"0");
+  const m = String(now.getMinutes()).padStart(2,"0");
+  const s = String(now.getSeconds()).padStart(2,"0");
+
+  const clock = document.getElementById("clock");
+  clock.textContent = `${h}:${m}:${s}`;
+
+  if(now.getMinutes() % 3 === 0 && now.getSeconds() === 0){
+
+    clock.classList.add("red");
+
+    if(redTimeout) clearTimeout(redTimeout);
+    redTimeout = setTimeout(()=>{
+      clock.classList.remove("red");
+    },6000);
+  }
+}
+
+setInterval(updateClock,1000);
+updateClock();
+
 </script>
-
 </body>
 </html>
