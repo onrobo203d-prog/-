@@ -68,6 +68,25 @@ input,button{
 <script>
 
 // =====================
+// 初期ロード（ローカル保存読込）
+// =====================
+
+document.getElementById("normalInput").value =
+  localStorage.getItem("normalYT") || "";
+
+document.getElementById("zuiInput").value =
+  localStorage.getItem("zuiYT") || "";
+
+// 入力したら即保存
+document.getElementById("normalInput").addEventListener("input",(e)=>{
+  localStorage.setItem("normalYT", e.target.value);
+});
+
+document.getElementById("zuiInput").addEventListener("input",(e)=>{
+  localStorage.setItem("zuiYT", e.target.value);
+});
+
+// =====================
 // YouTube関連
 // =====================
 
@@ -131,7 +150,7 @@ document.getElementById("normalBtn").addEventListener("click",()=>{
     return;
   }
 
-  stopZui(); // もう片方停止
+  stopZui();
 
   if(!normalPlayer){
     normalPlayer = createPlayer();
@@ -166,7 +185,7 @@ document.getElementById("zuiBtn").addEventListener("click",()=>{
     return;
   }
 
-  stopNormal(); // もう片方停止
+  stopNormal();
 
   if(!zuiPlayer){
     zuiPlayer = createPlayer();
