@@ -13,108 +13,100 @@ body{
   background:#111;
   color:white;
   font-family:sans-serif;
+  height:100vh;
+  overflow:hidden; /* ← スクロール禁止 */
   display:flex;
   flex-direction:column;
-  align-items:center;
-  min-height:100vh;
-  padding:env(safe-area-inset-top) 15px env(safe-area-inset-bottom);
+  justify-content:space-between;
+  padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom);
 }
 
 /* タイトル */
 h1{
-  font-size:clamp(20px,4vw,32px);
-  margin-top:20px;
+  margin:10px 0 0 0;
+  font-size:clamp(16px,3vw,28px);
+  text-align:center;
 }
 
 /* 時計 */
 #clock{
-  font-size:clamp(48px,10vw,110px);
-  margin:3vh 0;
+  font-size:clamp(36px,8vw,90px);
+  text-align:center;
   transition:0.3s;
 }
 .red{ color:red; }
 
-/* BGM全体 */
-.bgm-container{
-  width:100%;
-  max-width:1000px;
+/* メイン横並び */
+.main{
+  flex:1;
   display:flex;
-  flex-wrap:wrap;
   justify-content:center;
-  gap:40px;
-  margin-bottom:30px;
+  align-items:center;
+  gap:30px;
 }
 
 /* BGMブロック */
 .bgm-block{
-  flex:1 1 280px;
-  max-width:400px;
+  flex:1;
+  max-width:350px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:12px;
+  gap:10px;
   padding:15px;
   border-radius:12px;
   background:#1b1b1b;
 }
 
-/* 入力とボタン */
+/* 入力＆ボタン */
 input, button{
-  padding:10px;
-  font-size:clamp(14px,2.5vw,16px);
   width:100%;
-  max-width:300px;
+  padding:8px;
+  font-size:clamp(12px,2vw,15px);
   border:none;
-  border-radius:8px;
+  border-radius:6px;
 }
 
 button{
-  cursor:pointer;
   font-weight:bold;
+  cursor:pointer;
 }
 
 button:active{
-  transform:scale(0.96);
+  transform:scale(0.95);
 }
 
+/* プレイヤー */
 .ytPlayer{
   width:100%;
-  max-width:300px;
   height:60px;
-  border:0;
 }
 
-/* 下部テキスト */
+/* 下部説明 */
 h5{
-  font-size:clamp(12px,2.5vw,16px);
-  opacity:0.8;
-  margin-bottom:20px;
-}
-
-/* スマホ時は縦並び強制 */
-@media(max-width:700px){
-  .bgm-container{
-    flex-direction:column;
-    align-items:center;
-  }
+  text-align:center;
+  font-size:clamp(11px,2vw,14px);
+  margin:5px 0;
+  opacity:0.7;
 }
 </style>
 </head>
 <body>
 
 <h1>BGM & 跳ねタイマー</h1>
+
 <div id="clock">--:--:--</div>
 
-<div class="bgm-container">
+<div class="main">
 
-  <div class="bgm-block" id="normalBGM">
+  <div class="bgm-block">
     <h3>通常BGM</h3>
     <button id="normalBtn">再生</button>
     <input type="text" id="normalInput" placeholder="YouTubeリンク">
     <div id="normalPlayer"></div>
   </div>
 
-  <div class="bgm-block" id="zuiBGM">
+  <div class="bgm-block">
     <h3>ズイズイBGM</h3>
     <button id="zuiBtn">再生</button>
     <input type="text" id="zuiInput" placeholder="YouTubeリンク">
@@ -129,72 +121,65 @@ h5{
 <script>
 
 // ===== ローカル保存 =====
-const normalInput = document.getElementById("normalInput");
-const zuiInput = document.getElementById("zuiInput");
+const normalInput=document.getElementById("normalInput");
+const zuiInput=document.getElementById("zuiInput");
 
-normalInput.value = localStorage.getItem("normalYT") || "";
-zuiInput.value = localStorage.getItem("zuiYT") || "";
+normalInput.value=localStorage.getItem("normalYT")||"";
+zuiInput.value=localStorage.getItem("zuiYT")||"";
 
-normalInput.addEventListener("input",e=>localStorage.setItem("normalYT", e.target.value));
-zuiInput.addEventListener("input",e=>localStorage.setItem("zuiYT", e.target.value));
+normalInput.oninput=e=>localStorage.setItem("normalYT",e.target.value);
+zuiInput.oninput=e=>localStorage.setItem("zuiYT",e.target.value);
 
-// ===== YouTube Player =====
-let normalPlayer, zuiPlayer;
-let state = "IDLE";
+// ===== YouTube =====
+let normalPlayer,zuiPlayer;
+let state="IDLE";
 
 function extractVideoId(url){
   try{
-    const u = new URL(url);
+    const u=new URL(url);
     if(u.hostname.includes("youtu.be")) return u.pathname.slice(1);
     return u.searchParams.get("v");
-  }catch{
-    return null;
-  }
+  }catch{return null;}
 }
 
-function createPlayer(containerId, videoId){
-  return new YT.Player(containerId,{
+function createPlayer(id,videoId){
+  return new YT.Player(id,{
     height:'60',
     width:'300',
     videoId:videoId,
-    playerVars:{
-      autoplay:0,
-      loop:1,
-      playlist:videoId,
-      playsinline:1
-    }
+    playerVars:{loop:1,playlist:videoId,playsinline:1}
   });
 }
 
-function toggleBGM(playerVar,inputElem,btnElem,otherPlayerVar,otherBtn,containerId){
-  const id = extractVideoId(inputElem.value.trim());
-  if(!id){ alert("正しいYouTubeリンクを入力してください"); return; }
+function toggle(player,input,btn,other,otherBtn,id){
+  const vid=extractVideoId(input.value.trim());
+  if(!vid){alert("正しいYouTubeリンクを入力してください");return;}
 
-  if(otherPlayerVar?.pauseVideo) otherPlayerVar.pauseVideo();
+  other?.pauseVideo();
   if(otherBtn) otherBtn.textContent="再生";
 
-  if(state===btnElem.id){
-    playerVar?.pauseVideo();
-    btnElem.textContent="再生";
+  if(state===btn.id){
+    player?.pauseVideo();
+    btn.textContent="再生";
     state="IDLE";
     return;
   }
 
-  if(!playerVar){
-    playerVar=createPlayer(containerId,id);
-    if(btnElem.id==="normalBtn") normalPlayer=playerVar;
-    else zuiPlayer=playerVar;
+  if(!player){
+    player=createPlayer(id,vid);
+    if(btn.id==="normalBtn") normalPlayer=player;
+    else zuiPlayer=player;
   }else{
-    playerVar.seekTo(0);
+    player.seekTo(0);
   }
 
-  playerVar.playVideo();
-  btnElem.textContent="停止";
-  state=btnElem.id;
+  player.playVideo();
+  btn.textContent="停止";
+  state=btn.id;
 }
 
-normalBtn.onclick=()=>toggleBGM(normalPlayer,normalInput,normalBtn,zuiPlayer,zuiBtn,"normalPlayer");
-zuiBtn.onclick=()=>toggleBGM(zuiPlayer,zuiInput,zuiBtn,normalPlayer,normalBtn,"zuiPlayer");
+normalBtn.onclick=()=>toggle(normalPlayer,normalInput,normalBtn,zuiPlayer,zuiBtn,"normalPlayer");
+zuiBtn.onclick=()=>toggle(zuiPlayer,zuiInput,zuiBtn,normalPlayer,normalBtn,"zuiPlayer");
 
 // ===== 時計 =====
 function updateClock(){
