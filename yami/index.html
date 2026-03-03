@@ -2,66 +2,128 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BGM & 跳ねタイマー</title>
 
 <style>
+*{
+  box-sizing:border-box;
+}
+
 body{
   margin:0;
   background:#111;
   color:white;
-  text-align:center;
   font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:center;
+  min-height:100vh;
+  padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom);
 }
 
+/* メインエリア */
+.main{
+  width:100%;
+  max-width:900px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+/* 時計 */
 #clock{
-  font-size:clamp(40px,8vw,72px);
-  margin:30px 0;
+  font-size:clamp(48px, 10vw, 100px);
+  margin:5vh 0 2vh 0;
   transition:0.3s;
 }
 
 .red{ color:red; }
 
-.controls{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
+/* 分表示 */
+.minute-list h6{
+  margin:0;
+  line-height:1.2;
+  font-size:clamp(12px, 3vw, 18px);
 }
 
-select,button{
-  padding:10px;
-  font-size:16px;
-  min-width:220px;
+/* ボタンエリア */
+.controls{
+  margin-top:4vh;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:20px;
+  flex-wrap:wrap;
 }
-  .minute-list h6{
-  margin:0; 
-  line-height:1.1; 
+
+button{
+  padding:12px 20px;
+  font-size:clamp(14px, 3vw, 18px);
+  min-width:180px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:bold;
+  transition:0.2s;
+}
+
+button:active{
+  transform:scale(0.96);
+}
+
+.btn1{
+  background:#2196f3;
+  color:white;
+}
+
+.btn2{
+  background:#4caf50;
+  color:white;
+}
+
+/* 下部説明 */
+.footer{
+  font-size:clamp(12px, 2.5vw, 16px);
+  margin-bottom:10px;
+  opacity:0.8;
 }
 </style>
 </head>
 <body>
 
-<h1>BGM & 跳ねタイマー</h1>
+<div class="main">
+
+<h1 style="font-size:clamp(20px,4vw,32px);">BGM & 跳ねタイマー</h1>
+
 <div id="clock">--:--:--</div>
 
-  <div class="minute-list">
+<div class="minute-list">
   <h6>00、03、06、09、12、15、18、21、24、27</h6>
   <h6>30、33、36、39、42、45、48、51、54、57</h6>
 </div>
-  
+
 <div class="controls">
+  <button class="btn1" onclick="location.href='page1.html'">
+    ページ1へ移動
+  </button>
+
+  <button class="btn2" onclick="location.href='page2.html'">
+    ページ2へ移動
+  </button>
+</div>
 
 </div>
 
-
-<h5>跳ねるタイミングで時間表示が赤く表示されます。</h5>
+<div class="footer">
+跳ねるタイミングで時間表示が赤く表示されます。
+</div>
 
 <script>
 
-// =====================
-// 時計
-// =====================
+let redTimeout = null;
+
 function updateClock(){
 
   const now = new Date();
