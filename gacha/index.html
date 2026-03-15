@@ -10,37 +10,51 @@
 body{
 font-family:sans-serif;
 margin:0;
-padding:10px;
+padding:12px;
 background:#f2f2f2;
 }
 
 .section{
 background:white;
-padding:12px;
-border-radius:8px;
-margin-bottom:10px;
+padding:14px;
+border-radius:10px;
+margin-bottom:12px;
 }
 
 h2{
-margin:5px 0;
+margin:6px 0;
+}
+
+button{
+padding:14px;
+font-size:18px;
+margin:4px;
+border-radius:8px;
+}
+
+select{
+font-size:18px;
+padding:10px;
+}
+
+input{
+font-size:16px;
+padding:6px;
 }
 
 textarea{
 width:100%;
 height:80px;
-}
-
-button{
-padding:6px 10px;
-margin:3px;
+font-size:15px;
 }
 
 .log{
 background:#111;
 color:#0f0;
-padding:10px;
+padding:12px;
 font-family:monospace;
 white-space:pre-wrap;
+font-size:16px;
 }
 
 .stats{
@@ -52,7 +66,8 @@ white-space:pre-wrap;
 .collapsible{
 cursor:pointer;
 font-weight:bold;
-margin-bottom:5px;
+margin-bottom:6px;
+font-size:16px;
 }
 
 .hidden{
@@ -64,11 +79,13 @@ display:block;
 }
 
 @media (min-width:900px){
+
 .mainGrid{
 display:grid;
 grid-template-columns:1fr 1fr;
 gap:10px;
 }
+
 }
 
 </style>
@@ -80,7 +97,9 @@ gap:10px;
 
 <div class="section">
 
-<div class="collapsible" onclick="toggle('gachaSettings')">▼ガチャ設定</div>
+<div class="collapsible" onclick="toggle('gachaSettings')">
+▼ガチャ設定（タップで折りたたみ）
+</div>
 
 <div id="gachaSettings">
 
@@ -114,13 +133,13 @@ gap:10px;
 <button onclick="resetRarities()">ガチャ設定リセット</button>
 
 </div>
-
 </div>
-
 
 <div class="section">
 
-<div class="collapsible" onclick="toggle('itemSettings')">▼景品設定</div>
+<div class="collapsible" onclick="toggle('itemSettings')">
+▼景品設定（タップで折りたたみ）
+</div>
 
 <div id="itemSettings">
 
@@ -129,11 +148,9 @@ gap:10px;
 <button onclick="resetItems()">景品リセット</button>
 
 </div>
-
 </div>
 
 </div>
-
 
 <div class="section">
 
@@ -141,7 +158,7 @@ gap:10px;
 
 <select id="playerSelect" onchange="updatePityDisplay()"></select>
 
-<button onclick="addPlayer()">＋追加</button>
+<button onclick="addPlayer()">＋プレイヤー追加</button>
 
 <button onclick="resetPlayers()">プレイヤーリセット</button>
 
@@ -158,26 +175,19 @@ gap:10px;
 
 <br><br>
 
-<button onclick="rollGacha()">ガチャを回す</button>
+<button style="width:100%;font-size:22px;" onclick="rollGacha()">
+🎲 ガチャを回す
+</button>
 
 </div>
-
 
 <div class="section">
 
-<h2>ログ表示</h2>
-
-<select id="logFilter" onchange="renderLogs()">
-<option value="all">全員</option>
-</select>
+<h2>今回の結果</h2>
 
 <div class="log" id="logOutput"></div>
 
-<button onclick="copyLogs()">ログコピー</button>
-<button onclick="resetLogs()">ログリセット</button>
-
 </div>
-
 
 <div class="section">
 
@@ -186,7 +196,6 @@ gap:10px;
 <div class="stats" id="statsOutput"></div>
 
 </div>
-
 
 <div class="section">
 
@@ -198,7 +207,6 @@ gap:10px;
 
 </div>
 
-
 <div class="section">
 
 <button onclick="exportJSON()">設定保存</button>
@@ -207,13 +215,11 @@ gap:10px;
 
 </div>
 
-
 <script>
 
 let rarities=[]
 let items=[]
 let players=[]
-let logs=[]
 let stats={}
 let playerStats={}
 let playerCounts={}
@@ -258,27 +264,14 @@ div.innerHTML+=`
 <input value="${r.name}" onchange="rarities[${i}].name=this.value;renderItems();renderPitySelect();save()">
 weight
 <input type="number" value="${r.weight}" onchange="rarities[${i}].weight=parseFloat(this.value);save()">
-<button onclick="removeRarity(${i})">削除</button>
 </div>
 `
 
 })
 
-div.innerHTML+=`<button onclick="addRarity()">レア追加</button>`
-
 renderItems()
 renderPitySelect()
 
-}
-
-function addRarity(){
-rarities.push({name:"新レア",weight:1})
-renderRarityEditor()
-}
-
-function removeRarity(i){
-rarities.splice(i,1)
-renderRarityEditor()
 }
 
 function renderItems(){
@@ -314,16 +307,14 @@ save()
 
 function renderPitySelect(){
 
-let sel=document.getElementById("pityRarity")
+let sel=pityRarity
 sel.innerHTML=""
 
 rarities.forEach(r=>{
-
 let o=document.createElement("option")
 o.value=r.name
 o.textContent=r.name
 sel.appendChild(o)
-
 })
 
 }
@@ -346,16 +337,10 @@ save()
 function updatePlayerUI(){
 
 let sel=playerSelect
-let logSel=logFilter
-
 sel.innerHTML=""
-logSel.innerHTML='<option value="all">全員</option>'
 
 players.forEach(p=>{
-
 sel.innerHTML+=`<option>${p}</option>`
-logSel.innerHTML+=`<option>${p}</option>`
-
 })
 
 updatePityDisplay()
@@ -401,6 +386,8 @@ let times=parseInt(customRoll.value)
 
 if(!player)return
 
+let text=""
+
 for(let i=0;i<times;i++){
 
 playerCounts[player]++
@@ -429,12 +416,7 @@ if(pool.length==0)continue
 
 let item=pool[Math.floor(Math.random()*pool.length)]
 
-logs.push({
-player,
-rarity:rarity.name,
-item:item.name,
-pity
-})
+text+=`${rarity.name} ${item.name}${pity?" (天井)":""}\n`
 
 stats[item.name]=(stats[item.name]||0)+1
 
@@ -443,48 +425,12 @@ playerStats[player][item.name]=(playerStats[player][item.name]||0)+1
 
 }
 
-renderLogs()
+logOutput.textContent=text
+
 renderStats()
 renderPlayerStats()
 updatePityDisplay()
 save()
-
-}
-
-function renderLogs(){
-
-let filter=logFilter.value
-
-let data=logs.filter(l=>filter=="all"||l.player==filter)
-
-let map={}
-let text=""
-
-data.forEach(l=>{
-
-if(l.pity){
-
-text+=`${l.player} ${l.rarity} ${l.item} (天井)\n`
-
-}else{
-
-let key=l.player+"|"+l.rarity+"|"+l.item
-
-map[key]=(map[key]||0)+1
-
-}
-
-})
-
-Object.keys(map).forEach(k=>{
-
-let [p,r,i]=k.split("|")
-
-text+=`${p} ${r} ${i} ×${map[k]}\n`
-
-})
-
-logOutput.textContent=text
 
 }
 
@@ -517,20 +463,6 @@ text+="\n"
 })
 
 playerStatsOutput.textContent=text
-
-}
-
-function copyLogs(){
-navigator.clipboard.writeText(logOutput.textContent)
-}
-
-function resetLogs(){
-
-if(confirm("ログをリセットしますか？")){
-logs=[]
-renderLogs()
-save()
-}
 
 }
 
@@ -623,7 +555,6 @@ localStorage.setItem("gachaData",JSON.stringify({
 rarities,
 items,
 players,
-logs,
 stats,
 playerStats,
 playerCounts
@@ -641,7 +572,6 @@ data=JSON.parse(data)
 rarities=data.rarities||[]
 items=data.items||[]
 players=data.players||[]
-logs=data.logs||[]
 stats=data.stats||{}
 playerStats=data.playerStats||{}
 playerCounts=data.playerCounts||{}
@@ -649,7 +579,6 @@ playerCounts=data.playerCounts||{}
 renderRarityEditor()
 renderItems()
 updatePlayerUI()
-renderLogs()
 renderStats()
 renderPlayerStats()
 
