@@ -3,317 +3,661 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ガチャツール</title>
+<title>配信用ガチャツール</title>
 
 <style>
-html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
-#mainWrapper{padding:15px;}
+
+body{
+font-family:sans-serif;
+margin:0;
+padding:10px;
+background:#f2f2f2;
+}
 
 .section{
-  background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;
-  box-shadow:0 0 4px rgba(0,0,0,0.1);
-  position:relative;
+background:white;
+padding:12px;
+border-radius:8px;
+margin-bottom:10px;
 }
 
-input[type="number"],input[type="text"],select{
-  width:95%;padding:8px;margin:5px 0;border-radius:5px;
-  border:1px solid #aaa;font-size:14px;
-  box-sizing:border-box;
+h2{
+margin:5px 0;
 }
 
-button{cursor:pointer;border:none;border-radius:6px;}
-
-.add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
-
-.gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.gacha-btns button{
-  flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;
+textarea{
+width:100%;
+height:80px;
 }
 
-.copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
-.clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
-.save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
-
-.custom-save-wrap{
-  position:absolute;
-  top:8px;
-  right:8px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.custom-save-wrap button{
-  padding:6px 10px;font-size:12px;background:#6666ff;color:#fff;border-radius:6px;
+button{
+padding:6px 10px;
+margin:3px;
 }
 
-.N{color:#00ccff;} .R{color:#0055ff;}
-.SR{color:#aa00ff;} .UR{color:#ff55aa;}
-.LR{color:#ff0000;}
-
-#logContainer{
-  display:flex;
-  flex-direction:column;
-  gap:15px;
+.log{
+background:#111;
+color:#0f0;
+padding:10px;
+font-family:monospace;
+white-space:pre-wrap;
 }
 
-#summary,#log{
-  background:#f8f8f8;
-  padding:10px;
-  border-radius:8px;
-  max-height:500px;
-  overflow:auto;
+.stats{
+background:#eee;
+padding:10px;
+white-space:pre-wrap;
 }
 
-.log-block{margin-bottom:10px;border-bottom:1px solid #ccc;padding-bottom:5px;}
-.old-log{display:none;font-size:0.9em;color:#333;}
-pre{white-space:pre-wrap;word-break:keep-all;}
+.collapsible{
+cursor:pointer;
+font-weight:bold;
+margin-bottom:5px;
+}
+
+.hidden{
+display:none;
+}
+
+.mainGrid{
+display:block;
+}
+
+@media (min-width:900px){
+.mainGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+}
+
 </style>
 </head>
 
 <body>
-<div id="mainWrapper">
 
-<!-- プリセット -->
+<div class="mainGrid">
+
 <div class="section">
+
+<div class="collapsible" onclick="toggle('gachaSettings')">▼ガチャ設定</div>
+
+<div id="gachaSettings">
+
+最大確率
+<input id="maxProb" type="number" value="60">
+
+最小確率
+<input id="minProb" type="number" value="0.1">
+
+レア数
+<input id="rarityCount" type="number" value="5">
+
+<button onclick="generateRarities()">ガチャ生成</button>
+
+<div id="rarityEditor"></div>
+
+<hr>
 
 <label>
-確率プリセット
-<button onclick="togglePresetHelp()" style="margin-left:10px;padding:12px 20px;font-size:18px;">
-操作説明
-</button>
+<input type="checkbox" id="pityEnabled"> 天井機能
 </label>
 
-<select id="presetSelect" onchange="applyPreset()" style="width:100%;padding:10px;font-size:16px;margin-top:10px;"></select>
+天井回数
+<input id="pityCount" type="number" value="30">
 
-<div style="display:flex;gap:10px;margin-top:10px;">
-<button id="loadCustom1Btn" onclick="loadCustom(1)">カスタム1</button>
-<button id="loadCustom2Btn" onclick="loadCustom(2)">カスタム2</button>
-</div>
+保証レア
+<select id="pityRarity"></select>
 
-<div id="presetHelp" style="display:none;padding:10px;margin-top:8px;background:#eef;border-radius:6px;">
-<h3>使い方</h3>
-確率プリセットで確率を切り替えられます。<br>
-カスタム保存した内容は「カスタム」から呼び出せます。
-</div>
+<br>
+
+<button onclick="resetRarities()">ガチャ設定リセット</button>
 
 </div>
 
-<!-- 天井 -->
+</div>
+
+
 <div class="section">
-<label><input type="checkbox" id="ceilingSwitch" onchange="toggleCeiling()"> 天井機能を有効</label>
 
-<div id="ceilingSettings" style="display:none;margin-top:10px;">
-天井回数  
-<input type="number" id="ceilingCount" value="10">
+<div class="collapsible" onclick="toggle('itemSettings')">▼景品設定</div>
+
+<div id="itemSettings">
+
+<div id="itemEditors"></div>
+
+<button onclick="resetItems()">景品リセット</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="section">
+
+<h2>ガチャ操作</h2>
+
+<select id="playerSelect" onchange="updatePityDisplay()"></select>
+
+<button onclick="addPlayer()">＋追加</button>
+
+<button onclick="resetPlayers()">プレイヤーリセット</button>
+
+<div id="pityDisplay"></div>
+
+<br>
+
+<button onclick="setRoll(1)">1回</button>
+<button onclick="setRoll(5)">5回</button>
+<button onclick="setRoll(10)">10回</button>
+
+任意
+<input id="customRoll" type="number" value="1">
 
 <br><br>
 
-<select id="ceilingRarity" multiple style="width:95%;height:80px;">
-<option value="N" selected>N</option>
-<option value="R" selected>R</option>
-<option value="SR" selected>SR</option>
-<option value="UR" selected>UR</option>
-<option value="LR" selected>LR</option>
+<button onclick="rollGacha()">ガチャを回す</button>
+
+</div>
+
+
+<div class="section">
+
+<h2>ログ表示</h2>
+
+<select id="logFilter" onchange="renderLogs()">
+<option value="all">全員</option>
 </select>
 
-</div>
+<div class="log" id="logOutput"></div>
+
+<button onclick="copyLogs()">ログコピー</button>
+<button onclick="resetLogs()">ログリセット</button>
+
 </div>
 
-<!-- カスタム確率 -->
+
 <div class="section">
 
-<label><b>選択中プリセット：</b> <span id="presetName">通常</span></label>
+<h2>排出統計</h2>
 
-<div class="custom-save-wrap">
-<button id="saveCustom1Btn">カスタム保存1</button>
-<button id="saveCustom2Btn">カスタム保存2</button>
-</div>
-
-<br><br>
-
-N <input id="rateN" type="number" value="40">
-R <input id="rateR" type="number" value="30">
-SR <input id="rateSR" type="number" value="20">
-UR <input id="rateUR" type="number" value="7">
-LR <input id="rateLR" type="number" value="3">
+<div class="stats" id="statsOutput"></div>
 
 </div>
 
-<!-- 景品 -->
-<div class="section">
-<label>景品登録</label>
-<div id="items"></div>
-<button class="add-btn" onclick="addItem()">＋ 景品追加</button>
-</div>
 
-<!-- プレイヤー -->
 <div class="section">
 
-<input id="playerName" type="text" placeholder="名前">
-<button class="add-btn" onclick="addPlayer()">追加</button>
+<h2>プレイヤー統計</h2>
 
-<select id="playerSelect"></select>
+<div class="stats" id="playerStatsOutput"></div>
+
+<button onclick="resetStats()">統計リセット</button>
 
 </div>
 
-<!-- ガチャ -->
+
 <div class="section">
 
-<div class="gacha-btns">
-<button onclick="roll(1)">1回</button>
-<button onclick="roll(5)">5回</button>
-<button onclick="roll(10)">10回</button>
-</div>
+<button onclick="exportJSON()">設定保存</button>
 
-<input id="customRoll" type="number">
-<button style="width:100%;margin-top:10px;" onclick="rollCustom()">この回数</button>
+<input type="file" id="importFile" onchange="importJSON()">
 
 </div>
 
-<!-- ログ -->
-<div class="section">
-
-<select id="logFilter" onchange="displayLog()"></select>
-
-<select id="sortOrder" onchange="displayLog()">
-<option value="desc">新しい順</option>
-<option value="asc">古い順</option>
-</select>
-
-<button class="clear-btn" onclick="clearLog()">全ログ削除</button>
-
-<div id="logContainer">
-<div id="log"></div>
-<div id="summary"></div>
-</div>
-
-</div>
-
-</div>
 
 <script>
 
-let presetData = {}
+let rarities=[]
+let items=[]
+let players=[]
+let logs=[]
+let stats={}
+let playerStats={}
+let playerCounts={}
 
-async function loadPresets(){
+function toggle(id){
+document.getElementById(id).classList.toggle("hidden")
+}
 
-const res = await fetch("preset.json")
-presetData = await res.json()
+function generateRarities(){
 
-const select = document.getElementById("presetSelect")
-select.innerHTML=""
+rarities=[]
 
-Object.keys(presetData).forEach(name=>{
-const opt=document.createElement("option")
-opt.value=name
-opt.textContent=name
-select.appendChild(opt)
+let max=parseFloat(maxProb.value)
+let min=parseFloat(minProb.value)
+let count=parseInt(rarityCount.value)
+
+for(let i=0;i<count;i++){
+
+let w=max*Math.pow(min/max,i/(count-1))
+
+rarities.push({
+name:"レア"+(i+1),
+weight:parseFloat(w.toFixed(2))
 })
 
-applyPreset()
+}
+
+renderRarityEditor()
+save()
 
 }
 
-function applyPreset(){
+function renderRarityEditor(){
 
-const name=document.getElementById("presetSelect").value
-const p=presetData[name]
-if(!p)return
+let div=document.getElementById("rarityEditor")
+div.innerHTML=""
 
-rateN.value=p.N
-rateR.value=p.R
-rateSR.value=p.SR
-rateUR.value=p.UR
-rateLR.value=p.LR
+rarities.forEach((r,i)=>{
 
-presetName.textContent=name
-
-}
-
-function togglePresetHelp(){
-const box=document.getElementById("presetHelp")
-box.style.display=(box.style.display==="none")?"block":"none"
-}
-
-let players=[]
-let logData=[]
-let ceilingCounter={}
-let customRates1=null
-let customRates2=null
-
-addItem()
-
-function addItem(){
-
-const div=document.createElement("div")
-
-div.innerHTML=`
-<input type="text" placeholder="景品">
-<select>
-<option>N</option>
-<option>R</option>
-<option>SR</option>
-<option>UR</option>
-<option>LR</option>
-</select>
-<button onclick="this.parentNode.remove()">×</button>
+div.innerHTML+=`
+<div>
+<input value="${r.name}" onchange="rarities[${i}].name=this.value;renderItems();renderPitySelect();save()">
+weight
+<input type="number" value="${r.weight}" onchange="rarities[${i}].weight=parseFloat(this.value);save()">
+<button onclick="removeRarity(${i})">削除</button>
+</div>
 `
 
-items.appendChild(div)
+})
+
+div.innerHTML+=`<button onclick="addRarity()">レア追加</button>`
+
+renderItems()
+renderPitySelect()
+
+}
+
+function addRarity(){
+rarities.push({name:"新レア",weight:1})
+renderRarityEditor()
+}
+
+function removeRarity(i){
+rarities.splice(i,1)
+renderRarityEditor()
+}
+
+function renderItems(){
+
+let div=document.getElementById("itemEditors")
+div.innerHTML=""
+
+rarities.forEach(r=>{
+
+let list=items.filter(x=>x.rarity==r.name).map(x=>x.name)
+
+div.innerHTML+=`
+<h3>${r.name}</h3>
+<textarea onchange="updateItems('${r.name}',this.value)">${list.join("\n")}</textarea>
+`
+
+})
+
+}
+
+function updateItems(rarity,text){
+
+items=items.filter(x=>x.rarity!=rarity)
+
+text.split("\n").forEach(t=>{
+t=t.trim()
+if(t)items.push({rarity:rarity,name:t})
+})
+
+save()
+
+}
+
+function renderPitySelect(){
+
+let sel=document.getElementById("pityRarity")
+sel.innerHTML=""
+
+rarities.forEach(r=>{
+
+let o=document.createElement("option")
+o.value=r.name
+o.textContent=r.name
+sel.appendChild(o)
+
+})
 
 }
 
 function addPlayer(){
 
-const name=playerName.value.trim()
+let name=prompt("プレイヤー名")
 
-if(!name||players.includes(name))return
+if(!name)return
 
 players.push(name)
-ceilingCounter[name]=0
+playerCounts[name]=0
+playerStats[name]={}
 
 updatePlayerUI()
-
-playerName.value=""
+save()
 
 }
 
 function updatePlayerUI(){
 
-playerSelect.innerHTML=""
-logFilter.innerHTML='<option value="">全員</option>'
+let sel=playerSelect
+let logSel=logFilter
+
+sel.innerHTML=""
+logSel.innerHTML='<option value="all">全員</option>'
 
 players.forEach(p=>{
 
-const o=document.createElement("option")
-o.value=p
-o.textContent=p
-playerSelect.appendChild(o)
-
-const o2=document.createElement("option")
-o2.value=p
-o2.textContent=p
-logFilter.appendChild(o2)
+sel.innerHTML+=`<option>${p}</option>`
+logSel.innerHTML+=`<option>${p}</option>`
 
 })
 
+updatePityDisplay()
+
 }
 
-function toggleCeiling(){
-ceilingSettings.style.display=ceilingSwitch.checked?"block":"none"
+function updatePityDisplay(){
+
+let player=playerSelect.value
+
+if(!player || !pityEnabled.checked){
+pityDisplay.innerText=""
+return
 }
 
-function randomChoice(keys,weights){
-const sum=weights.reduce((a,b)=>a+b,0)
+let count=playerCounts[player]||0
+let max=pityCount.value
+
+pityDisplay.innerText=`天井カウント ${count} / ${max}`
+
+}
+
+function setRoll(n){
+customRoll.value=n
+}
+
+function weightedRandom(list){
+
+let sum=list.reduce((a,b)=>a+b.weight,0)
 let r=Math.random()*sum
-for(let i=0;i<keys.length;i++){
-if(r<weights[i])return keys[i]
-r-=weights[i]
-}
+
+for(let x of list){
+if(r<x.weight)return x
+r-=x.weight
 }
 
-loadPresets()
+}
+
+function rollGacha(){
+
+let player=playerSelect.value
+let times=parseInt(customRoll.value)
+
+if(!player)return
+
+for(let i=0;i<times;i++){
+
+playerCounts[player]++
+
+let pity=false
+let rarity
+
+if(pityEnabled.checked && playerCounts[player]>=pityCount.value){
+
+let idx=rarities.findIndex(r=>r.name==pityRarity.value)
+let pool=rarities.slice(idx)
+
+rarity=weightedRandom(pool)
+
+playerCounts[player]=0
+pity=true
+
+}else{
+
+rarity=weightedRandom(rarities)
+
+}
+
+let pool=items.filter(x=>x.rarity==rarity.name)
+if(pool.length==0)continue
+
+let item=pool[Math.floor(Math.random()*pool.length)]
+
+logs.push({
+player,
+rarity:rarity.name,
+item:item.name,
+pity
+})
+
+stats[item.name]=(stats[item.name]||0)+1
+
+if(!playerStats[player])playerStats[player]={}
+playerStats[player][item.name]=(playerStats[player][item.name]||0)+1
+
+}
+
+renderLogs()
+renderStats()
+renderPlayerStats()
+updatePityDisplay()
+save()
+
+}
+
+function renderLogs(){
+
+let filter=logFilter.value
+
+let data=logs.filter(l=>filter=="all"||l.player==filter)
+
+let map={}
+let text=""
+
+data.forEach(l=>{
+
+if(l.pity){
+
+text+=`${l.player} ${l.rarity} ${l.item} (天井)\n`
+
+}else{
+
+let key=l.player+"|"+l.rarity+"|"+l.item
+
+map[key]=(map[key]||0)+1
+
+}
+
+})
+
+Object.keys(map).forEach(k=>{
+
+let [p,r,i]=k.split("|")
+
+text+=`${p} ${r} ${i} ×${map[k]}\n`
+
+})
+
+logOutput.textContent=text
+
+}
+
+function renderStats(){
+
+let text=""
+
+Object.keys(stats).forEach(i=>{
+text+=`${i} ×${stats[i]}\n`
+})
+
+statsOutput.textContent=text
+
+}
+
+function renderPlayerStats(){
+
+let text=""
+
+Object.keys(playerStats).forEach(p=>{
+
+text+=`${p}\n`
+
+Object.keys(playerStats[p]).forEach(i=>{
+text+=`${i} ×${playerStats[p][i]}\n`
+})
+
+text+="\n"
+
+})
+
+playerStatsOutput.textContent=text
+
+}
+
+function copyLogs(){
+navigator.clipboard.writeText(logOutput.textContent)
+}
+
+function resetLogs(){
+
+if(confirm("ログをリセットしますか？")){
+logs=[]
+renderLogs()
+save()
+}
+
+}
+
+function resetStats(){
+
+if(confirm("統計をリセットしますか？")){
+stats={}
+playerStats={}
+renderStats()
+renderPlayerStats()
+save()
+}
+
+}
+
+function resetPlayers(){
+
+if(confirm("プレイヤーリセット？")){
+players=[]
+playerCounts={}
+playerStats={}
+updatePlayerUI()
+save()
+}
+
+}
+
+function resetItems(){
+
+if(confirm("景品リセット？")){
+items=[]
+renderItems()
+save()
+}
+
+}
+
+function resetRarities(){
+
+if(confirm("ガチャ設定リセット？")){
+rarities=[]
+renderRarityEditor()
+save()
+}
+
+}
+
+function exportJSON(){
+
+let data={rarities,items,players}
+
+let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"})
+let url=URL.createObjectURL(blob)
+
+let a=document.createElement("a")
+a.href=url
+a.download="gacha_setting.json"
+a.click()
+
+}
+
+function importJSON(){
+
+let file=importFile.files[0]
+let reader=new FileReader()
+
+reader.onload=e=>{
+
+let data=JSON.parse(e.target.result)
+
+rarities=data.rarities||[]
+items=data.items||[]
+players=data.players||[]
+
+renderRarityEditor()
+renderItems()
+updatePlayerUI()
+
+save()
+
+}
+
+reader.readAsText(file)
+
+}
+
+function save(){
+
+localStorage.setItem("gachaData",JSON.stringify({
+rarities,
+items,
+players,
+logs,
+stats,
+playerStats,
+playerCounts
+}))
+
+}
+
+function load(){
+
+let data=localStorage.getItem("gachaData")
+if(!data)return
+
+data=JSON.parse(data)
+
+rarities=data.rarities||[]
+items=data.items||[]
+players=data.players||[]
+logs=data.logs||[]
+stats=data.stats||{}
+playerStats=data.playerStats||{}
+playerCounts=data.playerCounts||{}
+
+renderRarityEditor()
+renderItems()
+updatePlayerUI()
+renderLogs()
+renderStats()
+renderPlayerStats()
+
+}
+
+load()
 
 </script>
+
 </body>
 </html>
