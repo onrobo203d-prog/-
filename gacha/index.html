@@ -3,209 +3,500 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BGM & 跳ねタイマー</title>
+<title>ガチャツール</title>
+
 <style>
-body{
-  margin:0;
-  background:#111;
-  color:white;
-  font-family:sans-serif;
-  text-align:center;
-}
-#clock{
-  font-size:clamp(40px,8vw,72px);
-  margin:20px 0;
-  transition:0.3s;
-}
-.red{ color:red; }
+html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fafafa;}
+#mainWrapper{padding:15px;}
 
-.bgm-container{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  gap:5vw;
-  margin-bottom:30px;
+.section{
+  background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;
+  box-shadow:0 0 4px rgba(0,0,0,0.1);
+  position:relative;
 }
 
-.bgm-block{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:8px;
-  width: clamp(200px,40%,300px);
-}
-
-input[type=file], button{
-  padding:8px 12px;
-  font-size:clamp(12px,1.5vw,16px);
-  width:100%;
+input[type="number"],input[type="text"],select{
+  width:95%;padding:8px;margin:5px 0;border-radius:5px;
+  border:1px solid #aaa;font-size:14px;
   box-sizing:border-box;
 }
 
-.audio-player{
-  width:100%;
+button{cursor:pointer;border:none;border-radius:6px;}
+.add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
+
+.gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.gacha-btns button{
+  flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;
 }
-.file-name{
-  font-size:clamp(10px,1vw,12px);
-  color:#ccc;
-  text-align:center;
-  word-break: break-word;
+
+.preset-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
+.clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
+.save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
+
+#logContainer{
+  display:flex;
+  flex-direction: column;
+  gap:15px;
+}
+
+#summary,#log{
+  background:#f8f8f8;
+  padding:10px;
+  border-radius:8px;
+  max-height:500px;
+  overflow:auto;
 }
 </style>
 </head>
+
 <body>
+<div id="mainWrapper">
 
-<h1>BGM & 跳ねタイマー</h1>
-<div id="clock">--:--:--</div>
+<!-- プリセット -->
+<div class="section">
 
-<div class="bgm-container">
+<label>確率プリセット
+<button onclick="togglePresetHelp()" style="margin-left:10px;">操作説明</button>
+</label>
 
-  <div class="bgm-block" id="normalBGM">
-    <h3>通常BGM</h3>
-    <button id="normalBtn">再生</button>
-    <div class="file-name" id="normalFileName">未登録</div>
-    <input type="file" id="normalUpload" accept=".mp3,.ogg">
-    <audio id="normalPlayer" class="audio-player" controls></audio>
-  </div>
+<div id="presetHelp" style="display:none;background:#eef;padding:10px;margin-top:10px;border-radius:6px;">
+確率プリセットで確率を切り替えられます
+</div>
 
-  <div class="bgm-block" id="zuiBGM">
-    <h3>ズイズイBGM</h3>
-    <button id="zuiBtn">再生</button>
-    <div class="file-name" id="zuiFileName">未登録</div>
-    <input type="file" id="zuiUpload" accept=".mp3,.ogg">
-    <audio id="zuiPlayer" class="audio-player" controls></audio>
-  </div>
+<div class="preset-grid">
+
+<select id="presetSelect" onchange="applyPreset()"></select>
+
+<button onclick="loadCustom(1)">カスタム1</button>
+<button onclick="loadCustom(2)">カスタム2</button>
 
 </div>
-<h5>跳ねるタイミングでタイマーが赤くなります。</h5>
-<h5>好きな曲をMP3形式で登録して使って下さい。それぞれ1曲ずつ登録可能です。</h5>
+
+</div>
+
+<!-- 天井設定 -->
+<div class="section">
+
+<label>
+<input type="checkbox" id="ceilingSwitch" onchange="toggleCeiling()">
+天井機能を有効にする
+</label>
+
+<div id="ceilingSettings" style="display:none;margin-top:10px;">
+
+<label>
+天井回数
+<input type="number" id="ceilingCount" value="10">
+</label>
+
+<br>
+
+<select id="ceilingRarity" multiple style="height:80px">
+<option>N</option>
+<option>R</option>
+<option>SR</option>
+<option>UR</option>
+<option>LR</option>
+</select>
+
+</div>
+
+</div>
+
+<!-- 確率 -->
+<div class="section">
+
+<b>選択中プリセット：</b>
+<span id="presetName">-</span>
+
+<br><br>
+
+N <input id="rateN" type="number"><br>
+R <input id="rateR" type="number"><br>
+SR <input id="rateSR" type="number"><br>
+UR <input id="rateUR" type="number"><br>
+LR <input id="rateLR" type="number"><br>
+
+<button onclick="saveCustom(1)">カスタム保存1</button>
+<button onclick="saveCustom(2)">カスタム保存2</button>
+
+</div>
+
+<!-- 景品 -->
+<div class="section">
+
+<label>景品登録</label>
+
+<div id="items"></div>
+
+<button class="add-btn" onclick="addItem()">＋景品追加</button>
+
+</div>
+
+<!-- プレイヤー -->
+<div class="section">
+
+<input id="playerName" placeholder="名前">
+
+<button onclick="addPlayer()">追加</button>
+
+<br><br>
+
+<select id="playerSelect"></select>
+
+</div>
+
+<!-- ガチャ -->
+<div class="section">
+
+<button onclick="roll(1)">1回</button>
+<button onclick="roll(5)">5回</button>
+<button onclick="roll(10)">10回</button>
+
+<br><br>
+
+<input id="customRoll">
+
+<button onclick="rollCustom()">回す</button>
+
+</div>
+
+<!-- ログ -->
+<div class="section">
+
+<select id="logFilter" onchange="displayLog()"></select>
+
+<div id="log"></div>
+
+<div id="summary"></div>
+
+</div>
+
+</div>
 
 <script>
-// ===== IndexedDBセットアップ =====
-let db;
-const request = indexedDB.open("bgmDB",1);
 
-request.onupgradeneeded = function(e){
-  db = e.target.result;
-  if(!db.objectStoreNames.contains("bgmStore")){
-    db.createObjectStore("bgmStore");
-  }
-};
+/* ---------- 状態 ---------- */
 
-request.onsuccess = function(e){
-  db = e.target.result;
-  loadSavedBGM();
-};
+let players=[]
+let logData=[]
+let ceilingCounter={}
+let customRates1=null
+let customRates2=null
+let presets=[]
 
-request.onerror = function(e){
-  alert("IndexedDBが利用できません");
-  console.error(e);
-};
+/* ---------- プリセット読み込み ---------- */
 
-// ===== DOM取得 =====
-const normalPlayer = document.getElementById("normalPlayer");
-const zuiPlayer = document.getElementById("zuiPlayer");
-const normalBtn = document.getElementById("normalBtn");
-const zuiBtn = document.getElementById("zuiBtn");
-const normalFileName = document.getElementById("normalFileName");
-const zuiFileName = document.getElementById("zuiFileName");
-const normalUpload = document.getElementById("normalUpload");
-const zuiUpload = document.getElementById("zuiUpload");
+async function loadPresets(){
 
-let state="IDLE";
+const res=await fetch("preset.json")
 
-// ===== IndexedDB操作 =====
-function saveBGM(key,file){
-  const txn = db.transaction("bgmStore","readwrite");
-  const store = txn.objectStore("bgmStore");
-  store.put(file,key);
+const data=await res.json()
+
+presets=data.presets
+
+const select=document.getElementById("presetSelect")
+
+presets.forEach(p=>{
+
+let opt=document.createElement("option")
+
+opt.value=p.id
+opt.textContent=p.name
+
+select.appendChild(opt)
+
+})
+
+applyPreset()
+
 }
 
-function loadBGM(key,playerElem,fileNameElem){
-  const txn = db.transaction("bgmStore","readonly");
-  const store = txn.objectStore("bgmStore");
-  const req = store.get(key);
-  req.onsuccess = function(){
-    if(req.result){
-      const blob = req.result;
-      const url = URL.createObjectURL(blob);
-      playerElem.src = url;
-      fileNameElem.textContent = blob.name;
-    }
-  };
+/* ---------- プリセット適用 ---------- */
+
+function applyPreset(){
+
+const id=document.getElementById("presetSelect").value
+
+const p=presets.find(x=>x.id===id)
+
+if(!p)return
+
+const r=p.rates
+
+rateN.value=r.N
+rateR.value=r.R
+rateSR.value=r.SR
+rateUR.value=r.UR
+rateLR.value=r.LR
+
+presetName.textContent=p.name
+
 }
 
-// ===== 初期ロード =====
-function loadSavedBGM(){
-  loadBGM("normalBGM", normalPlayer, normalFileName);
-  loadBGM("zuiBGM", zuiPlayer, zuiFileName);
+/* ---------- 景品 ---------- */
+
+function addItem(){
+
+const div=document.createElement("div")
+
+div.innerHTML=`
+<input placeholder="景品名">
+<select>
+<option>N</option>
+<option>R</option>
+<option>SR</option>
+<option>UR</option>
+<option>LR</option>
+</select>
+<button onclick="this.parentNode.remove()">×</button>
+`
+
+items.appendChild(div)
+
 }
 
-// ===== ファイル選択イベント =====
-normalUpload.addEventListener("change", e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  saveBGM("normalBGM",file);
-  loadBGM("normalBGM", normalPlayer, normalFileName);
-});
+/* ---------- プレイヤー ---------- */
 
-zuiUpload.addEventListener("change", e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  saveBGM("zuiBGM",file);
-  loadBGM("zuiBGM", zuiPlayer, zuiFileName);
-});
+function addPlayer(){
 
-// ===== 再生/停止ボタン =====
-normalBtn.addEventListener("click", ()=>{
-  if(state==="normalBtn"){
-    normalPlayer.pause();
-    state="IDLE";
-    normalBtn.textContent="再生";
-    return;
-  }
-  zuiPlayer.pause();
-  zuiBtn.textContent="再生";
+const name=playerName.value.trim()
 
-  normalPlayer.currentTime=0;
-  normalPlayer.play();
-  state="normalBtn";
-  normalBtn.textContent="停止";
-});
+if(!name||players.includes(name))return
 
-zuiBtn.addEventListener("click", ()=>{
-  if(state==="zuiBtn"){
-    zuiPlayer.pause();
-    state="IDLE";
-    zuiBtn.textContent="再生";
-    return;
-  }
-  normalPlayer.pause();
-  normalBtn.textContent="再生";
+players.push(name)
 
-  zuiPlayer.currentTime=0;
-  zuiPlayer.play();
-  state="zuiBtn";
-  zuiBtn.textContent="停止";
-});
+ceilingCounter[name]=0
 
-// ===== 時計 =====
-function updateClock(){
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2,"0");
-  const m = String(now.getMinutes()).padStart(2,"0");
-  const s = String(now.getSeconds()).padStart(2,"0");
+updatePlayers()
 
-  const clock = document.getElementById("clock");
-  clock.textContent=`${h}:${m}:${s}`;
+playerName.value=""
 
-  if(now.getMinutes()%3===0 && now.getSeconds()===0){
-    clock.classList.add("red");
-    setTimeout(()=>clock.classList.remove("red"),6000);
-  }
 }
-setInterval(updateClock,1000);
-updateClock();
+
+function updatePlayers(){
+
+playerSelect.innerHTML=""
+logFilter.innerHTML='<option value="">全員</option>'
+
+players.forEach(n=>{
+
+let o=document.createElement("option")
+
+o.value=n
+o.textContent=n
+
+playerSelect.appendChild(o)
+
+let o2=document.createElement("option")
+
+o2.value=n
+o2.textContent=n
+
+logFilter.appendChild(o2)
+
+})
+
+}
+
+/* ---------- カスタム ---------- */
+
+function saveCustom(n){
+
+const data={
+N:+rateN.value,
+R:+rateR.value,
+SR:+rateSR.value,
+UR:+rateUR.value,
+LR:+rateLR.value
+}
+
+if(n===1)customRates1=data
+else customRates2=data
+
+alert("保存")
+
+}
+
+function loadCustom(n){
+
+const r=n===1?customRates1:customRates2
+
+if(!r)return alert("未保存")
+
+rateN.value=r.N
+rateR.value=r.R
+rateSR.value=r.SR
+rateUR.value=r.UR
+rateLR.value=r.LR
+
+presetName.textContent="カスタム"+n
+
+}
+
+/* ---------- 天井 ---------- */
+
+function toggleCeiling(){
+
+ceilingSettings.style.display=
+ceilingSwitch.checked?"block":"none"
+
+}
+
+/* ---------- ガチャ ---------- */
+
+function roll(times){
+
+const player=playerSelect.value
+
+if(!player)return alert("名前選択")
+
+const itemsList=document.querySelectorAll("#items div")
+
+const pool={N:[],R:[],SR:[],UR:[],LR:[]}
+
+itemsList.forEach(d=>{
+
+const name=d.children[0].value.trim()
+const r=d.children[1].value
+
+if(name)pool[r].push(name)
+
+})
+
+const rates={
+N:+rateN.value||0,
+R:+rateR.value||0,
+SR:+rateSR.value||0,
+UR:+rateUR.value||0,
+LR:+rateLR.value||0
+}
+
+const results=[]
+
+for(let i=0;i<times;i++){
+
+let keys=[]
+let weights=[]
+
+for(let r in rates){
+
+if(pool[r].length){
+
+keys.push(r)
+weights.push(rates[r])
+
+}
+
+}
+
+let rKey=randomChoice(keys,weights)
+
+let item=pool[rKey][Math.floor(Math.random()*pool[rKey].length)]
+
+results.push({name:item,rarity:rKey})
+
+}
+
+logData.push({player,results,times})
+
+displayLog()
+
+}
+
+function randomChoice(keys,weights){
+
+let sum=weights.reduce((a,b)=>a+b)
+
+let r=Math.random()*sum
+
+for(let i=0;i<keys.length;i++){
+
+if(r<weights[i])return keys[i]
+
+r-=weights[i]
+
+}
+
+}
+
+function rollCustom(){
+
+const n=+customRoll.value
+
+if(n>0)roll(n)
+
+}
+
+/* ---------- ログ ---------- */
+
+function displayLog(){
+
+log.innerHTML=""
+
+summary.innerHTML=""
+
+let count={}
+
+logData.forEach(e=>{
+
+let txt=e.player+"("+e.times+"回)\n"
+
+e.results.forEach(r=>{
+
+let k="【"+r.rarity+"】"+r.name
+
+count[k]=(count[k]||0)+1
+
+txt+=k+"\n"
+
+})
+
+let pre=document.createElement("pre")
+
+pre.textContent=txt
+
+log.appendChild(pre)
+
+})
+
+let s=""
+
+for(let k in count){
+
+s+=k+" : "+count[k]+"\n"
+
+}
+
+summary.innerHTML="<pre>"+s+"</pre>"
+
+}
+
+/* ---------- UI ---------- */
+
+function togglePresetHelp(){
+
+presetHelp.style.display=
+presetHelp.style.display==="none"?"block":"none"
+
+}
+
+/* ---------- 初期 ---------- */
+
+addItem()
+
+updatePlayers()
+
+loadPresets()
+
 </script>
+
 </body>
 </html>
