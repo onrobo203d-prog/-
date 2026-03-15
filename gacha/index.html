@@ -22,6 +22,7 @@ input[type="number"],input[type="text"],select{
 }
 
 button{cursor:pointer;border:none;border-radius:6px;}
+
 .add-btn{margin-top:10px;padding:8px 15px;background:#55aaff;color:#fff;}
 
 .gacha-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
@@ -29,20 +30,29 @@ button{cursor:pointer;border:none;border-radius:6px;}
   flex:1;min-width:30%;padding:12px;font-size:16px;background:#ffb34d;color:#fff;
 }
 
-.preset-grid{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-  margin-top:10px;
-}
-
 .copy-btn{margin-top:5px;padding:6px 12px;background:#66cc66;color:#fff;}
 .clear-btn{margin-top:10px;padding:10px 15px;background:#ff6666;color:#fff;}
 .save-btn{margin-top:10px;padding:10px 15px;background:#6666ff;color:#fff;}
 
+.custom-save-wrap{
+  position:absolute;
+  top:8px;
+  right:8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.custom-save-wrap button{
+  padding:6px 10px;font-size:12px;background:#6666ff;color:#fff;border-radius:6px;
+}
+
+.N{color:#00ccff;} .R{color:#0055ff;}
+.SR{color:#aa00ff;} .UR{color:#ff55aa;}
+.LR{color:#ff0000;}
+
 #logContainer{
   display:flex;
-  flex-direction: column;
+  flex-direction:column;
   gap:15px;
 }
 
@@ -53,6 +63,10 @@ button{cursor:pointer;border:none;border-radius:6px;}
   max-height:500px;
   overflow:auto;
 }
+
+.log-block{margin-bottom:10px;border-bottom:1px solid #ccc;padding-bottom:5px;}
+.old-log{display:none;font-size:0.9em;color:#333;}
+pre{white-space:pre-wrap;word-break:keep-all;}
 </style>
 </head>
 
@@ -62,92 +76,81 @@ button{cursor:pointer;border:none;border-radius:6px;}
 <!-- プリセット -->
 <div class="section">
 
-<label>確率プリセット
-<button onclick="togglePresetHelp()" style="margin-left:10px;">操作説明</button>
-</label>
-
-<div id="presetHelp" style="display:none;background:#eef;padding:10px;margin-top:10px;border-radius:6px;">
-確率プリセットで確率を切り替えられます
-</div>
-
-<div class="preset-grid">
-
-<select id="presetSelect" onchange="applyPreset()"></select>
-
-<button onclick="loadCustom(1)">カスタム1</button>
-<button onclick="loadCustom(2)">カスタム2</button>
-
-</div>
-
-</div>
-
-<!-- 天井設定 -->
-<div class="section">
-
 <label>
-<input type="checkbox" id="ceilingSwitch" onchange="toggleCeiling()">
-天井機能を有効にする
+確率プリセット
+<button onclick="togglePresetHelp()" style="margin-left:10px;padding:12px 20px;font-size:18px;">
+操作説明
+</button>
 </label>
+
+<select id="presetSelect" onchange="applyPreset()" style="width:100%;padding:10px;font-size:16px;margin-top:10px;"></select>
+
+<div style="display:flex;gap:10px;margin-top:10px;">
+<button id="loadCustom1Btn" onclick="loadCustom(1)">カスタム1</button>
+<button id="loadCustom2Btn" onclick="loadCustom(2)">カスタム2</button>
+</div>
+
+<div id="presetHelp" style="display:none;padding:10px;margin-top:8px;background:#eef;border-radius:6px;">
+<h3>使い方</h3>
+確率プリセットで確率を切り替えられます。<br>
+カスタム保存した内容は「カスタム」から呼び出せます。
+</div>
+
+</div>
+
+<!-- 天井 -->
+<div class="section">
+<label><input type="checkbox" id="ceilingSwitch" onchange="toggleCeiling()"> 天井機能を有効</label>
 
 <div id="ceilingSettings" style="display:none;margin-top:10px;">
-
-<label>
-天井回数
+天井回数  
 <input type="number" id="ceilingCount" value="10">
-</label>
-
-<br>
-
-<select id="ceilingRarity" multiple style="height:80px">
-<option>N</option>
-<option>R</option>
-<option>SR</option>
-<option>UR</option>
-<option>LR</option>
-</select>
-
-</div>
-
-</div>
-
-<!-- 確率 -->
-<div class="section">
-
-<b>選択中プリセット：</b>
-<span id="presetName">-</span>
 
 <br><br>
 
-N <input id="rateN" type="number"><br>
-R <input id="rateR" type="number"><br>
-SR <input id="rateSR" type="number"><br>
-UR <input id="rateUR" type="number"><br>
-LR <input id="rateLR" type="number"><br>
+<select id="ceilingRarity" multiple style="width:95%;height:80px;">
+<option value="N" selected>N</option>
+<option value="R" selected>R</option>
+<option value="SR" selected>SR</option>
+<option value="UR" selected>UR</option>
+<option value="LR" selected>LR</option>
+</select>
 
-<button onclick="saveCustom(1)">カスタム保存1</button>
-<button onclick="saveCustom(2)">カスタム保存2</button>
+</div>
+</div>
+
+<!-- カスタム確率 -->
+<div class="section">
+
+<label><b>選択中プリセット：</b> <span id="presetName">通常</span></label>
+
+<div class="custom-save-wrap">
+<button id="saveCustom1Btn">カスタム保存1</button>
+<button id="saveCustom2Btn">カスタム保存2</button>
+</div>
+
+<br><br>
+
+N <input id="rateN" type="number" value="40">
+R <input id="rateR" type="number" value="30">
+SR <input id="rateSR" type="number" value="20">
+UR <input id="rateUR" type="number" value="7">
+LR <input id="rateLR" type="number" value="3">
 
 </div>
 
 <!-- 景品 -->
 <div class="section">
-
 <label>景品登録</label>
-
 <div id="items"></div>
-
-<button class="add-btn" onclick="addItem()">＋景品追加</button>
-
+<button class="add-btn" onclick="addItem()">＋ 景品追加</button>
 </div>
 
 <!-- プレイヤー -->
 <div class="section">
 
-<input id="playerName" placeholder="名前">
-
-<button onclick="addPlayer()">追加</button>
-
-<br><br>
+<input id="playerName" type="text" placeholder="名前">
+<button class="add-btn" onclick="addPlayer()">追加</button>
 
 <select id="playerSelect"></select>
 
@@ -156,15 +159,14 @@ LR <input id="rateLR" type="number"><br>
 <!-- ガチャ -->
 <div class="section">
 
+<div class="gacha-btns">
 <button onclick="roll(1)">1回</button>
 <button onclick="roll(5)">5回</button>
 <button onclick="roll(10)">10回</button>
+</div>
 
-<br><br>
-
-<input id="customRoll">
-
-<button onclick="rollCustom()">回す</button>
+<input id="customRoll" type="number">
+<button style="width:100%;margin-top:10px;" onclick="rollCustom()">この回数</button>
 
 </div>
 
@@ -173,9 +175,17 @@ LR <input id="rateLR" type="number"><br>
 
 <select id="logFilter" onchange="displayLog()"></select>
 
-<div id="log"></div>
+<select id="sortOrder" onchange="displayLog()">
+<option value="desc">新しい順</option>
+<option value="asc">古い順</option>
+</select>
 
+<button class="clear-btn" onclick="clearLog()">全ログ削除</button>
+
+<div id="logContainer">
+<div id="log"></div>
 <div id="summary"></div>
+</div>
 
 </div>
 
@@ -183,72 +193,62 @@ LR <input id="rateLR" type="number"><br>
 
 <script>
 
-/* ---------- 状態 ---------- */
-
-let players=[]
-let logData=[]
-let ceilingCounter={}
-let customRates1=null
-let customRates2=null
-let presets=[]
-
-/* ---------- プリセット読み込み ---------- */
+let presetData = {}
 
 async function loadPresets(){
 
-const res=await fetch("preset.json")
+const res = await fetch("preset.json")
+presetData = await res.json()
 
-const data=await res.json()
+const select = document.getElementById("presetSelect")
+select.innerHTML=""
 
-presets=data.presets
-
-const select=document.getElementById("presetSelect")
-
-presets.forEach(p=>{
-
-let opt=document.createElement("option")
-
-opt.value=p.id
-opt.textContent=p.name
-
+Object.keys(presetData).forEach(name=>{
+const opt=document.createElement("option")
+opt.value=name
+opt.textContent=name
 select.appendChild(opt)
-
 })
 
 applyPreset()
 
 }
 
-/* ---------- プリセット適用 ---------- */
-
 function applyPreset(){
 
-const id=document.getElementById("presetSelect").value
-
-const p=presets.find(x=>x.id===id)
-
+const name=document.getElementById("presetSelect").value
+const p=presetData[name]
 if(!p)return
 
-const r=p.rates
+rateN.value=p.N
+rateR.value=p.R
+rateSR.value=p.SR
+rateUR.value=p.UR
+rateLR.value=p.LR
 
-rateN.value=r.N
-rateR.value=r.R
-rateSR.value=r.SR
-rateUR.value=r.UR
-rateLR.value=r.LR
-
-presetName.textContent=p.name
+presetName.textContent=name
 
 }
 
-/* ---------- 景品 ---------- */
+function togglePresetHelp(){
+const box=document.getElementById("presetHelp")
+box.style.display=(box.style.display==="none")?"block":"none"
+}
+
+let players=[]
+let logData=[]
+let ceilingCounter={}
+let customRates1=null
+let customRates2=null
+
+addItem()
 
 function addItem(){
 
 const div=document.createElement("div")
 
 div.innerHTML=`
-<input placeholder="景品名">
+<input type="text" placeholder="景品">
 <select>
 <option>N</option>
 <option>R</option>
@@ -263,8 +263,6 @@ items.appendChild(div)
 
 }
 
-/* ---------- プレイヤー ---------- */
-
 function addPlayer(){
 
 const name=playerName.value.trim()
@@ -272,231 +270,50 @@ const name=playerName.value.trim()
 if(!name||players.includes(name))return
 
 players.push(name)
-
 ceilingCounter[name]=0
 
-updatePlayers()
+updatePlayerUI()
 
 playerName.value=""
 
 }
 
-function updatePlayers(){
+function updatePlayerUI(){
 
 playerSelect.innerHTML=""
 logFilter.innerHTML='<option value="">全員</option>'
 
-players.forEach(n=>{
+players.forEach(p=>{
 
-let o=document.createElement("option")
-
-o.value=n
-o.textContent=n
-
+const o=document.createElement("option")
+o.value=p
+o.textContent=p
 playerSelect.appendChild(o)
 
-let o2=document.createElement("option")
-
-o2.value=n
-o2.textContent=n
-
+const o2=document.createElement("option")
+o2.value=p
+o2.textContent=p
 logFilter.appendChild(o2)
 
 })
 
 }
 
-/* ---------- カスタム ---------- */
-
-function saveCustom(n){
-
-const data={
-N:+rateN.value,
-R:+rateR.value,
-SR:+rateSR.value,
-UR:+rateUR.value,
-LR:+rateLR.value
-}
-
-if(n===1)customRates1=data
-else customRates2=data
-
-alert("保存")
-
-}
-
-function loadCustom(n){
-
-const r=n===1?customRates1:customRates2
-
-if(!r)return alert("未保存")
-
-rateN.value=r.N
-rateR.value=r.R
-rateSR.value=r.SR
-rateUR.value=r.UR
-rateLR.value=r.LR
-
-presetName.textContent="カスタム"+n
-
-}
-
-/* ---------- 天井 ---------- */
-
 function toggleCeiling(){
-
-ceilingSettings.style.display=
-ceilingSwitch.checked?"block":"none"
-
-}
-
-/* ---------- ガチャ ---------- */
-
-function roll(times){
-
-const player=playerSelect.value
-
-if(!player)return alert("名前選択")
-
-const itemsList=document.querySelectorAll("#items div")
-
-const pool={N:[],R:[],SR:[],UR:[],LR:[]}
-
-itemsList.forEach(d=>{
-
-const name=d.children[0].value.trim()
-const r=d.children[1].value
-
-if(name)pool[r].push(name)
-
-})
-
-const rates={
-N:+rateN.value||0,
-R:+rateR.value||0,
-SR:+rateSR.value||0,
-UR:+rateUR.value||0,
-LR:+rateLR.value||0
-}
-
-const results=[]
-
-for(let i=0;i<times;i++){
-
-let keys=[]
-let weights=[]
-
-for(let r in rates){
-
-if(pool[r].length){
-
-keys.push(r)
-weights.push(rates[r])
-
-}
-
-}
-
-let rKey=randomChoice(keys,weights)
-
-let item=pool[rKey][Math.floor(Math.random()*pool[rKey].length)]
-
-results.push({name:item,rarity:rKey})
-
-}
-
-logData.push({player,results,times})
-
-displayLog()
-
+ceilingSettings.style.display=ceilingSwitch.checked?"block":"none"
 }
 
 function randomChoice(keys,weights){
-
-let sum=weights.reduce((a,b)=>a+b)
-
+const sum=weights.reduce((a,b)=>a+b,0)
 let r=Math.random()*sum
-
 for(let i=0;i<keys.length;i++){
-
 if(r<weights[i])return keys[i]
-
 r-=weights[i]
-
 }
-
 }
-
-function rollCustom(){
-
-const n=+customRoll.value
-
-if(n>0)roll(n)
-
-}
-
-/* ---------- ログ ---------- */
-
-function displayLog(){
-
-log.innerHTML=""
-
-summary.innerHTML=""
-
-let count={}
-
-logData.forEach(e=>{
-
-let txt=e.player+"("+e.times+"回)\n"
-
-e.results.forEach(r=>{
-
-let k="【"+r.rarity+"】"+r.name
-
-count[k]=(count[k]||0)+1
-
-txt+=k+"\n"
-
-})
-
-let pre=document.createElement("pre")
-
-pre.textContent=txt
-
-log.appendChild(pre)
-
-})
-
-let s=""
-
-for(let k in count){
-
-s+=k+" : "+count[k]+"\n"
-
-}
-
-summary.innerHTML="<pre>"+s+"</pre>"
-
-}
-
-/* ---------- UI ---------- */
-
-function togglePresetHelp(){
-
-presetHelp.style.display=
-presetHelp.style.display==="none"?"block":"none"
-
-}
-
-/* ---------- 初期 ---------- */
-
-addItem()
-
-updatePlayers()
 
 loadPresets()
 
 </script>
-
 </body>
 </html>
