@@ -49,6 +49,15 @@ header { padding: 10px; }
   border: 1px solid #ccc;
 }
 
+/* style に追加 */
+#pageCount {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
 /* ===== メッセージ行 ===== */
 #messageRow {
   display: flex;
@@ -237,6 +246,11 @@ header { padding: 10px; }
   <input id="maxPoint" type="number" min="1" max="30000" placeholder="最高pt">
 </div>
 
+<!-- 最高pt入力欄の下に追加 -->
+<div class="searchRow" style="margin-top:8px;">
+  <input id="pageCount" type="number" min="1" max="20" placeholder="生成枚数">
+</div>
+
 </header>
 
 <nav id="tabs">
@@ -301,6 +315,9 @@ const search = document.getElementById("search");
 /* search取得の下に追加 */
 const minPoint = document.getElementById("minPoint");
 const maxPoint = document.getElementById("maxPoint");
+
+/* minPoint / maxPoint の下に追加 */
+const pageCount = document.getElementById("pageCount");
 
 fetch(DATA_URL)
   .then(r => r.json())
@@ -428,6 +445,7 @@ function loadImageSmart(id){
 let previewImages = [];
 let currentPreviewIndex = 0;
 
+/* exportBtn.onclick 全体をこれに置き換え */
 document.getElementById("exportBtn").onclick = async () => {
   const list = getFiltered();
   if (!list.length) return;
@@ -435,10 +453,16 @@ document.getElementById("exportBtn").onclick = async () => {
   previewImages = [];
   currentPreviewIndex = 0;
 
-  const MAX_PER_IMAGE = 100;
+  /* 入力が空なら自動計算（従来通り100枚ごと） */
+  const requestedPages = pageCount.value === ""
+    ? Math.ceil(list.length / 100)
+    : Math.max(1, Number(pageCount.value));
 
-  for (let i = 0; i < list.length; i += MAX_PER_IMAGE) {
-    const slice = list.slice(i, i + MAX_PER_IMAGE);
+  /* 1ページあたり何件載せるか計算 */
+  const perPage = Math.ceil(list.length / requestedPages);
+
+  for (let i = 0; i < list.length; i += perPage) {
+    const slice = list.slice(i, i + perPage);
     const img = await generateCanvasImage(slice);
     previewImages.push(img);
   }
@@ -451,11 +475,12 @@ async function generateCanvasImage(list) {
   const W = 1920;
   const H = 1080;
   const padding = 20;
-  const count = Math.min(list.length, 100);
 
-  let cols = Math.ceil(Math.sqrt(count * (W / H)));
-  cols = Math.min(cols, 12);
-  let rows = Math.ceil(count / cols);
+const count = list.length;
+
+let cols = Math.ceil(Math.sqrt(count * (W / H)));
+cols = Math.min(cols, 20);
+let rows = Math.ceil(count / cols);
 
   const thumbSizeW = (W / cols) - padding * 2;
   const thumbSizeH = (H / rows) - padding * 2;
