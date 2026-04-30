@@ -49,13 +49,13 @@ header { padding: 10px; }
   border: 1px solid #ccc;
 }
 
-/* style に追加 */
+/* #pageCount のCSSを置き換え */
 #pageCount {
-  flex: 1;
-  padding: 8px;
+  padding: 8px 12px;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #ccc;
+  background: #fff;
 }
 
 /* ===== メッセージ行 ===== */
@@ -232,10 +232,19 @@ header { padding: 10px; }
     </div>
     <button id="noticeBtn">使用前にお読み下さい</button>
   </div>
+
+<!-- 今の actionRow を置き換え -->
 <div class="actionRow">
+  <select id="pageCount">
+<option value="2" selected>2枚</option>
+    <option value="3">3枚</option>
+    <option value="4">4枚</option>
+  </select>
+
   <button id="exportBtn">画像出力</button>
   <button id="resetBtn" onclick="resetState()">状態をリセット</button>
 </div>
+
   <div class="searchRow">
     <input id="search" placeholder="検索">
   </div>
@@ -244,11 +253,6 @@ header { padding: 10px; }
 <div class="searchRow" style="margin-top:8px; display:flex; gap:8px;">
   <input id="minPoint" type="number" min="1" max="30000" placeholder="最低pt">
   <input id="maxPoint" type="number" min="1" max="30000" placeholder="最高pt">
-</div>
-
-<!-- 最高pt入力欄の下に追加 -->
-<div class="searchRow" style="margin-top:8px;">
-  <input id="pageCount" type="number" min="1" max="20" placeholder="生成枚数">
 </div>
 
 </header>
@@ -453,10 +457,8 @@ document.getElementById("exportBtn").onclick = async () => {
   previewImages = [];
   currentPreviewIndex = 0;
 
-  /* 入力が空なら自動計算（従来通り100枚ごと） */
-  const requestedPages = pageCount.value === ""
-    ? Math.ceil(list.length / 100)
-    : Math.max(1, Number(pageCount.value));
+/* exportBtn.onclick 内の requestedPages を置き換え */
+const requestedPages = Number(pageCount.value) || 2;
 
   /* 1ページあたり何件載せるか計算 */
   const perPage = Math.ceil(list.length / requestedPages);
@@ -489,8 +491,8 @@ let rows = Math.ceil(count / cols);
   const cardW = thumbSize + padding * 2;
   const cardH = thumbSize + padding * 2;
 
-  cols = Math.floor(W / cardW);
-  rows = Math.ceil(count / cols);
+cols = Math.max(1, Math.floor(W / cardW));
+rows = Math.ceil(count / cols);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
