@@ -1,278 +1,466 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>タイマー&サイコロ</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f5f5f5;
-}
-.notice {
-  text-align: center;
-  font-weight: bold;
-  color: #c00;
-  padding: 8px;
-}
-.sound-init {
-  text-align: center;
-  margin-bottom: 4px;
-}
-.container {
-  height: calc(100vh - 90px);
-  display: flex;
-  flex-direction: column;
-}
-.timer-area {
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-}
-.timer-box {
-  flex: 1;
-  background: #fff;
-  border-radius: 12px;
-  padding: 10px;
-  text-align: center;
-}
-.timer-title {
-  font-weight: bold;
-}
-.timer-input {
-  width: 80px;
-  font-size: 16px;
-  text-align: center;
-}
-.time-display {
-  font-size: 28px;
-  margin: 6px 0;
-}
-.button-row {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-button {
-  padding: 6px 12px;
-  font-size: 15px;
-}
-.dice-area {
-  flex: 1;
-  background: #fff;
-  margin: 10px;
-  border-radius: 12px;
-  text-align: center;
-  padding: 20px;
-}
-.dice-box {
-  width: 120px;
-  height: 120px;
-  margin: 20px auto;
-  border-radius: 16px;
-  border: 4px solid #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  font-weight: bold;
-}
-.rolling {
-  animation: shake 0.15s infinite;
-}
-@keyframes shake {
-  0% { transform: rotate(0deg); }
-  25% { transform: rotate(2deg); }
-  50% { transform: rotate(0deg); }
-  75% { transform: rotate(-2deg); }
-  100% { transform: rotate(0deg); }
-}
-</style>
-</head>
-
-<body>
-
-<div class="notice">※ 配信前に「音を有効化」を必ず押してください ※</div>
-
-<div class="sound-init">
-  <button id="soundBtn" onclick="enableSound()">🔊 音を有効化</button>
-</div>
-
-<div class="container">
-
-  <div class="timer-area">
-    <div class="timer-box">
-      <div class="timer-title">⏱ タイマー①</div>
-      <input type="number" id="input1" class="timer-input" placeholder="秒"> 秒
-      <div id="display1" class="time-display">0:00</div>
-      <div class="button-row">
-        <button onclick="startTimer(1)">▶</button>
-        <button onclick="resetTimer(1)">⟲</button>
-      </div>
-    </div>
-
-    <div class="timer-box">
-      <div class="timer-title">⏱ タイマー②</div>
-      <input type="number" id="input2" class="timer-input" placeholder="秒"> 秒
-      <div id="display2" class="time-display">0:00</div>
-      <div class="button-row">
-        <button onclick="startTimer(2)">▶</button>
-        <button onclick="resetTimer(2)">⟲</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="dice-area">
-    <div class="timer-title">🎲 サイコロ</div>
-    <div id="dice" class="dice-box">?</div>
-    <button onclick="rollDice()">回す！</button>
-  </div>
-
-</div>
-
-<script>
-let audioCtx;
-let silentOsc;
-let timers = {};
-let soundEnabled = false;
-
-/* ---------- 音有効化（最重要） ---------- */
-async function enableSound() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state !== 'running') {
-    await audioCtx.resume();
-  }
-
-  // 🔑 ユーザー操作中に「聞こえる音」を1回鳴らす
-  const clickOsc = audioCtx.createOscillator();
-  const clickGain = audioCtx.createGain();
-  clickOsc.frequency.value = 800;
-  clickGain.gain.value = 0.2;
-  clickOsc.connect(clickGain).connect(audioCtx.destination);
-  clickOsc.start();
-  clickOsc.stop(audioCtx.currentTime + 0.05);
-
-  // 無音ループで Context を維持
-  if (!silentOsc) {
-    const gain = audioCtx.createGain();
-    gain.gain.value = 0.0001;
-    silentOsc = audioCtx.createOscillator();
-    silentOsc.frequency.value = 440;
-    silentOsc.connect(gain).connect(audioCtx.destination);
-    silentOsc.start();
-  }
-
-  soundEnabled = true;
-  document.querySelector('.notice').textContent =
-    '🔊 音は有効です（このまま配信開始OK）';
-  document.getElementById('soundBtn').style.display = 'none';
-}
-
-/* ---------- iOS復帰対策 ---------- */
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && audioCtx?.state !== 'running') {
-    audioCtx.resume();
-  }
-});
-
-/* ---------- 効果音 ---------- */
-function playTimerSound() {
-  let t = audioCtx.currentTime;
-  for (let i = 0; i < 8; i++) {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = 'square';
-    o.frequency.value = 1000;
-    g.gain.setValueAtTime(0.001, t);
-    g.gain.linearRampToValueAtTime(0.25, t + 0.02);
-    g.gain.linearRampToValueAtTime(0.001, t + 0.15);
-    o.connect(g).connect(audioCtx.destination);
-    o.start(t);
-    o.stop(t + 0.15);
-    t += 0.18;
-  }
-}
-
-function playDiceSound() {
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = 'triangle';
-  o.frequency.setValueAtTime(300, audioCtx.currentTime);
-  o.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.3);
-  g.gain.setValueAtTime(0.001, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
-  o.connect(g).connect(audioCtx.destination);
-  o.start();
-  o.stop(audioCtx.currentTime + 0.6);
-}
-
-/* ---------- 時間表示 ---------- */
-function format(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-/* ---------- タイマー ---------- */
-function startTimer(n) {
-  if (!soundEnabled) {
-    document.querySelector('.notice').textContent =
-      '⚠ 先に「音を有効化」を押してください';
-    return;
-  }
-
-  const input = document.getElementById('input' + n);
-  const display = document.getElementById('display' + n);
-  const total = Number(input.value);
-  if (!total) return;
-
-  const start = performance.now();
-  clearInterval(timers[n]);
-
-  timers[n] = setInterval(() => {
-    const elapsed = Math.floor((performance.now() - start) / 1000);
-    const remain = Math.max(0, total - elapsed);
-    display.textContent = format(remain);
-    if (remain <= 0) {
-      clearInterval(timers[n]);
-      playTimerSound();
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ランダムキャラ生成サイト</title>
+  <style>
+    * {
+      box-sizing: border-box;
     }
-  }, 250);
-}
 
-function resetTimer(n) {
-  clearInterval(timers[n]);
-  document.getElementById('display' + n).textContent = '0:00';
-}
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: sans-serif;
+      background: #f4f4f4;
+      color: #222;
+    }
 
-/* ---------- サイコロ ---------- */
-function rollDice() {
-  if (!soundEnabled) {
-    document.querySelector('.notice').textContent =
-      '⚠ 先に「音を有効化」を押してください';
-    return;
-  }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
 
-  const dice = document.getElementById('dice');
-  dice.classList.add('rolling');
+    h1, h2 {
+      text-align: center;
+    }
 
-  const r = setInterval(() => {
-    dice.textContent = Math.floor(Math.random() * 6) + 1;
-  }, 100);
+    .main-button {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
 
-  setTimeout(() => {
-    clearInterval(r);
-    dice.textContent = Math.floor(Math.random() * 6) + 1;
-    dice.classList.remove('rolling');
-    playDiceSound();
-  }, 3000);
-}
-</script>
+    .result {
+      min-height: 80px;
+      font-size: 2rem;
+      font-weight: bold;
+      text-align: center;
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      background: #fafafa;
+      word-break: break-word;
+    }
 
+    .section {
+      margin-bottom: 24px;
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .connector-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .connector-row div {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .category-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 14px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .control-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+      vertical-align: top;
+      cursor: pointer;
+      word-break: break-word;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    .small-note {
+      font-size: 0.85rem;
+      margin-top: 8px;
+      color: #555;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+
+    @media (max-width: 600px) {
+      .result {
+        font-size: 1.4rem;
+      }
+
+      .main-button {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ランダムキャラ生成サイト</h1>
+
+    <button class="main-button" id="generateBtn">キャラを作る</button>
+
+    <div class="result" id="result">ここに結果が表示されます</div>
+
+    <div class="section">
+      <h2>接続語設定</h2>
+      <div class="connector-row">
+        <div>
+          <label for="connector1">接続語1</label>
+          <input type="text" id="connector1" value="な">
+        </div>
+        <div>
+          <label for="connector2">接続語2</label>
+          <input type="text" id="connector2" value="、実は">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>単語登録</h2>
+      <div class="category-grid">
+        <div>
+          <label id="label1">項目1（0件）</label>
+          <textarea id="input1" placeholder="改行ごとに入力"></textarea>
+          <div class="category-buttons">
+            <button onclick="addWords(1)">項目1追加</button>
+            <button onclick="clearCategory(1)">項目1全削除</button>
+          </div>
+        </div>
+
+        <div>
+          <label id="label2">項目2（0件）</label>
+          <textarea id="input2" placeholder="改行ごとに入力"></textarea>
+          <div class="category-buttons">
+            <button onclick="addWords(2)">項目2追加</button>
+            <button onclick="clearCategory(2)">項目2全削除</button>
+          </div>
+        </div>
+
+        <div>
+          <label id="label3">項目3（0件）</label>
+          <textarea id="input3" placeholder="改行ごとに入力"></textarea>
+          <div class="category-buttons">
+            <button onclick="addWords(3)">項目3追加</button>
+            <button onclick="clearCategory(3)">項目3全削除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>登録単語一覧</h2>
+
+      <div class="control-buttons">
+        <button id="toggleListBtn">開く</button>
+        <button onclick="copyWordList()">一覧コピー</button>
+        <button onclick="clearAll()">全て消去</button>
+      </div>
+
+      <div id="wordListArea" class="hidden">
+        <table id="wordTable">
+          <thead>
+            <tr>
+              <th>項目1</th>
+              <th>項目2</th>
+              <th>項目3</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="small-note">（単語をタップで個別消去）</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>使用履歴（最新10件）</h2>
+      <ul id="historyList"></ul>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "randomCharacterGeneratorData";
+
+    let data = {
+      category1: [],
+      category2: [],
+      category3: [],
+      connector1: "な",
+      connector2: "、実は",
+      history: []
+    };
+
+    function saveData() {
+      data.connector1 = document.getElementById("connector1").value;
+      data.connector2 = document.getElementById("connector2").value;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      updateCounts();
+      renderTable();
+      renderHistory();
+    }
+
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        data = JSON.parse(saved);
+      }
+
+      document.getElementById("connector1").value = data.connector1 || "な";
+      document.getElementById("connector2").value = data.connector2 || "、実は";
+
+      updateCounts();
+      renderTable();
+      renderHistory();
+    }
+
+    function updateCounts() {
+      document.getElementById("label1").textContent = `項目1（${data.category1.length}件）`;
+      document.getElementById("label2").textContent = `項目2（${data.category2.length}件）`;
+      document.getElementById("label3").textContent = `項目3（${data.category3.length}件）`;
+    }
+
+    function addWords(categoryNum) {
+      const textarea = document.getElementById(`input${categoryNum}`);
+      const lines = textarea.value
+        .split("\n")
+        .map(word => word.trim())
+        .filter(word => word);
+
+      const categoryKey = `category${categoryNum}`;
+      const duplicates = [];
+
+      lines.forEach(word => {
+        if (data[categoryKey].includes(word)) {
+          duplicates.push(word);
+        } else {
+          data[categoryKey].push(word);
+        }
+      });
+
+      if (duplicates.length) {
+        alert(`${duplicates.join(", ")} は既に登録されています`);
+      }
+
+      textarea.value = "";
+      saveData();
+    }
+
+    function getRandomWord(arr) {
+      if (!arr.length) return null;
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function generateCharacter() {
+      saveData();
+
+      const a = getRandomWord(data.category1);
+      const b = getRandomWord(data.category2);
+      const c = getRandomWord(data.category3);
+
+      let result = "";
+
+      if (a && b && c) {
+        result = a + data.connector1 + b + data.connector2 + c;
+      } else if (a && b) {
+        result = a + data.connector1 + b;
+      } else if (a && c) {
+        result = a + data.connector2 + c;
+      } else if (a) {
+        result = a;
+      } else if (b) {
+        result = b;
+      } else if (c) {
+        result = c;
+      } else {
+        result = "単語が登録されていません";
+      }
+
+      document.getElementById("result").textContent = result;
+
+      if (result !== "単語が登録されていません") {
+        if (data.history[0] !== result) {
+          data.history.unshift(result);
+          data.history = data.history.slice(0, 10);
+        }
+      }
+
+      saveData();
+    }
+
+    function renderTable() {
+      const tbody = document.querySelector("#wordTable tbody");
+      tbody.innerHTML = "";
+
+      const maxLength = Math.max(
+        data.category1.length,
+        data.category2.length,
+        data.category3.length
+      );
+
+      for (let i = 0; i < maxLength; i++) {
+        const row = document.createElement("tr");
+
+        [1, 2, 3].forEach(num => {
+          const td = document.createElement("td");
+          const word = data[`category${num}`][i] || "";
+          td.textContent = word;
+
+          if (word) {
+            td.onclick = () => deleteWord(num, word);
+          }
+
+          row.appendChild(td);
+        });
+
+        tbody.appendChild(row);
+      }
+    }
+
+    function deleteWord(categoryNum, word) {
+      if (!confirm(`${word} を削除しますか？`)) return;
+
+      const key = `category${categoryNum}`;
+      data[key] = data[key].filter(item => item !== word);
+
+      saveData();
+    }
+
+    function clearCategory(categoryNum) {
+      if (!confirm(`項目${categoryNum}を全削除しますか？`)) return;
+
+      data[`category${categoryNum}`] = [];
+      saveData();
+    }
+
+    function clearAll() {
+      if (!confirm("全カテゴリを削除しますか？")) return;
+
+      data.category1 = [];
+      data.category2 = [];
+      data.category3 = [];
+      data.history = [];
+
+      saveData();
+    }
+
+    function copyWordList() {
+      const text = `
+【項目1】
+${data.category1.join("\n")}
+
+【項目2】
+${data.category2.join("\n")}
+
+【項目3】
+${data.category3.join("\n")}
+      `.trim();
+
+      navigator.clipboard.writeText(text)
+        .then(() => alert("一覧をコピーしました"))
+        .catch(() => alert("コピーに失敗しました"));
+    }
+
+    function renderHistory() {
+      const historyList = document.getElementById("historyList");
+      historyList.innerHTML = "";
+
+      data.history.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        historyList.appendChild(li);
+      });
+    }
+
+    document.getElementById("generateBtn").addEventListener("click", generateCharacter);
+
+    document.getElementById("connector1").addEventListener("input", saveData);
+    document.getElementById("connector2").addEventListener("input", saveData);
+
+    document.getElementById("toggleListBtn").addEventListener("click", () => {
+      const area = document.getElementById("wordListArea");
+      const btn = document.getElementById("toggleListBtn");
+
+      area.classList.toggle("hidden");
+
+      btn.textContent = area.classList.contains("hidden") ? "開く" : "閉じる";
+    });
+
+    loadData();
+  </script>
 </body>
 </html>
