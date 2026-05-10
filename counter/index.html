@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>パネル生成サイト</title>
+<title>Transparent Panel Splitter</title>
 
 <style>
 
@@ -45,6 +45,11 @@ button:hover{
     opacity:0.8;
 }
 
+button:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+
 canvas{
     border:2px solid black;
     background:white;
@@ -64,14 +69,14 @@ canvas{
 </head>
 <body>
 
-<h1>パネル生成サイト</h1>
+<h1>Transparent Panel Splitter</h1>
 
 <div class="toolbar">
 
 <input type="file" id="upload" accept="image/png">
 
 <label>
-パネルの色を選択→
+Fill Color
 <input type="color" id="colorPicker" value="#ff0000">
 </label>
 
@@ -80,7 +85,7 @@ canvas{
 </button>
 
 <button id="downloadBtn">
-パネル画像ダウンロード
+Download ZIP
 </button>
 
 </div>
@@ -130,6 +135,19 @@ upload.addEventListener("change", e => {
             img.width +
             " x " +
             img.height;
+
+        /*
+        reset button text
+        */
+
+        processBtn.textContent = "パネル生成";
+        processBtn.disabled = false;
+
+        /*
+        clear old regions
+        */
+
+        regions = [];
     };
 
     img.src = URL.createObjectURL(file);
@@ -155,27 +173,49 @@ function processImage(){
         return;
     }
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(originalImage,0,0);
+    /*
+    processing state
+    */
 
-    const imageData = ctx.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
+    processBtn.textContent = "しばらくお待ちください";
+    processBtn.disabled = true;
 
-    const binary = createBinaryMap(imageData);
+    /*
+    slight delay so UI updates immediately
+    */
 
-    closeSmallGaps(binary);
+    setTimeout(() => {
 
-    regions = detectRegions(binary);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(originalImage,0,0);
 
-    renderRegions();
+        const imageData = ctx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
 
-    info.innerHTML =
-        "Detected Panels : " +
-        regions.length;
+        const binary = createBinaryMap(imageData);
+
+        closeSmallGaps(binary);
+
+        regions = detectRegions(binary);
+
+        renderRegions();
+
+        /*
+        completed state
+        */
+
+        processBtn.textContent = "パネル完成";
+        processBtn.disabled = false;
+
+        info.innerHTML =
+            "Detected Panels : " +
+            regions.length;
+
+    }, 50);
 }
 
 function createBinaryMap(imageData){
