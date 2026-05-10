@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Panel Splitter Tool</title>
+<title>Transparent Panel Splitter</title>
 
 <style>
+
 *{
     box-sizing:border-box;
 }
 
 body{
     margin:0;
-    padding:30px;
-    background:#f2f2f2;
+    padding:20px;
+    background:#f0f0f0;
     font-family:sans-serif;
 }
 
@@ -24,66 +25,71 @@ h1{
 
 .toolbar{
     display:flex;
+    flex-wrap:wrap;
     gap:20px;
     align-items:center;
-    flex-wrap:wrap;
     margin-bottom:20px;
 }
 
 button{
     border:none;
-    padding:12px 18px;
-    cursor:pointer;
     background:black;
     color:white;
-    border-radius:8px;
+    padding:12px 20px;
+    cursor:pointer;
+    border-radius:10px;
     font-size:16px;
 }
 
-input[type="file"]{
-    background:white;
-    padding:10px;
-    border-radius:8px;
+button:hover{
+    opacity:0.8;
 }
 
 canvas{
-    max-width:100%;
     border:2px solid black;
     background:white;
+    max-width:100%;
+}
+
+.panel{
+    margin-top:10px;
 }
 
 .info{
-    margin-top:10px;
+    margin-top:15px;
     font-size:14px;
 }
+
 </style>
 </head>
 <body>
 
-<h1>Panel Splitter Tool</h1>
+<h1>Transparent Panel Splitter</h1>
 
 <div class="toolbar">
 
-    <input type="file" id="upload" accept="image/*">
+<input type="file" id="upload" accept="image/png">
 
-    <label>
-        Fill Color
-        <input type="color" id="colorPicker" value="#ff0000">
-    </label>
+<label>
+Fill Color
+<input type="color" id="colorPicker" value="#ff0000">
+</label>
 
-    <button id="processBtn">
-        Process Panels
-    </button>
+<button id="processBtn">
+Process Panels
+</button>
 
-    <button id="downloadBtn">
-        Download ZIP
-    </button>
+<button id="downloadBtn">
+Download ZIP
+</button>
 
 </div>
 
 <canvas id="canvas"></canvas>
 
-<div class="info" id="info"></div>
+<div class="info" id="info">
+No image loaded
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -93,11 +99,9 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const upload = document.getElementById("upload");
-const colorPicker = document.getElementById("colorPicker");
-
 const processBtn = document.getElementById("processBtn");
 const downloadBtn = document.getElementById("downloadBtn");
-
+const colorPicker = document.getElementById("colorPicker");
 const info = document.getElementById("info");
 
 let originalImage = null;
@@ -106,6 +110,7 @@ let regions = [];
 upload.addEventListener("change", e => {
 
     const file = e.target.files[0];
+
     if(!file) return;
 
     const img = new Image();
@@ -117,31 +122,38 @@ upload.addEventListener("change", e => {
         canvas.width = img.width;
         canvas.height = img.height;
 
+        ctx.clearRect(0,0,canvas.width,canvas.height);
         ctx.drawImage(img,0,0);
 
+        info.innerHTML =
+            "Image Loaded : " +
+            img.width +
+            " x " +
+            img.height;
     };
 
     img.src = URL.createObjectURL(file);
 
 });
 
-processBtn.addEventListener("click", () => {
+processBtn.addEventListener("click", processImage);
 
-    if(!originalImage) return;
+colorPicker.addEventListener("input", () => {
 
-    processImage();
-
-});
-
-downloadBtn.addEventListener("click", async () => {
-
-    if(regions.length === 0) return;
-
-    await exportZIP();
+    if(regions.length > 0){
+        renderRegions();
+    }
 
 });
+
+downloadBtn.addEventListener("click", exportZIP);
 
 function processImage(){
+
+    if(!originalImage){
+        alert("Upload image first");
+        return;
+    }
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(originalImage,0,0);
@@ -155,15 +167,15 @@ function processImage(){
 
     const binary = createBinaryMap(imageData);
 
-    autoCloseGaps(binary);
+    closeSmallGaps(binary);
 
     regions = detectRegions(binary);
 
     renderRegions();
 
-    info.innerHTML = `
-        Regions detected: ${regions.length}
-    `;
+    info.innerHTML =
+        "Detected Panels : " +
+        regions.length;
 }
 
 function createBinaryMap(imageData){
@@ -171,43 +183,57 @@ function createBinaryMap(imageData){
     const width = imageData.width;
     const height = imageData.height;
 
-    const binary = new Uint8Array(width * height);
+    const map = new Uint8Array(width * height);
 
     for(let i=0;i<width*height;i++){
 
-        const r = imageData.data[i*4];
-        const g = imageData.data[i*4+1];
-        const b = imageData.data[i*4+2];
+        const alpha = imageData.data[i*4 + 3];
 
-        const brightness = (r+g+b)/3;
+        /*
+        alpha > 10
+        = wall / line
 
-        binary[i] = brightness < 40 ? 1 : 0;
+        alpha <= 10
+        = transparent space
+        */
+
+        if(alpha > 10){
+            map[i] = 1;
+        }else{
+            map[i] = 0;
+        }
     }
+
+    /*
+    Treat screen edge as wall
+    */
 
     for(let x=0;x<width;x++){
 
-        binary[x] = 1;
-        binary[(height-1)*width+x] = 1;
+        map[x] = 1;
+        map[(height-1)*width+x] = 1;
     }
 
     for(let y=0;y<height;y++){
 
-        binary[y*width] = 1;
-        binary[y*width+(width-1)] = 1;
+        map[y*width] = 1;
+        map[y*width + width - 1] = 1;
     }
 
     return {
-        data:binary,
+        data:map,
         width,
         height
     };
 }
 
-function autoCloseGaps(binaryObj){
+function closeSmallGaps(binary){
 
-    const data = binaryObj.data;
-    const width = binaryObj.width;
-    const height = binaryObj.height;
+    const data = binary.data;
+    const width = binary.width;
+    const height = binary.height;
+
+    const copy = new Uint8Array(data);
 
     for(let y=1;y<height-1;y++){
 
@@ -215,7 +241,7 @@ function autoCloseGaps(binaryObj){
 
             const idx = y*width+x;
 
-            if(data[idx] === 0){
+            if(copy[idx] === 0){
 
                 let walls = 0;
 
@@ -223,13 +249,18 @@ function autoCloseGaps(binaryObj){
 
                     for(let dx=-1;dx<=1;dx++){
 
-                        const ni = (y+dy)*width+(x+dx);
+                        const ni =
+                            (y+dy)*width + (x+dx);
 
-                        if(data[ni] === 1){
+                        if(copy[ni] === 1){
                             walls++;
                         }
                     }
                 }
+
+                /*
+                gap closing
+                */
 
                 if(walls >= 7){
                     data[idx] = 1;
@@ -239,15 +270,15 @@ function autoCloseGaps(binaryObj){
     }
 }
 
-function detectRegions(binaryObj){
+function detectRegions(binary){
 
-    const data = binaryObj.data;
-    const width = binaryObj.width;
-    const height = binaryObj.height;
+    const data = binary.data;
+    const width = binary.width;
+    const height = binary.height;
 
     const visited = new Uint8Array(width*height);
 
-    const regions = [];
+    const found = [];
 
     let regionId = 0;
 
@@ -257,7 +288,10 @@ function detectRegions(binaryObj){
 
             const idx = y*width+x;
 
-            if(data[idx] === 0 && !visited[idx]){
+            if(
+                data[idx] === 0 &&
+                !visited[idx]
+            ){
 
                 const region = floodFill(
                     x,
@@ -268,9 +302,13 @@ function detectRegions(binaryObj){
                     height
                 );
 
-                if(region.length > 100){
+                /*
+                Remove tiny garbage
+                */
 
-                    regions.push({
+                if(region.length > 300){
+
+                    found.push({
                         id:regionId++,
                         pixels:region
                     });
@@ -279,7 +317,7 @@ function detectRegions(binaryObj){
         }
     }
 
-    return regions;
+    return found;
 }
 
 function floodFill(
@@ -328,7 +366,12 @@ function floodFill(
 
 function renderRegions(){
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
 
     const fillColor = colorPicker.value;
 
@@ -347,33 +390,55 @@ function renderRegions(){
         }
     }
 
-    ctx.drawImage(originalImage,0,0);
+    /*
+    Draw original lineart on top
+    */
+
+    ctx.drawImage(
+        originalImage,
+        0,
+        0
+    );
 }
 
-colorPicker.addEventListener("input", () => {
-
-    if(regions.length > 0){
-        renderRegions();
-    }
-
-});
-
 async function exportZIP(){
+
+    if(regions.length === 0){
+
+        alert("No panels detected");
+
+        return;
+    }
 
     const zip = new JSZip();
 
     for(const region of regions){
 
-        const off = document.createElement("canvas");
+        const off =
+            document.createElement("canvas");
 
         off.width = canvas.width;
         off.height = canvas.height;
 
         const offCtx = off.getContext("2d");
 
-        offCtx.clearRect(0,0,off.width,off.height);
+        /*
+        transparent background
+        */
 
-        offCtx.fillStyle = colorPicker.value;
+        offCtx.clearRect(
+            0,
+            0,
+            off.width,
+            off.height
+        );
+
+        /*
+        fill panel
+        */
+
+        offCtx.fillStyle =
+            colorPicker.value;
 
         for(const p of region.pixels){
 
@@ -385,11 +450,25 @@ async function exportZIP(){
             );
         }
 
-        offCtx.drawImage(originalImage,0,0);
+        /*
+        overlay lineart
+        */
 
-        const blob = await new Promise(resolve => {
-            off.toBlob(resolve,"image/png");
-        });
+        offCtx.drawImage(
+            originalImage,
+            0,
+            0
+        );
+
+        const blob =
+            await new Promise(resolve => {
+
+                off.toBlob(
+                    resolve,
+                    "image/png"
+                );
+
+            });
 
         zip.file(
             `panel_${region.id}.png`,
@@ -397,13 +476,16 @@ async function exportZIP(){
         );
     }
 
-    const content = await zip.generateAsync({
-        type:"blob"
-    });
+    const content =
+        await zip.generateAsync({
+            type:"blob"
+        });
 
-    const a = document.createElement("a");
+    const a =
+        document.createElement("a");
 
-    a.href = URL.createObjectURL(content);
+    a.href =
+        URL.createObjectURL(content);
 
     a.download = "panels.zip";
 
