@@ -262,12 +262,12 @@ accept=".zip">
 
 </label>
 
-<button id="workSaveBtn">
-作業セーブ
-</button>
-
 <button id="saveBtn">
 画像DL
+</button>
+
+<button id="workSaveBtn">
+作業セーブ
 </button>
 
 <button id="clearBtn">
@@ -566,7 +566,7 @@ function cleanupLayers(){
     activeLayer = null;
 }
 
-async function autoSave(){
+async function saveWorkData(){
 
     const saveData = {
 
@@ -669,7 +669,7 @@ async function autoSave(){
     await saveToDB(saveData);
 }
 
-async function restoreAutoSave(){
+async function restoreWorkSave(){
 
     const data =
     await loadFromDB();
@@ -771,8 +771,6 @@ async function restoreAutoSave(){
 
     requestRender();
 }
-
-/* 以下は元コードそのまま */
 
 function adjustCanvasArea(){
 
@@ -999,6 +997,7 @@ zipUpload.addEventListener(
     }
 
     requestRender();
+
 });
 
 function createLayerUI(layer){
@@ -1016,10 +1015,14 @@ function createLayerUI(layer){
     "layerHeader";
 
     const visibleBtn =
-    document.createElement("button");
+    document.createElement(
+        "button"
+    );
 
     visibleBtn.textContent =
-    layer.visible ? "表示" : "非表示";
+    layer.visible
+    ? "表示"
+    : "非表示";
 
     visibleBtn.onclick =
     async ()=>{
@@ -1028,159 +1031,283 @@ function createLayerUI(layer){
         !layer.visible;
 
         visibleBtn.textContent =
-        layer.visible ? "表示" : "非表示";
+        layer.visible
+        ? "表示"
+        : "非表示";
 
         requestRender();
+
     };
 
     const thumb =
-    document.createElement("img");
+    document.createElement(
+        "img"
+    );
 
-    thumb.className = "thumb";
-    thumb.src = layer.thumbnail;
+    thumb.className =
+    "thumb";
+
+    thumb.src =
+    layer.thumbnail;
 
     const title =
-    document.createElement("div");
+    document.createElement(
+        "div"
+    );
 
-    title.className = "layerTitle";
-    title.textContent = layer.name;
+    title.className =
+    "layerTitle";
 
-    header.appendChild(visibleBtn);
-    header.appendChild(thumb);
-    header.appendChild(title);
+    title.textContent =
+    layer.name;
+
+    header.appendChild(
+        visibleBtn
+    );
+
+    header.appendChild(
+        thumb
+    );
+
+    header.appendChild(
+        title
+    );
 
     const controls =
-    document.createElement("div");
+    document.createElement(
+        "div"
+    );
 
-    controls.className = "layerControls";
+    controls.className =
+    "layerControls";
 
     const textarea =
-    document.createElement("textarea");
+    document.createElement(
+        "textarea"
+    );
 
-    textarea.value = layer.text;
-    textarea.placeholder = "文字入力";
+    textarea.value =
+    layer.text;
 
-    textarea.oninput = ()=>{
+    textarea.placeholder =
+    "文字入力";
 
-        layer.text = textarea.value;
+    textarea.oninput =
+    ()=>{
+
+        layer.text =
+        textarea.value;
+
         requestRender();
     };
 
     const row =
-    document.createElement("div");
+    document.createElement(
+        "div"
+    );
 
-    row.className = "row";
+    row.className =
+    "row";
 
     const color =
-    document.createElement("input");
+    document.createElement(
+        "input"
+    );
 
-    color.type = "color";
-    color.className = "color";
-    color.value = layer.color;
+    color.type =
+    "color";
 
-    color.oninput = ()=>{
+    color.className =
+    "color";
 
-        layer.color = color.value;
+    color.value =
+    layer.color;
+
+    color.oninput =
+    ()=>{
+
+        layer.color =
+        color.value;
+
         requestRender();
     };
 
     const stroke =
-    document.createElement("input");
+    document.createElement(
+        "input"
+    );
 
-    stroke.type = "color";
-    stroke.className = "color";
-    stroke.value = layer.stroke;
+    stroke.type =
+    "color";
 
-    stroke.oninput = ()=>{
+    stroke.className =
+    "color";
 
-        layer.stroke = stroke.value;
+    stroke.value =
+    layer.stroke;
+
+    stroke.oninput =
+    ()=>{
+
+        layer.stroke =
+        stroke.value;
+
         requestRender();
     };
 
     row.appendChild(color);
+
     row.appendChild(stroke);
 
-    controls.appendChild(textarea);
-    controls.appendChild(row);
+    controls.appendChild(
+        textarea
+    );
 
-    card.appendChild(header);
-    card.appendChild(controls);
+    controls.appendChild(
+        row
+    );
 
-    header.addEventListener("click", ()=>{
+    card.appendChild(
+        header
+    );
 
-        document.querySelectorAll(".layerCard")
-        .forEach(v=>v.classList.remove("activeLayer"));
+    card.appendChild(
+        controls
+    );
 
-        card.classList.add("activeLayer");
+    header.addEventListener(
+        "click",
+        async ()=>{
 
-        activeLayer = layer;
+        document
+        .querySelectorAll(
+            ".layerCard"
+        )
+        .forEach(v=>{
+
+            v.classList.remove(
+                "activeLayer"
+            );
+        });
+
+        card.classList.add(
+            "activeLayer"
+        );
+
+        activeLayer =
+        layer;
 
         requestRender();
     });
 
-    layersPanel.appendChild(card);
+    layersPanel.appendChild(
+        card
+    );
 }
 
 function render(){
 
     ctx.clearRect(
-        0,0,
+        0,
+        0,
         canvas.width / DPR,
         canvas.height / DPR
     );
 
     if(bgImage){
+
         fitDraw(bgImage);
     }
 
-    for(const layer of layers){
+    for(
+        const layer of layers
+    ){
 
-        if(!layer.visible) continue;
-        if(layer === activeLayer) continue;
+        if(
+            !layer.visible
+        ) continue;
+
+        if(
+            layer === activeLayer
+        ) continue;
 
         drawLayer(layer);
     }
 
-    if(activeLayer && activeLayer.visible){
-        drawLayer(activeLayer);
+    if(
+        activeLayer &&
+        activeLayer.visible
+    ){
+
+        drawLayer(
+            activeLayer
+        );
     }
 }
 
 function fitDraw(img){
 
-    const cw = canvas.width / DPR;
-    const ch = canvas.height / DPR;
+    const cw =
+    canvas.width / DPR;
 
-    const imgRatio = img.width / img.height;
-    const canvasRatio = cw / ch;
+    const ch =
+    canvas.height / DPR;
 
-    let drawW, drawH, drawX, drawY;
+    const imgRatio =
+    img.width / img.height;
 
-    if(imgRatio > canvasRatio){
+    const canvasRatio =
+    cw / ch;
+
+    let drawW;
+    let drawH;
+    let drawX;
+    let drawY;
+
+    if(
+        imgRatio >
+        canvasRatio
+    ){
 
         drawW = cw;
-        drawH = cw / imgRatio;
+
+        drawH =
+        cw / imgRatio;
 
         drawX = 0;
-        drawY = (ch - drawH) / 2;
+
+        drawY =
+        (ch - drawH)/2;
 
     }else{
 
         drawH = ch;
-        drawW = ch * imgRatio;
+
+        drawW =
+        ch * imgRatio;
 
         drawY = 0;
-        drawX = (cw - drawW) / 2;
+
+        drawX =
+        (cw - drawW)/2;
     }
 
     bgFit = {
-        x: drawX,
-        y: drawY,
-        w: drawW,
-        h: drawH
+
+        x:drawX,
+        y:drawY,
+
+        w:drawW,
+        h:drawH
     };
 
-    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    ctx.drawImage(
+        img,
+        drawX,
+        drawY,
+        drawW,
+        drawH
+    );
 }
 
 function drawLayer(layer){
@@ -1188,9 +1315,12 @@ function drawLayer(layer){
     if(bgFit){
 
         ctx.drawImage(
+
             layer.image,
+
             bgFit.x,
             bgFit.y,
+
             bgFit.w,
             bgFit.h
         );
@@ -1201,46 +1331,89 @@ function drawLayer(layer){
 
 function drawLayerText(layer){
 
-    if(!layer.text) return;
+    if(!layer.text)
+        return;
 
     ctx.save();
 
-    ctx.translate(layer.x, layer.y);
-    ctx.rotate(layer.rotation);
+    ctx.translate(
+        layer.x,
+        layer.y
+    );
 
-    const size = layer.baseSize * layer.scale;
+    ctx.rotate(
+        layer.rotation
+    );
 
-    ctx.font = `${size}px sans-serif`;
-    ctx.textBaseline = "top";
+    const size =
+    layer.baseSize *
+    layer.scale;
 
-    ctx.lineWidth = Math.max(2, size * 0.08);
+    ctx.font =
+    `${size}px sans-serif`;
 
-    ctx.fillStyle = layer.color;
-    ctx.strokeStyle = layer.stroke;
+    ctx.textBaseline =
+    "top";
 
-    const lines = layer.text.split("\n");
+    ctx.lineWidth =
+    Math.max(
+        2,
+        size * 0.08
+    );
+
+    ctx.fillStyle =
+    layer.color;
+
+    ctx.strokeStyle =
+    layer.stroke;
+
+    const lines =
+    layer.text.split("\n");
 
     lines.forEach((line,i)=>{
 
-        const y = i * size * 1.2;
+        const yy =
+        i * size * 1.2;
 
-        ctx.strokeText(line, 0, y);
-        ctx.fillText(line, 0, y);
-    });
-
-    if(layer === activeLayer){
-
-        const width = Math.max(
-            ...lines.map(l=>ctx.measureText(l).width)
+        ctx.strokeText(
+            line,
+            0,
+            yy
         );
 
-        const height = lines.length * size * 1.2;
+        ctx.fillText(
+            line,
+            0,
+            yy
+        );
+    });
 
-        ctx.strokeStyle = "#4da3ff";
+    if(
+        layer === activeLayer
+    ){
+
+        const width =
+        Math.max(
+            ...lines.map(
+                l=>
+                ctx.measureText(l)
+                .width
+            )
+        );
+
+        const height =
+        lines.length *
+        size *
+        1.2;
+
+        ctx.strokeStyle =
+        "#4da3ff";
+
         ctx.lineWidth = 2;
 
         ctx.strokeRect(
-            -10, -10,
+            -10,
+            -10,
             width + 20,
             height + 20
         );
@@ -1250,173 +1423,224 @@ function drawLayerText(layer){
 }
 
 function distance(a,b){
-    return Math.hypot(b.x - a.x, b.y - a.y);
+
+    return Math.hypot(
+
+        b.x - a.x,
+
+        b.y - a.y
+    );
 }
 
 function angle(a,b){
-    return Math.atan2(b.y - a.y, b.x - a.x);
+
+    return Math.atan2(
+
+        b.y - a.y,
+
+        b.x - a.x
+    );
 }
 
-/* ===== 操作系（ドラッグ・ピンチ） ===== */
+canvas.addEventListener(
+    "pointerdown",
+    e=>{
 
-canvas.addEventListener("pointerdown", e=>{
+    if(!activeLayer)
+        return;
 
-    if(!activeLayer) return;
+    canvas.setPointerCapture(
+        e.pointerId
+    );
 
-    canvas.setPointerCapture(e.pointerId);
-
-    pointers.set(e.pointerId, {
-        x:e.clientX,
-        y:e.clientY
-    });
+    pointers.set(
+        e.pointerId,
+        {
+            x:e.clientX,
+            y:e.clientY
+        }
+    );
 
     dragging = true;
 
+    if(pointers.size === 2){
+
+        const arr =
+        [...pointers.values()];
+
+        pinchStartDistance =
+        distance(
+            arr[0],
+            arr[1]
+        );
+
+        pinchStartScale =
+        activeLayer.scale;
+
+        rotateStartAngle =
+        angle(
+            arr[0],
+            arr[1]
+        );
+
+        rotateStartRotation =
+        activeLayer.rotation;
+    }
 });
 
-canvas.addEventListener("pointermove", e=>{
+canvas.addEventListener(
+    "pointermove",
+    e=>{
 
-    if(!activeLayer) return;
-    if(!pointers.has(e.pointerId)) return;
+    if(
+        !activeLayer
+    ) return;
 
-    const prev = pointers.get(e.pointerId);
+    if(
+        !pointers.has(
+            e.pointerId
+        )
+    ) return;
 
-    pointers.set(e.pointerId, {
-        x:e.clientX,
-        y:e.clientY
-    });
+    const prev =
+    pointers.get(
+        e.pointerId
+    );
 
-    if(pointers.size === 1 && dragging){
+    pointers.set(
+        e.pointerId,
+        {
+            x:e.clientX,
+            y:e.clientY
+        }
+    );
 
-        activeLayer.x += e.clientX - prev.x;
-        activeLayer.y += e.clientY - prev.y;
+    if(
+        pointers.size === 1 &&
+        dragging
+    ){
+
+        const dx =
+        e.clientX - prev.x;
+
+        const dy =
+        e.clientY - prev.y;
+
+        activeLayer.x += dx;
+
+        activeLayer.y += dy;
+
+        requestRender();
+    }
+
+    if(
+        pointers.size === 2
+    ){
+
+        const arr =
+        [...pointers.values()];
+
+        const dist =
+        distance(
+            arr[0],
+            arr[1]
+        );
+
+        activeLayer.scale =
+
+        pinchStartScale *
+
+        (
+            dist /
+            pinchStartDistance
+        );
+
+        activeLayer.scale =
+        Math.max(
+            0.2,
+            Math.min(
+                10,
+                activeLayer.scale
+            )
+        );
+
+        const ang =
+        angle(
+            arr[0],
+            arr[1]
+        );
+
+        activeLayer.rotation =
+
+        rotateStartRotation +
+
+        (
+            ang -
+            rotateStartAngle
+        );
 
         requestRender();
     }
 });
 
-canvas.addEventListener("pointerup", e=>{
+canvas.addEventListener(
+    "pointerup",
+    e=>{
 
-    pointers.delete(e.pointerId);
+    pointers.delete(
+        e.pointerId
+    );
+
     dragging = false;
 });
 
-/* ホイール操作 */
-
-canvas.addEventListener("wheel", e=>{
+canvas.addEventListener(
+    "wheel",
+    e=>{
 
     e.preventDefault();
 
-    if(!activeLayer) return;
+    if(!activeLayer)
+        return;
 
     if(e.altKey){
 
-        activeLayer.rotation += e.deltaY * 0.005;
+        activeLayer.rotation +=
+        e.deltaY * 0.005;
 
     }else{
 
-        activeLayer.scale -= e.deltaY * 0.001;
+        activeLayer.scale -=
+        e.deltaY * 0.001;
 
-        activeLayer.scale = Math.max(
+        activeLayer.scale =
+        Math.max(
             0.2,
-            Math.min(10, activeLayer.scale)
+            Math.min(
+                10,
+                activeLayer.scale
+            )
         );
     }
 
     requestRender();
 
-},{ passive:false });
+},{
+    passive:false
+});
 
-/* ===== 画像保存 ===== */
-
-function saveImage(){
-
-    const exportCanvas = document.createElement("canvas");
-    const exportCtx = exportCanvas.getContext("2d");
-
-    const w = bgImage ? bgImage.width : 1200;
-    const h = bgImage ? bgImage.height : 1200;
-
-    exportCanvas.width = w;
-    exportCanvas.height = h;
-
-    if(bgImage){
-        exportCtx.drawImage(bgImage,0,0,w,h);
-    }
-
-    for(const layer of layers){
-
-        if(!layer.visible) continue;
-
-        exportCtx.drawImage(layer.image,0,0,w,h);
-
-        if(layer.text){
-
-            exportCtx.save();
-
-            const scaleX = w / bgFit.w;
-            const scaleY = h / bgFit.h;
-
-            exportCtx.translate(
-                (layer.x - bgFit.x) * scaleX,
-                (layer.y - bgFit.y) * scaleY
-            );
-
-            exportCtx.rotate(layer.rotation);
-
-            const size = layer.baseSize * layer.scale * scaleX;
-
-            exportCtx.font = `${size}px sans-serif`;
-            exportCtx.textBaseline = "top";
-
-            exportCtx.fillStyle = layer.color;
-            exportCtx.strokeStyle = layer.stroke;
-            exportCtx.lineWidth = Math.max(2, size * 0.08);
-
-            const lines = layer.text.split("\n");
-
-            lines.forEach((line,i)=>{
-
-                const y = i * size * 1.2;
-
-                exportCtx.strokeText(line,0,y);
-                exportCtx.fillText(line,0,y);
-            });
-
-            exportCtx.restore();
-        }
-    }
-
-    exportCanvas.toBlob(blob=>{
-
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-
-        a.href = url;
-        a.download = "panel_edit.png";
-        a.click();
-
-        setTimeout(()=>URL.revokeObjectURL(url),1000);
-
-    },"image/png");
-}
-
-
-/* ボタン処理 */
+saveBtn.onclick =
+saveImage;
 
 workSaveBtn.onclick =
 async ()=>{
 
-    await autoSave();
+    await saveWorkData();
 
     alert(
-        "作業データを保存しました"
+        "作業状態を保存しました"
     );
 };
-
-saveBtn.onclick =
-saveImage;
 
 clearBtn.onclick =
 async ()=>{
@@ -1436,11 +1660,170 @@ async ()=>{
     );
 };
 
+function saveImage(){
+
+    const exportCanvas =
+    document.createElement(
+        "canvas"
+    );
+
+    const exportCtx =
+    exportCanvas.getContext(
+        "2d"
+    );
+
+    let exportW =
+    bgImage
+    ? bgImage.width
+    : 1200;
+
+    let exportH =
+    bgImage
+    ? bgImage.height
+    : 1200;
+
+    exportCanvas.width =
+    exportW;
+
+    exportCanvas.height =
+    exportH;
+
+    if(bgImage){
+
+        exportCtx.drawImage(
+            bgImage,
+            0,
+            0,
+            exportW,
+            exportH
+        );
+    }
+
+    for(
+        const layer of layers
+    ){
+
+        if(!layer.visible)
+            continue;
+
+        exportCtx.drawImage(
+
+            layer.image,
+
+            0,
+            0,
+
+            exportW,
+            exportH
+        );
+
+        if(layer.text){
+
+            exportCtx.save();
+
+            const scaleX =
+            exportW / bgFit.w;
+
+            const scaleY =
+            exportH / bgFit.h;
+
+            exportCtx.translate(
+
+                (layer.x - bgFit.x)
+                * scaleX,
+
+                (layer.y - bgFit.y)
+                * scaleY
+            );
+
+            exportCtx.rotate(
+                layer.rotation
+            );
+
+            const size =
+
+            layer.baseSize *
+            layer.scale *
+            scaleX;
+
+            exportCtx.font =
+            `${size}px sans-serif`;
+
+            exportCtx.textBaseline =
+            "top";
+
+            exportCtx.lineWidth =
+            Math.max(
+                2,
+                size * 0.08
+            );
+
+            exportCtx.fillStyle =
+            layer.color;
+
+            exportCtx.strokeStyle =
+            layer.stroke;
+
+            const lines =
+            layer.text.split("\n");
+
+            lines.forEach((line,i)=>{
+
+                const yy =
+                i * size * 1.2;
+
+                exportCtx.strokeText(
+                    line,
+                    0,
+                    yy
+                );
+
+                exportCtx.fillText(
+                    line,
+                    0,
+                    yy
+                );
+            });
+
+            exportCtx.restore();
+        }
+    }
+
+    exportCanvas.toBlob(blob=>{
+
+        const url =
+        URL.createObjectURL(
+            blob
+        );
+
+        const a =
+        document.createElement(
+            "a"
+        );
+
+        a.href = url;
+
+        a.download =
+        "panel_edit.png";
+
+        a.click();
+
+        setTimeout(()=>{
+
+            URL.revokeObjectURL(
+                url
+            );
+
+        },1000);
+
+    },"image/png");
+}
+
 (async()=>{
 
     await initDB();
 
-    await restoreAutoSave();
+    await restoreWorkSave();
 
 })();
 
