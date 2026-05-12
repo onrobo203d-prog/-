@@ -89,24 +89,28 @@ input[type=file]{
     display:none;
 }
 
+/*
+キャンバス表示領域
+*/
+
 #canvasWrap{
 
     position:relative;
 
-    flex:1;
+    width:100%;
+
+    background:#000;
 
     overflow:hidden;
 
-    background:#222;
-
     touch-action:none;
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    aspect-ratio:1 / 1;
+    flex-shrink:0;
 }
+
+/*
+canvas
+*/
 
 canvas{
 
@@ -122,7 +126,7 @@ canvas{
 
 #layersPanel{
 
-    height:320px;
+    flex:1;
 
     overflow:auto;
 
@@ -132,6 +136,8 @@ canvas{
     1px solid #333;
 
     padding:10px;
+
+    min-height:0;
 }
 
 .layerCard{
@@ -434,19 +440,81 @@ resizeCanvas();
 
 window.addEventListener(
     "resize",
-    resizeCanvas
+    () => {
+
+        if(bgImage){
+
+            adjustCanvasArea();
+        }
+
+        resizeCanvas();
+    }
 );
+
+function adjustCanvasArea(){
+
+    const screenW =
+    window.innerWidth;
+
+    const screenH =
+    window.innerHeight;
+
+    const topbarH =
+    document
+    .getElementById("topbar")
+    .offsetHeight;
+
+    const layersMin =
+    260;
+
+    const usableH =
+    screenH - topbarH - layersMin;
+
+    const ratio =
+    bgImage.height /
+    bgImage.width;
+
+    const canvasH =
+    screenW * ratio;
+
+    canvasWrap.style.height =
+    `${Math.min(
+        usableH,
+        canvasH
+    )}px`;
+}
 
 function resizeCanvas(){
 
-    const rect =
-    canvas.getBoundingClientRect();
+    let targetWidth;
+    let targetHeight;
+
+    if(bgImage){
+
+        targetWidth =
+        bgImage.width;
+
+        targetHeight =
+        bgImage.height;
+
+    }else{
+
+        const rect =
+        canvasWrap
+        .getBoundingClientRect();
+
+        targetWidth =
+        rect.width;
+
+        targetHeight =
+        rect.height || rect.width;
+    }
 
     canvas.width =
-    rect.width * DPR;
+    targetWidth * DPR;
 
     canvas.height =
-    rect.height * DPR;
+    targetHeight * DPR;
 
     ctx.setTransform(
         DPR,
@@ -475,8 +543,7 @@ bgUpload.addEventListener(
 
         bgImage = img;
 
-        canvasWrap.style.aspectRatio =
-        `${img.width} / ${img.height}`;
+        adjustCanvasArea();
 
         resizeCanvas();
     };
@@ -771,12 +838,6 @@ function render(){
         canvas.height
     );
 
-    if(!bgImage){
-
-        canvasWrap.style.aspectRatio =
-        "1 / 1";
-    }
-
     if(bgImage){
 
         fitDraw(bgImage);
@@ -829,32 +890,21 @@ function fitDraw(img){
     const ch =
     canvas.height / DPR;
 
-    const scale =
-    Math.min(
-        cw / img.width,
-        ch / img.height
-    );
+    bgFit = {
 
-    const w =
-    img.width * scale;
+        x:0,
+        y:0,
 
-    const h =
-    img.height * scale;
-
-    const x =
-    (cw - w)/2;
-
-    const y =
-    (ch - h)/2;
-
-    bgFit = {x,y,w,h};
+        w:cw,
+        h:ch
+    };
 
     ctx.drawImage(
         img,
-        x,
-        y,
-        w,
-        h
+        0,
+        0,
+        cw,
+        ch
     );
 }
 
