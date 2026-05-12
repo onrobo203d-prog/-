@@ -1001,7 +1001,407 @@ zipUpload.addEventListener(
     requestRender();
 });
 
-/* 中略（createLayerUI/renderなど元コードそのまま） */
+function createLayerUI(layer){
+
+    const card =
+    document.createElement("div");
+
+    card.className =
+    "layerCard";
+
+    const header =
+    document.createElement("div");
+
+    header.className =
+    "layerHeader";
+
+    const visibleBtn =
+    document.createElement("button");
+
+    visibleBtn.textContent =
+    layer.visible ? "表示" : "非表示";
+
+    visibleBtn.onclick =
+    async ()=>{
+
+        layer.visible =
+        !layer.visible;
+
+        visibleBtn.textContent =
+        layer.visible ? "表示" : "非表示";
+
+        requestRender();
+    };
+
+    const thumb =
+    document.createElement("img");
+
+    thumb.className = "thumb";
+    thumb.src = layer.thumbnail;
+
+    const title =
+    document.createElement("div");
+
+    title.className = "layerTitle";
+    title.textContent = layer.name;
+
+    header.appendChild(visibleBtn);
+    header.appendChild(thumb);
+    header.appendChild(title);
+
+    const controls =
+    document.createElement("div");
+
+    controls.className = "layerControls";
+
+    const textarea =
+    document.createElement("textarea");
+
+    textarea.value = layer.text;
+    textarea.placeholder = "文字入力";
+
+    textarea.oninput = ()=>{
+
+        layer.text = textarea.value;
+        requestRender();
+    };
+
+    const row =
+    document.createElement("div");
+
+    row.className = "row";
+
+    const color =
+    document.createElement("input");
+
+    color.type = "color";
+    color.className = "color";
+    color.value = layer.color;
+
+    color.oninput = ()=>{
+
+        layer.color = color.value;
+        requestRender();
+    };
+
+    const stroke =
+    document.createElement("input");
+
+    stroke.type = "color";
+    stroke.className = "color";
+    stroke.value = layer.stroke;
+
+    stroke.oninput = ()=>{
+
+        layer.stroke = stroke.value;
+        requestRender();
+    };
+
+    row.appendChild(color);
+    row.appendChild(stroke);
+
+    controls.appendChild(textarea);
+    controls.appendChild(row);
+
+    card.appendChild(header);
+    card.appendChild(controls);
+
+    header.addEventListener("click", ()=>{
+
+        document.querySelectorAll(".layerCard")
+        .forEach(v=>v.classList.remove("activeLayer"));
+
+        card.classList.add("activeLayer");
+
+        activeLayer = layer;
+
+        requestRender();
+    });
+
+    layersPanel.appendChild(card);
+}
+
+function render(){
+
+    ctx.clearRect(
+        0,0,
+        canvas.width / DPR,
+        canvas.height / DPR
+    );
+
+    if(bgImage){
+        fitDraw(bgImage);
+    }
+
+    for(const layer of layers){
+
+        if(!layer.visible) continue;
+        if(layer === activeLayer) continue;
+
+        drawLayer(layer);
+    }
+
+    if(activeLayer && activeLayer.visible){
+        drawLayer(activeLayer);
+    }
+}
+
+function fitDraw(img){
+
+    const cw = canvas.width / DPR;
+    const ch = canvas.height / DPR;
+
+    const imgRatio = img.width / img.height;
+    const canvasRatio = cw / ch;
+
+    let drawW, drawH, drawX, drawY;
+
+    if(imgRatio > canvasRatio){
+
+        drawW = cw;
+        drawH = cw / imgRatio;
+
+        drawX = 0;
+        drawY = (ch - drawH) / 2;
+
+    }else{
+
+        drawH = ch;
+        drawW = ch * imgRatio;
+
+        drawY = 0;
+        drawX = (cw - drawW) / 2;
+    }
+
+    bgFit = {
+        x: drawX,
+        y: drawY,
+        w: drawW,
+        h: drawH
+    };
+
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+}
+
+function drawLayer(layer){
+
+    if(bgFit){
+
+        ctx.drawImage(
+            layer.image,
+            bgFit.x,
+            bgFit.y,
+            bgFit.w,
+            bgFit.h
+        );
+    }
+
+    drawLayerText(layer);
+}
+
+function drawLayerText(layer){
+
+    if(!layer.text) return;
+
+    ctx.save();
+
+    ctx.translate(layer.x, layer.y);
+    ctx.rotate(layer.rotation);
+
+    const size = layer.baseSize * layer.scale;
+
+    ctx.font = `${size}px sans-serif`;
+    ctx.textBaseline = "top";
+
+    ctx.lineWidth = Math.max(2, size * 0.08);
+
+    ctx.fillStyle = layer.color;
+    ctx.strokeStyle = layer.stroke;
+
+    const lines = layer.text.split("\n");
+
+    lines.forEach((line,i)=>{
+
+        const y = i * size * 1.2;
+
+        ctx.strokeText(line, 0, y);
+        ctx.fillText(line, 0, y);
+    });
+
+    if(layer === activeLayer){
+
+        const width = Math.max(
+            ...lines.map(l=>ctx.measureText(l).width)
+        );
+
+        const height = lines.length * size * 1.2;
+
+        ctx.strokeStyle = "#4da3ff";
+        ctx.lineWidth = 2;
+
+        ctx.strokeRect(
+            -10, -10,
+            width + 20,
+            height + 20
+        );
+    }
+
+    ctx.restore();
+}
+
+function distance(a,b){
+    return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+function angle(a,b){
+    return Math.atan2(b.y - a.y, b.x - a.x);
+}
+
+/* ===== 操作系（ドラッグ・ピンチ） ===== */
+
+canvas.addEventListener("pointerdown", e=>{
+
+    if(!activeLayer) return;
+
+    canvas.setPointerCapture(e.pointerId);
+
+    pointers.set(e.pointerId, {
+        x:e.clientX,
+        y:e.clientY
+    });
+
+    dragging = true;
+
+});
+
+canvas.addEventListener("pointermove", e=>{
+
+    if(!activeLayer) return;
+    if(!pointers.has(e.pointerId)) return;
+
+    const prev = pointers.get(e.pointerId);
+
+    pointers.set(e.pointerId, {
+        x:e.clientX,
+        y:e.clientY
+    });
+
+    if(pointers.size === 1 && dragging){
+
+        activeLayer.x += e.clientX - prev.x;
+        activeLayer.y += e.clientY - prev.y;
+
+        requestRender();
+    }
+});
+
+canvas.addEventListener("pointerup", e=>{
+
+    pointers.delete(e.pointerId);
+    dragging = false;
+});
+
+/* ホイール操作 */
+
+canvas.addEventListener("wheel", e=>{
+
+    e.preventDefault();
+
+    if(!activeLayer) return;
+
+    if(e.altKey){
+
+        activeLayer.rotation += e.deltaY * 0.005;
+
+    }else{
+
+        activeLayer.scale -= e.deltaY * 0.001;
+
+        activeLayer.scale = Math.max(
+            0.2,
+            Math.min(10, activeLayer.scale)
+        );
+    }
+
+    requestRender();
+
+},{ passive:false });
+
+/* ===== 画像保存 ===== */
+
+function saveImage(){
+
+    const exportCanvas = document.createElement("canvas");
+    const exportCtx = exportCanvas.getContext("2d");
+
+    const w = bgImage ? bgImage.width : 1200;
+    const h = bgImage ? bgImage.height : 1200;
+
+    exportCanvas.width = w;
+    exportCanvas.height = h;
+
+    if(bgImage){
+        exportCtx.drawImage(bgImage,0,0,w,h);
+    }
+
+    for(const layer of layers){
+
+        if(!layer.visible) continue;
+
+        exportCtx.drawImage(layer.image,0,0,w,h);
+
+        if(layer.text){
+
+            exportCtx.save();
+
+            const scaleX = w / bgFit.w;
+            const scaleY = h / bgFit.h;
+
+            exportCtx.translate(
+                (layer.x - bgFit.x) * scaleX,
+                (layer.y - bgFit.y) * scaleY
+            );
+
+            exportCtx.rotate(layer.rotation);
+
+            const size = layer.baseSize * layer.scale * scaleX;
+
+            exportCtx.font = `${size}px sans-serif`;
+            exportCtx.textBaseline = "top";
+
+            exportCtx.fillStyle = layer.color;
+            exportCtx.strokeStyle = layer.stroke;
+            exportCtx.lineWidth = Math.max(2, size * 0.08);
+
+            const lines = layer.text.split("\n");
+
+            lines.forEach((line,i)=>{
+
+                const y = i * size * 1.2;
+
+                exportCtx.strokeText(line,0,y);
+                exportCtx.fillText(line,0,y);
+            });
+
+            exportCtx.restore();
+        }
+    }
+
+    exportCanvas.toBlob(blob=>{
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = "panel_edit.png";
+        a.click();
+
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+    },"image/png");
+}
+
 
 /* ボタン処理 */
 
