@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1.0,user-scalable=no">
+
 <title>パネルレイヤーエディタ</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -14,26 +18,24 @@
     -webkit-tap-highlight-color:transparent;
 }
 
+html,
 body{
     margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+
     background:#111;
     color:white;
-    font-family:"Noto Sans JP",sans-serif;
-    overflow:hidden;
+
+    font-family:
+    "Noto Sans JP",
+    sans-serif;
 }
 
-#topbar{
-    position:fixed;
-    top:0;
-    left:0;
-    right:0;
-    z-index:20;
-
+body{
     display:flex;
-    gap:10px;
-    padding:10px;
-    background:#1b1b1b;
-    border-bottom:1px solid #333;
+    flex-direction:column;
 }
 
 button,
@@ -42,15 +44,42 @@ textarea{
     font:inherit;
 }
 
-button{
-    border:none;
-    background:#333;
-    color:white;
-    border-radius:12px;
-    padding:10px 14px;
+#topbar{
+
+    height:64px;
+
+    display:flex;
+    align-items:center;
+    gap:10px;
+
+    padding:10px;
+
+    background:#1a1a1a;
+
+    border-bottom:
+    1px solid #333;
+
+    flex-shrink:0;
 }
 
-button:active{
+.fileBtn,
+button{
+
+    border:none;
+
+    background:#333;
+
+    color:white;
+
+    padding:12px 16px;
+
+    border-radius:14px;
+
+    font-size:15px;
+}
+
+button:active,
+.fileBtn:active{
     transform:scale(0.98);
 }
 
@@ -58,126 +87,195 @@ input[type=file]{
     display:none;
 }
 
-.fileBtn{
-    border:none;
-    background:#444;
-    color:white;
-    border-radius:12px;
-    padding:10px 14px;
-}
-
 #canvasWrap{
-    position:fixed;
-    top:60px;
-    left:0;
-    right:0;
-    bottom:300px;
+
+    position:relative;
+
+    flex:1;
+
     overflow:hidden;
+
     background:#222;
+
     touch-action:none;
 }
 
 canvas{
+
     width:100%;
     height:100%;
+
     display:block;
+
     touch-action:none;
 }
 
 #layersPanel{
-    position:fixed;
-    left:0;
-    right:0;
-    bottom:0;
-    height:300px;
+
+    height:320px;
+
     overflow:auto;
+
     background:#181818;
-    border-top:1px solid #333;
+
+    border-top:
+    1px solid #333;
+
     padding:10px;
 }
 
 .layerCard{
+
     background:#242424;
-    border-radius:14px;
+
+    border-radius:18px;
+
     padding:10px;
-    margin-bottom:10px;
+
+    margin-bottom:12px;
 }
 
 .layerHeader{
+
     display:flex;
+
     align-items:center;
+
     gap:10px;
 }
 
+.layerHeader button{
+
+    flex-shrink:0;
+}
+
 .thumb{
+
     width:64px;
     height:64px;
+
     object-fit:contain;
+
     background:white;
-    border-radius:8px;
+
+    border-radius:10px;
+
+    flex-shrink:0;
+}
+
+.layerTitle{
+
+    font-size:14px;
+
+    word-break:break-all;
 }
 
 .layerControls{
+
     margin-top:10px;
+
     display:flex;
+
     flex-direction:column;
-    gap:8px;
+
+    gap:10px;
 }
 
 textarea{
+
     width:100%;
-    min-height:70px;
-    resize:none;
+
+    min-height:80px;
+
     border:none;
-    border-radius:10px;
+
+    border-radius:12px;
+
     padding:10px;
+
+    resize:none;
+
     background:#333;
+
     color:white;
 }
 
 .row{
+
     display:flex;
+
     align-items:center;
+
     gap:10px;
 }
 
 .color{
+
     width:50px;
     height:40px;
+
     padding:0;
+
     border:none;
+
+    background:none;
+}
+
+.activeLayer{
+
+    outline:
+    3px solid #4da3ff;
 }
 
 #helpBtn{
-    position:fixed;
-    right:14px;
-    bottom:320px;
-    z-index:30;
 
-    width:54px;
-    height:54px;
+    position:fixed;
+
+    right:14px;
+    bottom:340px;
+
+    z-index:50;
+
+    width:56px;
+    height:56px;
+
     border-radius:50%;
-    background:#ff4d4d;
+
+    background:#ff5252;
+
     font-size:24px;
 }
 
 #helpPopup{
+
     position:fixed;
+
     inset:0;
-    background:rgba(0,0,0,0.85);
+
     z-index:100;
+
     display:none;
+
     align-items:center;
     justify-content:center;
+
+    background:
+    rgba(0,0,0,0.85);
+
     padding:20px;
 }
 
 #helpContent{
-    background:#222;
-    border-radius:20px;
-    max-width:500px;
+
     width:100%;
+    max-width:500px;
+
+    background:#222;
+
+    border-radius:20px;
+
     padding:20px;
+
     line-height:1.8;
 }
 
@@ -185,8 +283,11 @@ textarea{
     margin-top:0;
 }
 
-.activeLayer{
-    outline:3px solid #4da3ff;
+.small{
+
+    font-size:13px;
+
+    opacity:0.8;
 }
 
 </style>
@@ -196,21 +297,37 @@ textarea{
 <div id="topbar">
 
 <label class="fileBtn">
+
 背景
-<input type="file" id="bgUpload" accept="image/*">
+
+<input
+type="file"
+id="bgUpload"
+accept="image/*">
+
 </label>
 
 <label class="fileBtn">
+
 ZIP
-<input type="file" id="zipUpload" accept=".zip">
+
+<input
+type="file"
+id="zipUpload"
+accept=".zip">
+
 </label>
 
-<button id="saveBtn">保存</button>
+<button id="saveBtn">
+保存
+</button>
 
 </div>
 
 <div id="canvasWrap">
+
 <canvas id="canvas"></canvas>
+
 </div>
 
 <div id="layersPanel"></div>
@@ -218,6 +335,7 @@ ZIP
 <button id="helpBtn">？</button>
 
 <div id="helpPopup">
+
 <div id="helpContent">
 
 <h2>操作説明</h2>
@@ -238,27 +356,54 @@ ZIP
 Alt + ホイール → 回転
 </p>
 
-<button id="closeHelp">閉じる</button>
+<p class="small">
+レイヤーを選択してから操作してください
+</p>
+
+<button id="closeHelp">
+閉じる
+</button>
 
 </div>
+
 </div>
 
 <script>
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas =
+document.getElementById("canvas");
 
-const bgUpload = document.getElementById("bgUpload");
-const zipUpload = document.getElementById("zipUpload");
-const layersPanel = document.getElementById("layersPanel");
+const ctx =
+canvas.getContext("2d");
 
-const helpBtn = document.getElementById("helpBtn");
-const helpPopup = document.getElementById("helpPopup");
-const closeHelp = document.getElementById("closeHelp");
+const bgUpload =
+document.getElementById("bgUpload");
 
-const saveBtn = document.getElementById("saveBtn");
+const zipUpload =
+document.getElementById("zipUpload");
+
+const layersPanel =
+document.getElementById("layersPanel");
+
+const saveBtn =
+document.getElementById("saveBtn");
+
+const helpBtn =
+document.getElementById("helpBtn");
+
+const helpPopup =
+document.getElementById("helpPopup");
+
+const closeHelp =
+document.getElementById("closeHelp");
+
+const DPR =
+window.devicePixelRatio || 1;
 
 let bgImage = null;
+
+let bgFit = null;
+
 let layers = [];
 
 let activeLayer = null;
@@ -268,33 +413,51 @@ let dragging = false;
 let pointers = new Map();
 
 let pinchStartDistance = 0;
+
 let pinchStartScale = 1;
 
 let rotateStartAngle = 0;
-let rotateStartRotation = 0;
 
-const DPR = window.devicePixelRatio || 1;
+let rotateStartRotation = 0;
 
 resizeCanvas();
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
 
 function resizeCanvas(){
 
     const rect =
-        canvas.parentElement.getBoundingClientRect();
+    canvas.parentElement
+    .getBoundingClientRect();
 
-    canvas.width = rect.width * DPR;
-    canvas.height = rect.height * DPR;
+    canvas.width =
+    rect.width * DPR;
 
-    ctx.setTransform(DPR,0,0,DPR,0,0);
+    canvas.height =
+    rect.height * DPR;
+
+    ctx.setTransform(
+        DPR,
+        0,
+        0,
+        DPR,
+        0,
+        0
+    );
 
     render();
 }
 
-bgUpload.addEventListener("change", async e => {
+bgUpload.addEventListener(
+    "change",
+    e => {
 
-    const file = e.target.files[0];
+    const file =
+    e.target.files[0];
+
     if(!file) return;
 
     const img = new Image();
@@ -302,50 +465,64 @@ bgUpload.addEventListener("change", async e => {
     img.onload = () => {
 
         bgImage = img;
+
         render();
     };
 
-    img.src = URL.createObjectURL(file);
+    img.src =
+    URL.createObjectURL(file);
 });
 
-zipUpload.addEventListener("change", async e => {
+zipUpload.addEventListener(
+    "change",
+    async e => {
 
-    const file = e.target.files[0];
+    const file =
+    e.target.files[0];
+
     if(!file) return;
 
     layers = [];
+
     layersPanel.innerHTML = "";
 
-    const zip = await JSZip.loadAsync(file);
+    const zip =
+    await JSZip.loadAsync(file);
 
     const entries =
-        Object.values(zip.files)
-        .filter(f => f.name.endsWith(".png"));
+    Object.values(zip.files)
+    .filter(f =>
+        f.name.endsWith(".png")
+    );
 
     for(const entry of entries){
 
         const blob =
-            await entry.async("blob");
+        await entry.async("blob");
 
         const url =
-            URL.createObjectURL(blob);
+        URL.createObjectURL(blob);
 
-        const img = new Image();
+        const img =
+        new Image();
 
-        await new Promise(resolve => {
+        await new Promise(resolve=>{
 
             img.onload = resolve;
+
             img.src = url;
         });
 
         const thumbCanvas =
-            document.createElement("canvas");
+        document.createElement(
+            "canvas"
+        );
 
         thumbCanvas.width = 64;
         thumbCanvas.height = 64;
 
         const tctx =
-            thumbCanvas.getContext("2d");
+        thumbCanvas.getContext("2d");
 
         tctx.drawImage(
             img,
@@ -361,6 +538,9 @@ zipUpload.addEventListener("change", async e => {
 
             image:img,
 
+            thumbnail:
+            thumbCanvas.toDataURL(),
+
             visible:true,
 
             text:"",
@@ -369,18 +549,15 @@ zipUpload.addEventListener("change", async e => {
 
             stroke:"#000000",
 
-            x:200,
+            x:100,
 
-            y:200,
+            y:100,
 
             scale:1,
 
             rotation:0,
 
-            baseSize:48,
-
-            thumbnail:
-                thumbCanvas.toDataURL()
+            baseSize:48
         };
 
         layers.push(layer);
@@ -394,119 +571,183 @@ zipUpload.addEventListener("change", async e => {
 function createLayerUI(layer){
 
     const card =
-        document.createElement("div");
+    document.createElement("div");
 
-    card.className = "layerCard";
+    card.className =
+    "layerCard";
 
     const header =
-        document.createElement("div");
+    document.createElement("div");
 
-    header.className = "layerHeader";
+    header.className =
+    "layerHeader";
 
-    const visible =
-        document.createElement("input");
+    const visibleBtn =
+    document.createElement(
+        "button"
+    );
 
-    visible.type = "checkbox";
-    visible.checked = true;
+    visibleBtn.textContent =
+    "表示";
 
-    visible.oninput = () => {
+    visibleBtn.onclick = () => {
 
-        layer.visible = visible.checked;
+        layer.visible =
+        !layer.visible;
+
+        visibleBtn.textContent =
+        layer.visible
+        ? "表示"
+        : "非表示";
+
         render();
     };
 
     const thumb =
-        document.createElement("img");
+    document.createElement("img");
 
-    thumb.className = "thumb";
-    thumb.src = layer.thumbnail;
+    thumb.className =
+    "thumb";
+
+    thumb.src =
+    layer.thumbnail;
 
     const title =
-        document.createElement("div");
+    document.createElement("div");
 
-    title.textContent = layer.name;
+    title.className =
+    "layerTitle";
 
-    header.appendChild(visible);
-    header.appendChild(thumb);
-    header.appendChild(title);
+    title.textContent =
+    layer.name;
+
+    header.appendChild(
+        visibleBtn
+    );
+
+    header.appendChild(
+        thumb
+    );
+
+    header.appendChild(
+        title
+    );
 
     const controls =
-        document.createElement("div");
+    document.createElement("div");
 
-    controls.className = "layerControls";
+    controls.className =
+    "layerControls";
 
     const textarea =
-        document.createElement("textarea");
+    document.createElement(
+        "textarea"
+    );
 
     textarea.placeholder =
-        "文字入力";
+    "文字入力";
 
     textarea.oninput = () => {
 
-        layer.text = textarea.value;
+        layer.text =
+        textarea.value;
+
         render();
     };
 
     const row =
-        document.createElement("div");
+    document.createElement("div");
 
     row.className = "row";
 
     const color =
-        document.createElement("input");
+    document.createElement(
+        "input"
+    );
 
     color.type = "color";
-    color.className = "color";
 
-    color.value = "#ffffff";
+    color.className =
+    "color";
+
+    color.value =
+    "#ffffff";
 
     color.oninput = () => {
 
-        layer.color = color.value;
+        layer.color =
+        color.value;
+
         render();
     };
 
     const stroke =
-        document.createElement("input");
+    document.createElement(
+        "input"
+    );
 
     stroke.type = "color";
-    stroke.className = "color";
 
-    stroke.value = "#000000";
+    stroke.className =
+    "color";
+
+    stroke.value =
+    "#000000";
 
     stroke.oninput = () => {
 
-        layer.stroke = stroke.value;
+        layer.stroke =
+        stroke.value;
+
         render();
     };
 
     row.appendChild(color);
+
     row.appendChild(stroke);
 
-    controls.appendChild(textarea);
-    controls.appendChild(row);
+    controls.appendChild(
+        textarea
+    );
+
+    controls.appendChild(
+        row
+    );
 
     card.appendChild(header);
-    card.appendChild(controls);
 
-    card.addEventListener("click", () => {
+    card.appendChild(
+        controls
+    );
+
+    header.addEventListener(
+        "click",
+        () => {
 
         document
-            .querySelectorAll(".layerCard")
-            .forEach(v =>
-                v.classList.remove(
-                    "activeLayer"
-                )
+        .querySelectorAll(
+            ".layerCard"
+        )
+        .forEach(v => {
+
+            v.classList.remove(
+                "activeLayer"
             );
 
-        card.classList.add("activeLayer");
+        });
+
+        card.classList.add(
+            "activeLayer"
+        );
 
         activeLayer = layer;
 
         render();
     });
 
-    layersPanel.appendChild(card);
+    layersPanel.appendChild(
+        card
+    );
 }
 
 function render(){
@@ -525,15 +766,22 @@ function render(){
 
     for(const layer of layers){
 
-        if(!layer.visible) continue;
+        if(!layer.visible)
+            continue;
 
-        ctx.drawImage(
-            layer.image,
-            0,
-            0,
-            canvas.width / DPR,
-            canvas.height / DPR
-        );
+        if(bgFit){
+
+            ctx.drawImage(
+
+                layer.image,
+
+                bgFit.x,
+                bgFit.y,
+
+                bgFit.w,
+                bgFit.h
+            );
+        }
 
         drawLayerText(layer);
     }
@@ -541,80 +789,146 @@ function render(){
 
 function fitDraw(img){
 
-    const cw = canvas.width / DPR;
-    const ch = canvas.height / DPR;
+    const cw =
+    canvas.width / DPR;
 
-    const scale = Math.min(
+    const ch =
+    canvas.height / DPR;
+
+    const scale =
+    Math.min(
         cw / img.width,
         ch / img.height
     );
 
-    const w = img.width * scale;
-    const h = img.height * scale;
+    const w =
+    img.width * scale;
 
-    const x = (cw - w)/2;
-    const y = (ch - h)/2;
+    const h =
+    img.height * scale;
 
-    ctx.drawImage(img,x,y,w,h);
+    const x =
+    (cw - w)/2;
+
+    const y =
+    (ch - h)/2;
+
+    bgFit = {x,y,w,h};
+
+    ctx.drawImage(
+        img,
+        x,
+        y,
+        w,
+        h
+    );
 }
 
 function drawLayerText(layer){
 
-    if(!layer.text) return;
+    if(!layer.text)
+        return;
+
+    if(
+        !isFinite(layer.scale)
+    ){
+        layer.scale = 1;
+    }
+
+    if(
+        !isFinite(
+            layer.rotation
+        )
+    ){
+        layer.rotation = 0;
+    }
 
     ctx.save();
 
-    ctx.translate(layer.x,layer.y);
+    ctx.translate(
 
-    ctx.rotate(layer.rotation);
+        Number(layer.x)||0,
+
+        Number(layer.y)||0
+    );
+
+    ctx.rotate(
+        layer.rotation
+    );
 
     const size =
-        layer.baseSize * layer.scale;
+
+    layer.baseSize *
+    layer.scale;
 
     ctx.font =
-        `${size}px sans-serif`;
+    `${size}px sans-serif`;
 
-    ctx.textBaseline = "top";
+    ctx.textBaseline =
+    "top";
 
     ctx.lineWidth =
-        Math.max(2,size*0.08);
+    Math.max(
+        2,
+        size * 0.08
+    );
 
-    ctx.fillStyle = layer.color;
-    ctx.strokeStyle = layer.stroke;
+    ctx.fillStyle =
+    layer.color;
+
+    ctx.strokeStyle =
+    layer.stroke;
 
     const lines =
-        layer.text.split("\n");
+    layer.text.split("\n");
 
     lines.forEach((line,i)=>{
 
-        const yy = i * size * 1.2;
+        const yy =
+        i * size * 1.2;
 
-        ctx.strokeText(line,0,yy);
-        ctx.fillText(line,0,yy);
+        ctx.strokeText(
+            line,
+            0,
+            yy
+        );
+
+        ctx.fillText(
+            line,
+            0,
+            yy
+        );
     });
 
-    if(layer === activeLayer){
+    if(
+        layer === activeLayer
+    ){
 
         const width =
-            Math.max(
-                ...lines.map(
-                    l =>
-                        ctx.measureText(l).width
-                )
-            );
+        Math.max(
+            ...lines.map(
+                l =>
+                ctx.measureText(l)
+                .width
+            )
+        );
 
         const height =
-            lines.length *
-            size *
-            1.2;
 
-        ctx.strokeStyle = "#4da3ff";
+        lines.length *
+        size *
+        1.2;
+
+        ctx.strokeStyle =
+        "#4da3ff";
+
+        ctx.lineWidth = 2;
 
         ctx.strokeRect(
             -10,
             -10,
-            width+20,
-            height+20
+            width + 20,
+            height + 20
         );
     }
 
@@ -625,181 +939,243 @@ canvas.addEventListener(
     "pointerdown",
     e => {
 
-        canvas.setPointerCapture(
-            e.pointerId
+    if(!activeLayer)
+        return;
+
+    canvas.setPointerCapture(
+        e.pointerId
+    );
+
+    pointers.set(
+        e.pointerId,
+        {
+            x:e.clientX,
+            y:e.clientY
+        }
+    );
+
+    dragging = true;
+
+    if(pointers.size === 2){
+
+        const arr =
+        [...pointers.values()];
+
+        pinchStartDistance =
+        distance(
+            arr[0],
+            arr[1]
         );
 
-        pointers.set(
-            e.pointerId,
-            {
-                x:e.clientX,
-                y:e.clientY
-            }
+        pinchStartScale =
+        activeLayer.scale;
+
+        rotateStartAngle =
+        angle(
+            arr[0],
+            arr[1]
         );
 
-        if(activeLayer){
-
-            dragging = true;
-        }
-
-        if(pointers.size === 2){
-
-            const arr =
-                [...pointers.values()];
-
-            pinchStartDistance =
-                distance(arr[0],arr[1]);
-
-            pinchStartScale =
-                activeLayer?.scale || 1;
-
-            rotateStartAngle =
-                angle(arr[0],arr[1]);
-
-            rotateStartRotation =
-                activeLayer?.rotation || 0;
-        }
+        rotateStartRotation =
+        activeLayer.rotation;
     }
-);
+});
 
 canvas.addEventListener(
     "pointermove",
     e => {
 
-        if(!activeLayer) return;
+    if(
+        !activeLayer
+    ) return;
 
-        if(!pointers.has(e.pointerId))
-            return;
+    if(
+        !pointers.has(
+            e.pointerId
+        )
+    ) return;
 
-        const prev =
-            pointers.get(e.pointerId);
+    const prev =
+    pointers.get(
+        e.pointerId
+    );
 
-        pointers.set(
-            e.pointerId,
-            {
-                x:e.clientX,
-                y:e.clientY
-            }
+    pointers.set(
+        e.pointerId,
+        {
+            x:e.clientX,
+            y:e.clientY
+        }
+    );
+
+    if(
+        pointers.size === 1 &&
+        dragging
+    ){
+
+        const dx =
+        e.clientX - prev.x;
+
+        const dy =
+        e.clientY - prev.y;
+
+        activeLayer.x += dx;
+
+        activeLayer.y += dy;
+
+        render();
+    }
+
+    if(
+        pointers.size === 2
+    ){
+
+        const arr =
+        [...pointers.values()];
+
+        const dist =
+        distance(
+            arr[0],
+            arr[1]
         );
 
-        if(pointers.size === 1 && dragging){
+        activeLayer.scale =
 
-            const dx =
-                e.clientX - prev.x;
+        pinchStartScale *
 
-            const dy =
-                e.clientY - prev.y;
+        (
+            dist /
+            pinchStartDistance
+        );
 
-            activeLayer.x += dx;
-            activeLayer.y += dy;
+        activeLayer.scale =
+        Math.max(
+            0.2,
+            Math.min(
+                10,
+                activeLayer.scale
+            )
+        );
 
-            render();
-        }
+        const ang =
+        angle(
+            arr[0],
+            arr[1]
+        );
 
-        if(pointers.size === 2){
+        activeLayer.rotation =
 
-            const arr =
-                [...pointers.values()];
+        rotateStartRotation +
 
-            const dist =
-                distance(arr[0],arr[1]);
+        (
+            ang -
+            rotateStartAngle
+        );
 
-            activeLayer.scale =
-                pinchStartScale *
-                (dist / pinchStartDistance);
-
-            const ang =
-                angle(arr[0],arr[1]);
-
-            activeLayer.rotation =
-                rotateStartRotation +
-                (ang - rotateStartAngle);
-
-            render();
-        }
+        render();
     }
-);
+});
 
 canvas.addEventListener(
     "pointerup",
     e => {
 
-        pointers.delete(e.pointerId);
+    pointers.delete(
+        e.pointerId
+    );
 
-        dragging = false;
-    }
-);
+    dragging = false;
+});
 
 canvas.addEventListener(
     "wheel",
     e => {
 
-        e.preventDefault();
+    e.preventDefault();
 
-        if(!activeLayer) return;
+    if(
+        !activeLayer
+    ) return;
 
-        if(e.altKey){
+    if(e.altKey){
 
-            activeLayer.rotation +=
-                e.deltaY * 0.005;
+        activeLayer.rotation +=
 
-        }else{
+        e.deltaY * 0.005;
 
-            activeLayer.scale -=
-                e.deltaY * 0.001;
+    }else{
 
-            activeLayer.scale =
-                Math.max(
-                    0.2,
-                    Math.min(
-                        10,
-                        activeLayer.scale
-                    )
-                );
-        }
+        activeLayer.scale -=
 
-        render();
+        e.deltaY * 0.001;
 
-    },
-    { passive:false }
-);
+        activeLayer.scale =
+        Math.max(
+            0.2,
+            Math.min(
+                10,
+                activeLayer.scale
+            )
+        );
+    }
+
+    render();
+
+},{
+    passive:false
+});
 
 function distance(a,b){
 
     return Math.hypot(
-        b.x-a.x,
-        b.y-a.y
+
+        b.x - a.x,
+
+        b.y - a.y
     );
 }
 
 function angle(a,b){
 
     return Math.atan2(
-        b.y-a.y,
-        b.x-a.x
+
+        b.y - a.y,
+
+        b.x - a.x
     );
 }
 
-saveBtn.addEventListener("click", saveImage);
+saveBtn.addEventListener(
+    "click",
+    saveImage
+);
 
 function saveImage(){
 
     canvas.toBlob(blob => {
 
         const url =
-            URL.createObjectURL(blob);
+        URL.createObjectURL(
+            blob
+        );
 
         const a =
-            document.createElement("a");
+        document.createElement(
+            "a"
+        );
 
         a.href = url;
-        a.download = "panel_edit.png";
+
+        a.download =
+        "panel_edit.png";
 
         a.click();
 
-        setTimeout(() => {
+        setTimeout(()=>{
 
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(
+                url
+            );
 
         },1000);
 
@@ -808,19 +1184,24 @@ function saveImage(){
 
 helpBtn.onclick = () => {
 
-    helpPopup.style.display = "flex";
+    helpPopup.style.display =
+    "flex";
 };
 
 closeHelp.onclick = () => {
 
-    helpPopup.style.display = "none";
+    helpPopup.style.display =
+    "none";
 };
 
 helpPopup.onclick = e => {
 
-    if(e.target === helpPopup){
+    if(
+        e.target === helpPopup
+    ){
 
-        helpPopup.style.display = "none";
+        helpPopup.style.display =
+        "none";
     }
 };
 
