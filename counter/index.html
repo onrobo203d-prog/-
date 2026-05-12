@@ -7,7 +7,7 @@
 name="viewport"
 content="width=device-width,initial-scale=1.0,user-scalable=no">
 
-<title>パネルレイヤーエディタ</title>
+<title>パネル開けツール</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -334,7 +334,7 @@ accept=".zip">
 データ消去
 </button>
 
-<button id="helpBtn">？</button>
+<button id="helpBtn">使い方</button>
 
 </div>
 
@@ -352,7 +352,23 @@ accept=".zip">
 
 <h2>操作説明</h2>
 
-<h3>スマホ</h3>
+<h3>各種ボタン</h3>
+
+<p>
+「背景」ボタンから一枚絵をアップロード<br>
+「ZIP」ボタンからパネル開け画像生成ツールで生成したZIPファイルをアップロード<br>
+「保存」ボタンで進捗画像をダウンロード(画質が下がったものがダウンロードされます)<br>
+企画が終了したら「データ消去」ボタンを押すようにして下さい(スマホの容量が少し軽くなります) <br>
+</p>
+
+<h3>文字入れ</h3>
+<p>
+ZIPファイルをアップロードするとパネル毎に文字が入れられます<br>
+パネル名の横をタップするとレイヤー選択状態になるので、文字を入力して下さい<br>
+カラー選択は左が文字、右が文字枠に対応しています<br>
+</p>
+
+<h4>スマホ操作</h4>
 
 <p>
 1本指ドラッグ → 移動<br>
@@ -360,7 +376,7 @@ accept=".zip">
 2本指回転 → 回転
 </p>
 
-<h3>PC</h3>
+<h4>PC操作</h4>
 
 <p>
 ドラッグ → 移動<br>
@@ -369,7 +385,7 @@ Alt + ホイール → 回転
 </p>
 
 <p class="small">
-レイヤーを選択してから操作してください
+文字が表示されない時はレイヤーを変更してみてください
 </p>
 
 <button id="closeHelp">
