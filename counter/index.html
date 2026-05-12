@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>パネル開け画像生成ツール</title>
+<title>パネル開放ツール 完全版</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
 
@@ -14,78 +16,119 @@
 
 body{
     margin:0;
-    padding:20px;
     background:#f0f0f0;
     font-family:sans-serif;
 }
 
-h1{
-    margin-top:0;
+.wrapper{
+    display:flex;
+    gap:20px;
+    padding:20px;
+}
+
+.left{
+    flex:1;
+}
+
+.right{
+    width:320px;
+    background:white;
+    padding:15px;
+    border-radius:12px;
+    overflow:auto;
+    max-height:95vh;
 }
 
 .toolbar{
     display:flex;
     flex-wrap:wrap;
-    gap:20px;
+    gap:10px;
+    margin-bottom:15px;
     align-items:center;
-    margin-bottom:20px;
 }
 
 button{
     border:none;
     background:black;
     color:white;
-    padding:12px 20px;
-    cursor:pointer;
+    padding:10px 16px;
     border-radius:10px;
-    font-size:16px;
+    cursor:pointer;
 }
 
 button:hover{
     opacity:0.8;
 }
 
-button:disabled{
-    opacity:0.5;
-    cursor:not-allowed;
-}
-
 canvas{
     border:2px solid black;
     background:white;
     max-width:100%;
+    touch-action:none;
 }
 
-.panel{
-    margin-top:10px;
+.layerItem{
+    border:1px solid #ccc;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+    background:#fafafa;
+}
+
+.layerItem h3{
+    margin-top:0;
+    font-size:16px;
+}
+
+.layerItem input[type="text"]{
+    width:100%;
+    padding:8px;
+    margin-bottom:8px;
+}
+
+.layerItem label{
+    display:block;
+    margin-top:8px;
+    font-size:13px;
 }
 
 .info{
-    margin-top:15px;
-    font-size:14px;
+    margin-top:10px;
 }
 
 </style>
 </head>
 <body>
 
-<h1>パネル開け画像生成ツール</h1>
+<div class="wrapper">
+
+<div class="left">
+
+<h1>パネル開放ツール</h1>
 
 <div class="toolbar">
 
-<input type="file" id="upload" accept="image/png">
+<div>
+線画PNG
+<input type="file" id="lineUpload" accept="image/png">
+</div>
+
+<div>
+元画像
+<input type="file" id="baseUpload" accept="image/*">
+</div>
 
 <label>
-パネル色選択→
-<input type="color" id="colorPicker" value="#ff0000">
+パネル色
+<input type="color" id="panelColor" value="#ff0000">
 </label>
 
-<button id="processBtn">
+<button id="generateBtn">
 パネル生成
 </button>
 
-<button id="downloadBtn">
-ダウンロード
+<button id="saveBtn">
+現在状態を保存
 </button>
 
 </div>
@@ -93,26 +136,43 @@ canvas{
 <canvas id="canvas"></canvas>
 
 <div class="info" id="info">
-No image loaded
+画像未読み込み
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</div>
+
+<div class="right">
+
+<h2>レイヤー編集</h2>
+
+<div id="layerPanel"></div>
+
+</div>
+
+</div>
 
 <script>
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-const upload = document.getElementById("upload");
-const processBtn = document.getElementById("processBtn");
-const downloadBtn = document.getElementById("downloadBtn");
-const colorPicker = document.getElementById("colorPicker");
+const lineUpload = document.getElementById("lineUpload");
+const baseUpload = document.getElementById("baseUpload");
+
+const generateBtn = document.getElementById("generateBtn");
+const saveBtn = document.getElementById("saveBtn");
+
+const panelColor = document.getElementById("panelColor");
+
+const layerPanel = document.getElementById("layerPanel");
 const info = document.getElementById("info");
 
-let originalImage = null;
+let lineImage = null;
+let baseImage = null;
+
 let regions = [];
 
-upload.addEventListener("change", e => {
+lineUpload.addEventListener("change", e => {
 
     const file = e.target.files[0];
 
@@ -122,100 +182,93 @@ upload.addEventListener("change", e => {
 
     img.onload = () => {
 
-        originalImage = img;
+        lineImage = img;
 
-        canvas.width = img.width;
-        canvas.height = img.height;
+        setupCanvas();
 
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.drawImage(img,0,0);
-
-        info.innerHTML =
-            "Image Loaded : " +
-            img.width +
-            " x " +
-            img.height;
-
-        /*
-        reset button text
-        */
-
-        processBtn.textContent = "パネル生成";
-        processBtn.disabled = false;
-
-        /*
-        clear old regions
-        */
-
-        regions = [];
     };
 
     img.src = URL.createObjectURL(file);
 
 });
 
-processBtn.addEventListener("click", processImage);
+baseUpload.addEventListener("change", e => {
 
-colorPicker.addEventListener("input", () => {
+    const file = e.target.files[0];
 
-    if(regions.length > 0){
-        renderRegions();
-    }
+    if(!file) return;
+
+    const img = new Image();
+
+    img.onload = () => {
+
+        baseImage = img;
+
+        setupCanvas();
+
+    };
+
+    img.src = URL.createObjectURL(file);
 
 });
 
-downloadBtn.addEventListener("click", exportZIP);
+function setupCanvas(){
 
-function processImage(){
+    if(!lineImage && !baseImage) return;
 
-    if(!originalImage){
-        alert("Upload image first");
+    const ref = lineImage || baseImage;
+
+    canvas.width = ref.width;
+    canvas.height = ref.height;
+
+    renderAll();
+
+}
+
+generateBtn.addEventListener("click", processPanels);
+
+panelColor.addEventListener("input", () => {
+
+    renderAll();
+
+});
+
+saveBtn.addEventListener("click", saveCurrentImage);
+
+canvas.addEventListener("click", onCanvasClick);
+
+function processPanels(){
+
+    if(!lineImage){
+
+        alert("線画PNGをアップロードしてください");
+
         return;
     }
 
-    /*
-    processing state
-    */
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    processBtn.textContent = "しばらくお待ちください";
-    processBtn.disabled = true;
+    ctx.drawImage(lineImage,0,0);
 
-    /*
-    slight delay so UI updates immediately
-    */
+    const imageData = ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
 
-    setTimeout(() => {
+    const binary = createBinaryMap(imageData);
 
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.drawImage(originalImage,0,0);
+    closeSmallGaps(binary);
 
-        const imageData = ctx.getImageData(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+    regions = detectRegions(binary);
 
-        const binary = createBinaryMap(imageData);
+    buildLayerUI();
 
-        closeSmallGaps(binary);
+    renderAll();
 
-        regions = detectRegions(binary);
-
-        renderRegions();
-
-        /*
-        completed state
-        */
-
-        processBtn.textContent = "パネル完成";
-        processBtn.disabled = false;
-
-        info.innerHTML =
-            "パネル枚数 : " +
-            regions.length;
-
-    }, 50);
+    info.innerHTML =
+        "パネル数 : " + regions.length;
 }
 
 function createBinaryMap(imageData){
@@ -229,24 +282,12 @@ function createBinaryMap(imageData){
 
         const alpha = imageData.data[i*4 + 3];
 
-        /*
-        alpha > 10
-        = wall / line
-
-        alpha <= 10
-        = transparent space
-        */
-
         if(alpha > 10){
             map[i] = 1;
         }else{
             map[i] = 0;
         }
     }
-
-    /*
-    Treat screen edge as wall
-    */
 
     for(let x=0;x<width;x++){
 
@@ -298,10 +339,6 @@ function closeSmallGaps(binary){
                     }
                 }
 
-                /*
-                gap closing
-                */
-
                 if(walls >= 7){
                     data[idx] = 1;
                 }
@@ -342,15 +379,38 @@ function detectRegions(binary){
                     height
                 );
 
-                /*
-                Remove tiny garbage
-                */
-
                 if(region.length > 300){
 
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    let minY = Infinity;
+                    let maxY = -Infinity;
+
+                    for(const p of region){
+
+                        if(p.x < minX) minX = p.x;
+                        if(p.x > maxX) maxX = p.x;
+                        if(p.y < minY) minY = p.y;
+                        if(p.y > maxY) maxY = p.y;
+                    }
+
                     found.push({
+
                         id:regionId++,
-                        pixels:region
+
+                        pixels:region,
+
+                        visible:true,
+
+                        text:"",
+
+                        textColor:"#ffffff",
+
+                        fontSize:48,
+
+                        centerX:(minX + maxX)/2,
+
+                        centerY:(minY + maxY)/2
                     });
                 }
             }
@@ -370,6 +430,7 @@ function floodFill(
 ){
 
     const stack = [[startX,startY]];
+
     const pixels = [];
 
     while(stack.length){
@@ -404,7 +465,7 @@ function floodFill(
     return pixels;
 }
 
-function renderRegions(){
+function renderAll(){
 
     ctx.clearRect(
         0,
@@ -413,11 +474,23 @@ function renderRegions(){
         canvas.height
     );
 
-    const fillColor = colorPicker.value;
+    if(baseImage){
+
+        ctx.drawImage(
+            baseImage,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+    }
 
     for(const region of regions){
 
-        ctx.fillStyle = fillColor;
+        if(!region.visible) continue;
+
+        ctx.fillStyle =
+            panelColor.value;
 
         for(const p of region.pixels){
 
@@ -428,106 +501,221 @@ function renderRegions(){
                 1
             );
         }
+
+        ctx.fillStyle =
+            region.textColor;
+
+        ctx.font =
+            `${region.fontSize}px sans-serif`;
+
+        ctx.textAlign = "center";
+
+        ctx.textBaseline = "middle";
+
+        ctx.fillText(
+            region.text,
+            region.centerX,
+            region.centerY
+        );
     }
 
-    /*
-    Draw original lineart on top
-    */
+    if(lineImage){
 
-    ctx.drawImage(
-        originalImage,
-        0,
-        0
-    );
+        ctx.drawImage(
+            lineImage,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+    }
 }
 
-async function exportZIP(){
+function buildLayerUI(){
 
-    if(regions.length === 0){
-
-        alert("No panels detected");
-
-        return;
-    }
-
-    const zip = new JSZip();
+    layerPanel.innerHTML = "";
 
     for(const region of regions){
 
-        const off =
-            document.createElement("canvas");
+        const div =
+            document.createElement("div");
 
-        off.width = canvas.width;
-        off.height = canvas.height;
+        div.className = "layerItem";
 
-        const offCtx = off.getContext("2d");
+        const title =
+            document.createElement("h3");
 
-        /*
-        transparent background
-        */
+        title.textContent =
+            "パネル " + region.id;
 
-        offCtx.clearRect(
-            0,
-            0,
-            off.width,
-            off.height
+        div.appendChild(title);
+
+        const toggle =
+            document.createElement("button");
+
+        toggle.textContent =
+            region.visible
+            ? "表示中"
+            : "非表示";
+
+        toggle.addEventListener("click", () => {
+
+            region.visible =
+                !region.visible;
+
+            toggle.textContent =
+                region.visible
+                ? "表示中"
+                : "非表示";
+
+            renderAll();
+
+        });
+
+        div.appendChild(toggle);
+
+        const textLabel =
+            document.createElement("label");
+
+        textLabel.textContent =
+            "文字";
+
+        div.appendChild(textLabel);
+
+        const textInput =
+            document.createElement("input");
+
+        textInput.type = "text";
+
+        textInput.value =
+            region.text;
+
+        textInput.addEventListener("input", e => {
+
+            region.text =
+                e.target.value;
+
+            renderAll();
+
+        });
+
+        div.appendChild(textInput);
+
+        const colorLabel =
+            document.createElement("label");
+
+        colorLabel.textContent =
+            "文字色";
+
+        div.appendChild(colorLabel);
+
+        const colorInput =
+            document.createElement("input");
+
+        colorInput.type = "color";
+
+        colorInput.value =
+            region.textColor;
+
+        colorInput.addEventListener("input", e => {
+
+            region.textColor =
+                e.target.value;
+
+            renderAll();
+
+        });
+
+        div.appendChild(colorInput);
+
+        const sizeLabel =
+            document.createElement("label");
+
+        sizeLabel.textContent =
+            "文字サイズ";
+
+        div.appendChild(sizeLabel);
+
+        const sizeInput =
+            document.createElement("input");
+
+        sizeInput.type = "range";
+
+        sizeInput.min = 12;
+        sizeInput.max = 200;
+
+        sizeInput.value =
+            region.fontSize;
+
+        sizeInput.addEventListener("input", e => {
+
+            region.fontSize =
+                Number(e.target.value);
+
+            renderAll();
+
+        });
+
+        div.appendChild(sizeInput);
+
+        layerPanel.appendChild(div);
+    }
+}
+
+function onCanvasClick(e){
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    const scaleX =
+        canvas.width / rect.width;
+
+    const scaleY =
+        canvas.height / rect.height;
+
+    const x =
+        Math.floor(
+            (e.clientX - rect.left)
+            * scaleX
         );
 
-        /*
-        fill panel
-        */
+    const y =
+        Math.floor(
+            (e.clientY - rect.top)
+            * scaleY
+        );
 
-        offCtx.fillStyle =
-            colorPicker.value;
+    for(const region of regions){
+
+        if(!region.visible) continue;
 
         for(const p of region.pixels){
 
-            offCtx.fillRect(
-                p.x,
-                p.y,
-                1,
-                1
-            );
+            if(
+                p.x === x &&
+                p.y === y
+            ){
+
+                region.visible = false;
+
+                renderAll();
+
+                return;
+            }
         }
-
-        /*
-        overlay lineart
-        */
-
-        offCtx.drawImage(
-            originalImage,
-            0,
-            0
-        );
-
-        const blob =
-            await new Promise(resolve => {
-
-                off.toBlob(
-                    resolve,
-                    "image/png"
-                );
-
-            });
-
-        zip.file(
-            `panel_${region.id}.png`,
-            blob
-        );
     }
+}
 
-    const content =
-        await zip.generateAsync({
-            type:"blob"
-        });
+function saveCurrentImage(){
 
     const a =
         document.createElement("a");
 
     a.href =
-        URL.createObjectURL(content);
+        canvas.toDataURL("image/png");
 
-    a.download = "panels.zip";
+    a.download =
+        "panel_state.png";
 
     a.click();
 }
