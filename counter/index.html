@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>パネル開放ツール 完全版+</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<title>パネル開放ツール Ultimate</title>
 
 <style>
 
@@ -21,16 +19,16 @@ body{
 }
 
 .wrapper{
-    padding:20px;
     max-width:1200px;
     margin:auto;
+    padding:20px;
 }
 
 .toolbar{
     display:flex;
     flex-wrap:wrap;
     gap:10px;
-    margin-bottom:15px;
+    margin-bottom:20px;
     align-items:center;
 }
 
@@ -49,66 +47,67 @@ button:hover{
 }
 
 canvas{
+    width:100%;
     border:2px solid black;
     background:white;
-    width:100%;
-    height:auto;
     touch-action:none;
-}
-
-.info{
-    margin-top:10px;
 }
 
 .layerEditor{
     margin-top:20px;
     background:white;
-    padding:15px;
     border-radius:12px;
+    padding:15px;
 }
 
 #layerPanel{
     display:flex;
     flex-direction:column;
-    gap:12px;
+    gap:14px;
 }
 
 .layerItem{
-    border:1px solid #ccc;
-    padding:12px;
-    border-radius:10px;
     background:#fafafa;
+    border:1px solid #ccc;
+    border-radius:12px;
+    padding:12px;
 }
 
 .layerHeader{
     display:flex;
-    gap:10px;
+    gap:12px;
     align-items:center;
+    margin-bottom:10px;
 }
 
 .layerThumb{
     width:70px;
     height:70px;
-    border:1px solid #ccc;
     object-fit:contain;
+    border:1px solid #ccc;
     background:white;
 }
 
-.layerItem h3{
-    margin:0;
-    font-size:16px;
-}
-
-.layerItem input[type="text"]{
+textarea{
     width:100%;
+    resize:vertical;
+    min-height:80px;
     padding:10px;
-    margin-top:5px;
-    margin-bottom:10px;
     font-size:16px;
 }
 
-.layerItem label{
+label{
     display:block;
+    margin-top:10px;
+}
+
+.rangeWrap{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.info{
     margin-top:10px;
 }
 
@@ -130,7 +129,7 @@ canvas{
 
 <div class="wrapper">
 
-<h1>パネル開放ツール 完全版+</h1>
+<h1>パネル開放ツール Ultimate</h1>
 
 <div class="toolbar">
 
@@ -154,7 +153,7 @@ canvas{
 </button>
 
 <button id="saveBtn">
-保存
+PNG保存
 </button>
 
 </div>
@@ -195,15 +194,20 @@ let lineImage = null;
 let baseImage = null;
 
 let regions = [];
+
 let hitMap = null;
 
-let draggingText = null;
+let draggingRegion = null;
+
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+
+let renderPending = false;
 
 lineUpload.addEventListener("change", e => {
 
     const file = e.target.files[0];
+
     if(!file) return;
 
     const img = new Image();
@@ -211,6 +215,7 @@ lineUpload.addEventListener("change", e => {
     img.onload = () => {
 
         lineImage = img;
+
         setupCanvas();
 
     };
@@ -221,6 +226,7 @@ lineUpload.addEventListener("change", e => {
 baseUpload.addEventListener("change", e => {
 
     const file = e.target.files[0];
+
     if(!file) return;
 
     const img = new Image();
@@ -228,6 +234,7 @@ baseUpload.addEventListener("change", e => {
     img.onload = () => {
 
         baseImage = img;
+
         setupCanvas();
 
     };
@@ -244,20 +251,21 @@ function setupCanvas(){
     canvas.width = ref.width;
     canvas.height = ref.height;
 
-    renderAll();
+    requestRender();
 }
 
 generateBtn.addEventListener("click", processPanels);
 
-saveBtn.addEventListener("click", saveImage);
+panelColor.addEventListener("input", requestRender);
 
-panelColor.addEventListener("input", renderAll);
+saveBtn.addEventListener("click", saveImage);
 
 function processPanels(){
 
     if(!lineImage){
 
         alert("線画PNGをアップロードしてください");
+
         return;
     }
 
@@ -278,7 +286,7 @@ function processPanels(){
 
     buildLayerUI();
 
-    renderAll();
+    requestRender();
 
     info.innerHTML =
         "パネル数 : " + regions.length;
@@ -293,9 +301,11 @@ function createBinaryMap(imageData){
 
     for(let i=0;i<width*height;i++){
 
-        const alpha = imageData.data[i*4+3];
+        const alpha =
+            imageData.data[i*4+3];
 
-        map[i] = alpha > 10 ? 1 : 0;
+        map[i] =
+            alpha > 10 ? 1 : 0;
     }
 
     for(let x=0;x<width;x++){
@@ -307,7 +317,7 @@ function createBinaryMap(imageData){
     for(let y=0;y<height;y++){
 
         map[y*width] = 1;
-        map[y*width + width -1] = 1;
+        map[y*width+width-1] = 1;
     }
 
     return {
@@ -323,9 +333,11 @@ function detectRegions(binary){
     const width = binary.width;
     const height = binary.height;
 
-    const visited = new Uint8Array(width * height);
+    const visited =
+        new Uint8Array(width*height);
 
-    hitMap = new Uint16Array(width * height);
+    hitMap =
+        new Uint16Array(width*height);
 
     const found = [];
 
@@ -337,9 +349,12 @@ function detectRegions(binary){
 
             const idx = y*width+x;
 
-            if(data[idx]===0 && !visited[idx]){
+            if(
+                data[idx]===0 &&
+                !visited[idx]
+            ){
 
-                const regionPixels =
+                const pixels =
                     floodFill(
                         x,
                         y,
@@ -349,39 +364,31 @@ function detectRegions(binary){
                         height
                     );
 
-                if(regionPixels.length > 300){
+                if(pixels.length > 300){
 
                     let minX = Infinity;
                     let maxX = -Infinity;
                     let minY = Infinity;
                     let maxY = -Infinity;
 
-                    for(const p of regionPixels){
+                    for(const p of pixels){
 
                         if(p.x < minX) minX = p.x;
                         if(p.x > maxX) maxX = p.x;
                         if(p.y < minY) minY = p.y;
                         if(p.y > maxY) maxY = p.y;
 
-                        hitMap[p.y*width+p.x] =
-                            regionId + 1;
+                        hitMap[
+                            p.y*width+p.x
+                        ] = regionId+1;
                     }
 
-                    const maskCanvas =
-                        document.createElement("canvas");
+                    const path =
+                        new Path2D();
 
-                    maskCanvas.width = width;
-                    maskCanvas.height = height;
+                    for(const p of pixels){
 
-                    const mctx =
-                        maskCanvas.getContext("2d");
-
-                    mctx.fillStyle =
-                        "#ffffff";
-
-                    for(const p of regionPixels){
-
-                        mctx.fillRect(
+                        path.rect(
                             p.x,
                             p.y,
                             1,
@@ -403,9 +410,9 @@ function detectRegions(binary){
 
                         visible:true,
 
-                        pixels:regionPixels,
+                        pixels,
 
-                        maskCanvas,
+                        path,
 
                         thumbnail:thumb,
 
@@ -415,18 +422,9 @@ function detectRegions(binary){
 
                         fontSize:48,
 
-                        centerX:(minX+maxX)/2,
-
-                        centerY:(minY+maxY)/2,
-
                         textX:(minX+maxX)/2,
 
-                        textY:(minY+maxY)/2,
-
-                        minX,
-                        minY,
-                        maxX,
-                        maxY
+                        textY:(minY+maxY)/2
                     });
 
                     regionId++;
@@ -436,6 +434,51 @@ function detectRegions(binary){
     }
 
     return found;
+}
+
+function floodFill(
+    startX,
+    startY,
+    data,
+    visited,
+    width,
+    height
+){
+
+    const stack = [[startX,startY]];
+
+    const pixels = [];
+
+    while(stack.length){
+
+        const [x,y] = stack.pop();
+
+        if(
+            x<0 ||
+            y<0 ||
+            x>=width ||
+            y>=height
+        ){
+            continue;
+        }
+
+        const idx = y*width+x;
+
+        if(visited[idx]) continue;
+
+        visited[idx] = 1;
+
+        if(data[idx]===1) continue;
+
+        pixels.push({x,y});
+
+        stack.push([x+1,y]);
+        stack.push([x-1,y]);
+        stack.push([x,y+1]);
+        stack.push([x,y-1]);
+    }
+
+    return pixels;
 }
 
 function createThumbnail(
@@ -481,48 +524,19 @@ function createThumbnail(
     return c.toDataURL();
 }
 
-function floodFill(
-    startX,
-    startY,
-    data,
-    visited,
-    width,
-    height
-){
+function requestRender(){
 
-    const stack = [[startX,startY]];
-    const pixels = [];
+    if(renderPending) return;
 
-    while(stack.length){
+    renderPending = true;
 
-        const [x,y] = stack.pop();
+    requestAnimationFrame(()=>{
 
-        if(
-            x<0 ||
-            y<0 ||
-            x>=width ||
-            y>=height
-        ){
-            continue;
-        }
+        renderPending = false;
 
-        const idx = y*width+x;
+        renderAll();
 
-        if(visited[idx]) continue;
-
-        visited[idx] = 1;
-
-        if(data[idx]===1) continue;
-
-        pixels.push({x,y});
-
-        stack.push([x+1,y]);
-        stack.push([x-1,y]);
-        stack.push([x,y+1]);
-        stack.push([x,y-1]);
-    }
-
-    return pixels;
+    });
 }
 
 function renderAll(){
@@ -551,57 +565,19 @@ function renderAll(){
 
         ctx.save();
 
-        ctx.drawImage(
-            region.maskCanvas,
-            0,
-            0
-        );
-
-        ctx.globalCompositeOperation =
-            "source-in";
-
         ctx.fillStyle =
             panelColor.value;
 
-        ctx.fillRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+        ctx.fill(region.path);
 
         ctx.restore();
+    }
 
-        ctx.save();
+    for(const region of regions){
 
-        ctx.drawImage(
-            region.maskCanvas,
-            0,
-            0
-        );
+        if(!region.visible) continue;
 
-        ctx.globalCompositeOperation =
-            "destination-in";
-
-        ctx.font =
-            `${region.fontSize}px sans-serif`;
-
-        ctx.fillStyle =
-            region.textColor;
-
-        ctx.textAlign =
-            "center";
-
-        ctx.textBaseline =
-            "middle";
-
-        ctx.fillText(
-            region.text,
-            region.textX,
-            region.textY
-        );
-
-        ctx.restore();
+        drawRegionText(region);
     }
 
     if(lineImage){
@@ -612,6 +588,50 @@ function renderAll(){
             0
         );
     }
+}
+
+function drawRegionText(region){
+
+    ctx.save();
+
+    ctx.clip(region.path);
+
+    ctx.fillStyle =
+        region.textColor;
+
+    ctx.font =
+        `${region.fontSize}px sans-serif`;
+
+    ctx.textAlign =
+        "center";
+
+    ctx.textBaseline =
+        "middle";
+
+    const lines =
+        region.text.split("\n");
+
+    const lineHeight =
+        region.fontSize * 1.2;
+
+    const totalHeight =
+        lines.length * lineHeight;
+
+    const startY =
+        region.textY -
+        totalHeight/2 +
+        lineHeight/2;
+
+    lines.forEach((line,index)=>{
+
+        ctx.fillText(
+            line,
+            region.textX,
+            startY + index*lineHeight
+        );
+    });
+
+    ctx.restore();
 }
 
 function buildLayerUI(){
@@ -671,7 +691,7 @@ function buildLayerUI(){
                 ? "表示中"
                 : "非表示";
 
-            renderAll();
+            requestRender();
         });
 
         div.appendChild(toggle);
@@ -684,23 +704,21 @@ function buildLayerUI(){
 
         div.appendChild(textLabel);
 
-        const textInput =
-            document.createElement("input");
+        const textarea =
+            document.createElement("textarea");
 
-        textInput.type = "text";
-
-        textInput.value =
+        textarea.value =
             region.text;
 
-        textInput.addEventListener("input",e=>{
+        textarea.addEventListener("input",e=>{
 
             region.text =
                 e.target.value;
 
-            renderAll();
+            requestRender();
         });
 
-        div.appendChild(textInput);
+        div.appendChild(textarea);
 
         const colorLabel =
             document.createElement("label");
@@ -713,7 +731,8 @@ function buildLayerUI(){
         const colorInput =
             document.createElement("input");
 
-        colorInput.type = "color";
+        colorInput.type =
+            "color";
 
         colorInput.value =
             region.textColor;
@@ -723,7 +742,7 @@ function buildLayerUI(){
             region.textColor =
                 e.target.value;
 
-            renderAll();
+            requestRender();
         });
 
         div.appendChild(colorInput);
@@ -736,10 +755,17 @@ function buildLayerUI(){
 
         div.appendChild(sizeLabel);
 
+        const rangeWrap =
+            document.createElement("div");
+
+        rangeWrap.className =
+            "rangeWrap";
+
         const sizeInput =
             document.createElement("input");
 
-        sizeInput.type = "range";
+        sizeInput.type =
+            "range";
 
         sizeInput.min = 12;
         sizeInput.max = 200;
@@ -747,26 +773,38 @@ function buildLayerUI(){
         sizeInput.value =
             region.fontSize;
 
+        const sizeValue =
+            document.createElement("span");
+
+        sizeValue.textContent =
+            region.fontSize;
+
         sizeInput.addEventListener("input",e=>{
 
             region.fontSize =
                 Number(e.target.value);
 
-            renderAll();
+            sizeValue.textContent =
+                region.fontSize;
+
+            requestRender();
         });
 
-        div.appendChild(sizeInput);
+        rangeWrap.appendChild(sizeInput);
+        rangeWrap.appendChild(sizeValue);
 
-        const dragInfo =
+        div.appendChild(rangeWrap);
+
+        const info =
             document.createElement("div");
 
-        dragInfo.style.marginTop =
+        info.style.marginTop =
             "10px";
 
-        dragInfo.innerHTML =
-            "※ キャンバス上で文字をドラッグ移動";
+        info.innerHTML =
+            "文字をドラッグして移動";
 
-        div.appendChild(dragInfo);
+        div.appendChild(info);
 
         layerPanel.appendChild(div);
     }
@@ -792,33 +830,52 @@ function getMousePos(e){
 
 canvas.addEventListener("pointerdown",e=>{
 
-    const pos = getMousePos(e);
+    const pos =
+        getMousePos(e);
 
     for(let i=regions.length-1;i>=0;i--){
 
-        const region = regions[i];
+        const region =
+            regions[i];
 
         ctx.font =
             `${region.fontSize}px sans-serif`;
 
-        const width =
-            ctx.measureText(region.text).width;
+        const lines =
+            region.text.split("\n");
 
-        const height =
-            region.fontSize;
+        const lineHeight =
+            region.fontSize * 1.2;
+
+        let maxWidth = 0;
+
+        for(const line of lines){
+
+            const w =
+                ctx.measureText(line).width;
+
+            if(w > maxWidth){
+
+                maxWidth = w;
+            }
+        }
+
+        const totalHeight =
+            lines.length * lineHeight;
 
         if(
             pos.x >
-            region.textX - width/2 &&
+            region.textX - maxWidth/2 &&
             pos.x <
-            region.textX + width/2 &&
+            region.textX + maxWidth/2 &&
             pos.y >
-            region.textY - height/2 &&
+            region.textY - totalHeight/2 &&
             pos.y <
-            region.textY + height/2
+            region.textY + totalHeight/2
         ){
 
-            draggingText = region;
+            draggingRegion =
+                region;
 
             dragOffsetX =
                 pos.x - region.textX;
@@ -830,50 +887,55 @@ canvas.addEventListener("pointerdown",e=>{
         }
     }
 
-    const x = Math.floor(pos.x);
-    const y = Math.floor(pos.y);
+    const x =
+        Math.floor(pos.x);
+
+    const y =
+        Math.floor(pos.y);
 
     const id =
-        hitMap[y*canvas.width+x]-1;
+        hitMap[
+            y*canvas.width+x
+        ] - 1;
 
-    if(id>=0){
+    if(id >= 0){
 
         regions[id].visible =
             !regions[id].visible;
 
-        updateLayerButtons();
+        updateButtons();
 
-        renderAll();
+        requestRender();
     }
 });
 
 canvas.addEventListener("pointermove",e=>{
 
-    if(!draggingText) return;
+    if(!draggingRegion) return;
 
     const pos =
         getMousePos(e);
 
-    draggingText.textX =
+    draggingRegion.textX =
         pos.x - dragOffsetX;
 
-    draggingText.textY =
+    draggingRegion.textY =
         pos.y - dragOffsetY;
 
-    renderAll();
+    requestRender();
 });
 
 canvas.addEventListener("pointerup",()=>{
 
-    draggingText = null;
+    draggingRegion = null;
 });
 
 canvas.addEventListener("pointerleave",()=>{
 
-    draggingText = null;
+    draggingRegion = null;
 });
 
-function updateLayerButtons(){
+function updateButtons(){
 
     const buttons =
         layerPanel.querySelectorAll("button");
