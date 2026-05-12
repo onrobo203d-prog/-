@@ -764,27 +764,51 @@ function render(){
         fitDraw(bgImage);
     }
 
+    /*
+    通常レイヤー描画
+    */
+
     for(const layer of layers){
+
+        if(layer === activeLayer)
+            continue;
 
         if(!layer.visible)
             continue;
 
-        if(bgFit){
-
-            ctx.drawImage(
-
-                layer.image,
-
-                bgFit.x,
-                bgFit.y,
-
-                bgFit.w,
-                bgFit.h
-            );
-        }
-
-        drawLayerText(layer);
+        drawLayer(layer);
     }
+
+    /*
+    選択中レイヤーを最後に描画
+    */
+
+    if(
+        activeLayer &&
+        activeLayer.visible
+    ){
+
+        drawLayer(activeLayer);
+    }
+}
+
+function drawLayer(layer){
+
+    if(bgFit){
+
+        ctx.drawImage(
+
+            layer.image,
+
+            bgFit.x,
+            bgFit.y,
+
+            bgFit.w,
+            bgFit.h
+        );
+    }
+
+    drawLayerText(layer);
 }
 
 function fitDraw(img){
