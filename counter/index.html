@@ -1249,7 +1249,144 @@ saveBtn.addEventListener(
 
 function saveImage(){
 
-    canvas.toBlob(blob => {
+    // 保存用canvas
+    const exportCanvas =
+    document.createElement("canvas");
+
+    const exportCtx =
+    exportCanvas.getContext("2d");
+
+    let exportW;
+    let exportH;
+
+    // 背景画像サイズで保存
+    if(bgImage){
+
+        exportW = bgImage.width;
+        exportH = bgImage.height;
+
+    }else{
+
+        exportW =
+        canvas.width / DPR;
+
+        exportH =
+        canvas.height / DPR;
+    }
+
+    exportCanvas.width =
+    exportW;
+
+    exportCanvas.height =
+    exportH;
+
+    // 背景描画
+    if(bgImage){
+
+        exportCtx.drawImage(
+            bgImage,
+            0,
+            0,
+            exportW,
+            exportH
+        );
+    }
+
+    // レイヤー描画
+    for(const layer of layers){
+
+        if(!layer.visible)
+            continue;
+
+        // 背景基準位置を
+        // 保存サイズへ変換
+
+        const scaleX =
+        exportW / bgFit.w;
+
+        const scaleY =
+        exportH / bgFit.h;
+
+        // PNGレイヤー
+        exportCtx.drawImage(
+
+            layer.image,
+
+            0,
+            0,
+
+            exportW,
+            exportH
+        );
+
+        // テキスト
+        if(layer.text){
+
+            exportCtx.save();
+
+            exportCtx.translate(
+
+                (layer.x - bgFit.x)
+                * scaleX,
+
+                (layer.y - bgFit.y)
+                * scaleY
+            );
+
+            exportCtx.rotate(
+                layer.rotation
+            );
+
+            const size =
+
+            layer.baseSize *
+            layer.scale *
+            scaleX;
+
+            exportCtx.font =
+            `${size}px sans-serif`;
+
+            exportCtx.textBaseline =
+            "top";
+
+            exportCtx.lineWidth =
+            Math.max(
+                2,
+                size * 0.08
+            );
+
+            exportCtx.fillStyle =
+            layer.color;
+
+            exportCtx.strokeStyle =
+            layer.stroke;
+
+            const lines =
+            layer.text.split("\n");
+
+            lines.forEach((line,i)=>{
+
+                const yy =
+                i * size * 1.2;
+
+                exportCtx.strokeText(
+                    line,
+                    0,
+                    yy
+                );
+
+                exportCtx.fillText(
+                    line,
+                    0,
+                    yy
+                );
+            });
+
+            exportCtx.restore();
+        }
+    }
+
+    exportCanvas.toBlob(blob => {
 
         const url =
         URL.createObjectURL(
@@ -1257,9 +1394,7 @@ function saveImage(){
         );
 
         const a =
-        document.createElement(
-            "a"
-        );
+        document.createElement("a");
 
         a.href = url;
 
