@@ -89,10 +89,6 @@ input[type=file]{
     display:none;
 }
 
-/*
-キャンバス表示領域
-*/
-
 #canvasWrap{
 
     position:relative;
@@ -107,10 +103,6 @@ input[type=file]{
 
     flex-shrink:0;
 }
-
-/*
-canvas
-*/
 
 canvas{
 
@@ -161,7 +153,6 @@ canvas{
 }
 
 .layerHeader button{
-
     flex-shrink:0;
 }
 
@@ -335,7 +326,8 @@ accept=".zip">
 保存
 </button>
 
-<button id="helpBtn">？</button>
+<button id="helpBtn">？
+</button>
 
 </div>
 
@@ -436,16 +428,14 @@ let rotateStartAngle = 0;
 
 let rotateStartRotation = 0;
 
+adjustCanvasArea();
 resizeCanvas();
 
 window.addEventListener(
     "resize",
     () => {
 
-        if(bgImage){
-
-            adjustCanvasArea();
-        }
+        adjustCanvasArea();
 
         resizeCanvas();
     }
@@ -470,12 +460,17 @@ function adjustCanvasArea(){
     const usableH =
     screenH - topbarH - layersMin;
 
-    const ratio =
-    bgImage.height /
-    bgImage.width;
+    let canvasH = usableH;
 
-    const canvasH =
-    screenW * ratio;
+    if(bgImage){
+
+        const ratio =
+        bgImage.height /
+        bgImage.width;
+
+        canvasH =
+        screenW * ratio;
+    }
 
     canvasWrap.style.height =
     `${Math.min(
@@ -486,29 +481,15 @@ function adjustCanvasArea(){
 
 function resizeCanvas(){
 
-    let targetWidth;
-    let targetHeight;
+    const rect =
+    canvasWrap
+    .getBoundingClientRect();
 
-    if(bgImage){
+    const targetWidth =
+    rect.width;
 
-        targetWidth =
-        bgImage.width;
-
-        targetHeight =
-        bgImage.height;
-
-    }else{
-
-        const rect =
-        canvasWrap
-        .getBoundingClientRect();
-
-        targetWidth =
-        rect.width;
-
-        targetHeight =
-        rect.height || rect.width;
-    }
+    const targetHeight =
+    rect.height;
 
     canvas.width =
     targetWidth * DPR;
@@ -603,12 +584,32 @@ zipUpload.addEventListener(
         const tctx =
         thumbCanvas.getContext("2d");
 
+        tctx.clearRect(0,0,64,64);
+
+        const scale =
+        Math.min(
+            64 / img.width,
+            64 / img.height
+        );
+
+        const w =
+        img.width * scale;
+
+        const h =
+        img.height * scale;
+
+        const x =
+        (64 - w) / 2;
+
+        const y =
+        (64 - h) / 2;
+
         tctx.drawImage(
             img,
-            0,
-            0,
-            64,
-            64
+            x,
+            y,
+            w,
+            h
         );
 
         const layer = {
@@ -834,8 +835,8 @@ function render(){
     ctx.clearRect(
         0,
         0,
-        canvas.width,
-        canvas.height
+        canvas.width / DPR,
+        canvas.height / DPR
     );
 
     if(bgImage){
@@ -863,6 +864,60 @@ function render(){
     }
 }
 
+function fitDraw(img){
+
+    const cw =
+    canvas.width / DPR;
+
+    const ch =
+    canvas.height / DPR;
+
+    const imgRatio =
+    img.width / img.height;
+
+    const canvasRatio =
+    cw / ch;
+
+    let drawW;
+    let drawH;
+    let drawX;
+    let drawY;
+
+    if(imgRatio > canvasRatio){
+
+        drawW = cw;
+        drawH = cw / imgRatio;
+
+        drawX = 0;
+        drawY = (ch - drawH) / 2;
+
+    }else{
+
+        drawH = ch;
+        drawW = ch * imgRatio;
+
+        drawY = 0;
+        drawX = (cw - drawW) / 2;
+    }
+
+    bgFit = {
+
+        x:drawX,
+        y:drawY,
+
+        w:drawW,
+        h:drawH
+    };
+
+    ctx.drawImage(
+        img,
+        drawX,
+        drawY,
+        drawW,
+        drawH
+    );
+}
+
 function drawLayer(layer){
 
     if(bgFit){
@@ -882,58 +937,16 @@ function drawLayer(layer){
     drawLayerText(layer);
 }
 
-function fitDraw(img){
-
-    const cw =
-    canvas.width / DPR;
-
-    const ch =
-    canvas.height / DPR;
-
-    bgFit = {
-
-        x:0,
-        y:0,
-
-        w:cw,
-        h:ch
-    };
-
-    ctx.drawImage(
-        img,
-        0,
-        0,
-        cw,
-        ch
-    );
-}
-
 function drawLayerText(layer){
 
     if(!layer.text)
         return;
 
-    if(
-        !isFinite(layer.scale)
-    ){
-        layer.scale = 1;
-    }
-
-    if(
-        !isFinite(
-            layer.rotation
-        )
-    ){
-        layer.rotation = 0;
-    }
-
     ctx.save();
 
     ctx.translate(
-
-        Number(layer.x)||0,
-
-        Number(layer.y)||0
+        layer.x,
+        layer.y
     );
 
     ctx.rotate(
