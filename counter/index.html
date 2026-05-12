@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>パネル開放ツール 完全版</title>
+<title>パネル開放ツール 完全版+</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -22,7 +22,7 @@ body{
 
 .wrapper{
     padding:20px;
-    max-width:1000px;
+    max-width:1200px;
     margin:auto;
 }
 
@@ -53,9 +53,7 @@ canvas{
     background:white;
     width:100%;
     height:auto;
-    max-width:100%;
     touch-action:none;
-    image-rendering:auto;
 }
 
 .info{
@@ -82,8 +80,22 @@ canvas{
     background:#fafafa;
 }
 
+.layerHeader{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.layerThumb{
+    width:70px;
+    height:70px;
+    border:1px solid #ccc;
+    object-fit:contain;
+    background:white;
+}
+
 .layerItem h3{
-    margin-top:0;
+    margin:0;
     font-size:16px;
 }
 
@@ -98,14 +110,9 @@ canvas{
 .layerItem label{
     display:block;
     margin-top:10px;
-    font-size:14px;
 }
 
-.layerItem input[type="range"]{
-    width:100%;
-}
-
-@media (max-width:768px){
+@media(max-width:768px){
 
     .toolbar{
         flex-direction:column;
@@ -115,14 +122,6 @@ canvas{
     button{
         width:100%;
     }
-
-    .layerItem{
-        padding:15px;
-    }
-
-    .layerItem input[type="text"]{
-        font-size:16px;
-    }
 }
 
 </style>
@@ -131,7 +130,7 @@ canvas{
 
 <div class="wrapper">
 
-<h1>パネル開放ツール</h1>
+<h1>パネル開放ツール 完全版+</h1>
 
 <div class="toolbar">
 
@@ -155,7 +154,7 @@ canvas{
 </button>
 
 <button id="saveBtn">
-現在状態を保存
+保存
 </button>
 
 </div>
@@ -196,11 +195,15 @@ let lineImage = null;
 let baseImage = null;
 
 let regions = [];
+let hitMap = null;
+
+let draggingText = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 
 lineUpload.addEventListener("change", e => {
 
     const file = e.target.files[0];
-
     if(!file) return;
 
     const img = new Image();
@@ -208,19 +211,16 @@ lineUpload.addEventListener("change", e => {
     img.onload = () => {
 
         lineImage = img;
-
         setupCanvas();
 
     };
 
     img.src = URL.createObjectURL(file);
-
 });
 
 baseUpload.addEventListener("change", e => {
 
     const file = e.target.files[0];
-
     if(!file) return;
 
     const img = new Image();
@@ -228,46 +228,36 @@ baseUpload.addEventListener("change", e => {
     img.onload = () => {
 
         baseImage = img;
-
         setupCanvas();
 
     };
 
     img.src = URL.createObjectURL(file);
-
 });
 
 function setupCanvas(){
 
-    if(!lineImage && !baseImage) return;
-
     const ref = lineImage || baseImage;
+
+    if(!ref) return;
 
     canvas.width = ref.width;
     canvas.height = ref.height;
 
     renderAll();
-
 }
 
 generateBtn.addEventListener("click", processPanels);
 
-panelColor.addEventListener("input", () => {
+saveBtn.addEventListener("click", saveImage);
 
-    renderAll();
-
-});
-
-saveBtn.addEventListener("click", saveCurrentImage);
-
-canvas.addEventListener("click", onCanvasClick);
+panelColor.addEventListener("input", renderAll);
 
 function processPanels(){
 
     if(!lineImage){
 
         alert("線画PNGをアップロードしてください");
-
         return;
     }
 
@@ -283,8 +273,6 @@ function processPanels(){
     );
 
     const binary = createBinaryMap(imageData);
-
-    closeSmallGaps(binary);
 
     regions = detectRegions(binary);
 
@@ -305,13 +293,9 @@ function createBinaryMap(imageData){
 
     for(let i=0;i<width*height;i++){
 
-        const alpha = imageData.data[i*4 + 3];
+        const alpha = imageData.data[i*4+3];
 
-        if(alpha > 10){
-            map[i] = 1;
-        }else{
-            map[i] = 0;
-        }
+        map[i] = alpha > 10 ? 1 : 0;
     }
 
     for(let x=0;x<width;x++){
@@ -323,7 +307,7 @@ function createBinaryMap(imageData){
     for(let y=0;y<height;y++){
 
         map[y*width] = 1;
-        map[y*width + width - 1] = 1;
+        map[y*width + width -1] = 1;
     }
 
     return {
@@ -333,52 +317,15 @@ function createBinaryMap(imageData){
     };
 }
 
-function closeSmallGaps(binary){
-
-    const data = binary.data;
-    const width = binary.width;
-    const height = binary.height;
-
-    const copy = new Uint8Array(data);
-
-    for(let y=1;y<height-1;y++){
-
-        for(let x=1;x<width-1;x++){
-
-            const idx = y*width+x;
-
-            if(copy[idx] === 0){
-
-                let walls = 0;
-
-                for(let dy=-1;dy<=1;dy++){
-
-                    for(let dx=-1;dx<=1;dx++){
-
-                        const ni =
-                            (y+dy)*width + (x+dx);
-
-                        if(copy[ni] === 1){
-                            walls++;
-                        }
-                    }
-                }
-
-                if(walls >= 7){
-                    data[idx] = 1;
-                }
-            }
-        }
-    }
-}
-
 function detectRegions(binary){
 
     const data = binary.data;
     const width = binary.width;
     const height = binary.height;
 
-    const visited = new Uint8Array(width*height);
+    const visited = new Uint8Array(width * height);
+
+    hitMap = new Uint16Array(width * height);
 
     const found = [];
 
@@ -390,42 +337,77 @@ function detectRegions(binary){
 
             const idx = y*width+x;
 
-            if(
-                data[idx] === 0 &&
-                !visited[idx]
-            ){
+            if(data[idx]===0 && !visited[idx]){
 
-                const region = floodFill(
-                    x,
-                    y,
-                    data,
-                    visited,
-                    width,
-                    height
-                );
+                const regionPixels =
+                    floodFill(
+                        x,
+                        y,
+                        data,
+                        visited,
+                        width,
+                        height
+                    );
 
-                if(region.length > 300){
+                if(regionPixels.length > 300){
 
                     let minX = Infinity;
                     let maxX = -Infinity;
                     let minY = Infinity;
                     let maxY = -Infinity;
 
-                    for(const p of region){
+                    for(const p of regionPixels){
 
                         if(p.x < minX) minX = p.x;
                         if(p.x > maxX) maxX = p.x;
                         if(p.y < minY) minY = p.y;
                         if(p.y > maxY) maxY = p.y;
+
+                        hitMap[p.y*width+p.x] =
+                            regionId + 1;
                     }
+
+                    const maskCanvas =
+                        document.createElement("canvas");
+
+                    maskCanvas.width = width;
+                    maskCanvas.height = height;
+
+                    const mctx =
+                        maskCanvas.getContext("2d");
+
+                    mctx.fillStyle =
+                        "#ffffff";
+
+                    for(const p of regionPixels){
+
+                        mctx.fillRect(
+                            p.x,
+                            p.y,
+                            1,
+                            1
+                        );
+                    }
+
+                    const thumb =
+                        createThumbnail(
+                            minX,
+                            minY,
+                            maxX,
+                            maxY
+                        );
 
                     found.push({
 
-                        id:regionId++,
-
-                        pixels:region,
+                        id:regionId,
 
                         visible:true,
+
+                        pixels:regionPixels,
+
+                        maskCanvas,
+
+                        thumbnail:thumb,
 
                         text:"",
 
@@ -433,16 +415,70 @@ function detectRegions(binary){
 
                         fontSize:48,
 
-                        centerX:(minX + maxX)/2,
+                        centerX:(minX+maxX)/2,
 
-                        centerY:(minY + maxY)/2
+                        centerY:(minY+maxY)/2,
+
+                        textX:(minX+maxX)/2,
+
+                        textY:(minY+maxY)/2,
+
+                        minX,
+                        minY,
+                        maxX,
+                        maxY
                     });
+
+                    regionId++;
                 }
             }
         }
     }
 
     return found;
+}
+
+function createThumbnail(
+    minX,
+    minY,
+    maxX,
+    maxY
+){
+
+    const size = 70;
+
+    const c =
+        document.createElement("canvas");
+
+    c.width = size;
+    c.height = size;
+
+    const tctx =
+        c.getContext("2d");
+
+    tctx.fillStyle = "#fff";
+
+    tctx.fillRect(0,0,size,size);
+
+    const w = maxX-minX;
+    const h = maxY-minY;
+
+    const scale =
+        Math.min(size/w,size/h);
+
+    tctx.drawImage(
+        lineImage,
+        minX,
+        minY,
+        w,
+        h,
+        0,
+        0,
+        w*scale,
+        h*scale
+    );
+
+    return c.toDataURL();
 }
 
 function floodFill(
@@ -455,7 +491,6 @@ function floodFill(
 ){
 
     const stack = [[startX,startY]];
-
     const pixels = [];
 
     while(stack.length){
@@ -463,10 +498,10 @@ function floodFill(
         const [x,y] = stack.pop();
 
         if(
-            x < 0 ||
-            y < 0 ||
-            x >= width ||
-            y >= height
+            x<0 ||
+            y<0 ||
+            x>=width ||
+            y>=height
         ){
             continue;
         }
@@ -477,7 +512,7 @@ function floodFill(
 
         visited[idx] = 1;
 
-        if(data[idx] === 1) continue;
+        if(data[idx]===1) continue;
 
         pixels.push({x,y});
 
@@ -514,34 +549,59 @@ function renderAll(){
 
         if(!region.visible) continue;
 
+        ctx.save();
+
+        ctx.drawImage(
+            region.maskCanvas,
+            0,
+            0
+        );
+
+        ctx.globalCompositeOperation =
+            "source-in";
+
         ctx.fillStyle =
             panelColor.value;
 
-        for(const p of region.pixels){
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
 
-            ctx.fillRect(
-                p.x,
-                p.y,
-                1,
-                1
-            );
-        }
+        ctx.restore();
 
-        ctx.fillStyle =
-            region.textColor;
+        ctx.save();
+
+        ctx.drawImage(
+            region.maskCanvas,
+            0,
+            0
+        );
+
+        ctx.globalCompositeOperation =
+            "destination-in";
 
         ctx.font =
             `${region.fontSize}px sans-serif`;
 
-        ctx.textAlign = "center";
+        ctx.fillStyle =
+            region.textColor;
 
-        ctx.textBaseline = "middle";
+        ctx.textAlign =
+            "center";
+
+        ctx.textBaseline =
+            "middle";
 
         ctx.fillText(
             region.text,
-            region.centerX,
-            region.centerY
+            region.textX,
+            region.textY
         );
+
+        ctx.restore();
     }
 
     if(lineImage){
@@ -549,9 +609,7 @@ function renderAll(){
         ctx.drawImage(
             lineImage,
             0,
-            0,
-            canvas.width,
-            canvas.height
+            0
         );
     }
 }
@@ -565,7 +623,25 @@ function buildLayerUI(){
         const div =
             document.createElement("div");
 
-        div.className = "layerItem";
+        div.className =
+            "layerItem";
+
+        const header =
+            document.createElement("div");
+
+        header.className =
+            "layerHeader";
+
+        const thumb =
+            document.createElement("img");
+
+        thumb.src =
+            region.thumbnail;
+
+        thumb.className =
+            "layerThumb";
+
+        header.appendChild(thumb);
 
         const title =
             document.createElement("h3");
@@ -573,7 +649,9 @@ function buildLayerUI(){
         title.textContent =
             "パネル " + region.id;
 
-        div.appendChild(title);
+        header.appendChild(title);
+
+        div.appendChild(header);
 
         const toggle =
             document.createElement("button");
@@ -583,7 +661,7 @@ function buildLayerUI(){
             ? "表示中"
             : "非表示";
 
-        toggle.addEventListener("click", () => {
+        toggle.addEventListener("click",()=>{
 
             region.visible =
                 !region.visible;
@@ -594,7 +672,6 @@ function buildLayerUI(){
                 : "非表示";
 
             renderAll();
-
         });
 
         div.appendChild(toggle);
@@ -615,13 +692,12 @@ function buildLayerUI(){
         textInput.value =
             region.text;
 
-        textInput.addEventListener("input", e => {
+        textInput.addEventListener("input",e=>{
 
             region.text =
                 e.target.value;
 
             renderAll();
-
         });
 
         div.appendChild(textInput);
@@ -642,13 +718,12 @@ function buildLayerUI(){
         colorInput.value =
             region.textColor;
 
-        colorInput.addEventListener("input", e => {
+        colorInput.addEventListener("input",e=>{
 
             region.textColor =
                 e.target.value;
 
             renderAll();
-
         });
 
         div.appendChild(colorInput);
@@ -672,22 +747,32 @@ function buildLayerUI(){
         sizeInput.value =
             region.fontSize;
 
-        sizeInput.addEventListener("input", e => {
+        sizeInput.addEventListener("input",e=>{
 
             region.fontSize =
                 Number(e.target.value);
 
             renderAll();
-
         });
 
         div.appendChild(sizeInput);
+
+        const dragInfo =
+            document.createElement("div");
+
+        dragInfo.style.marginTop =
+            "10px";
+
+        dragInfo.innerHTML =
+            "※ キャンバス上で文字をドラッグ移動";
+
+        div.appendChild(dragInfo);
 
         layerPanel.appendChild(div);
     }
 }
 
-function onCanvasClick(e){
+function getMousePos(e){
 
     const rect =
         canvas.getBoundingClientRect();
@@ -698,66 +783,111 @@ function onCanvasClick(e){
     const scaleY =
         canvas.height / rect.height;
 
-    const x =
-        Math.floor(
-            (e.clientX - rect.left)
-            * scaleX
-        );
+    return {
 
-    const y =
-        Math.floor(
-            (e.clientY - rect.top)
-            * scaleY
-        );
+        x:(e.clientX-rect.left)*scaleX,
+        y:(e.clientY-rect.top)*scaleY
+    };
+}
 
-    /*
-    上から順に判定
-    */
+canvas.addEventListener("pointerdown",e=>{
 
-    for(let i = regions.length - 1; i >= 0; i--){
+    const pos = getMousePos(e);
+
+    for(let i=regions.length-1;i>=0;i--){
 
         const region = regions[i];
 
-        for(const p of region.pixels){
+        ctx.font =
+            `${region.fontSize}px sans-serif`;
 
-            if(
-                p.x === x &&
-                p.y === y
-            ){
+        const width =
+            ctx.measureText(region.text).width;
 
-                /*
-                表示⇔非表示切替
-                */
+        const height =
+            region.fontSize;
 
-                region.visible =
-                    !region.visible;
+        if(
+            pos.x >
+            region.textX - width/2 &&
+            pos.x <
+            region.textX + width/2 &&
+            pos.y >
+            region.textY - height/2 &&
+            pos.y <
+            region.textY + height/2
+        ){
 
-                updateLayerButtons();
+            draggingText = region;
 
-                renderAll();
+            dragOffsetX =
+                pos.x - region.textX;
 
-                return;
-            }
+            dragOffsetY =
+                pos.y - region.textY;
+
+            return;
         }
     }
-}
+
+    const x = Math.floor(pos.x);
+    const y = Math.floor(pos.y);
+
+    const id =
+        hitMap[y*canvas.width+x]-1;
+
+    if(id>=0){
+
+        regions[id].visible =
+            !regions[id].visible;
+
+        updateLayerButtons();
+
+        renderAll();
+    }
+});
+
+canvas.addEventListener("pointermove",e=>{
+
+    if(!draggingText) return;
+
+    const pos =
+        getMousePos(e);
+
+    draggingText.textX =
+        pos.x - dragOffsetX;
+
+    draggingText.textY =
+        pos.y - dragOffsetY;
+
+    renderAll();
+});
+
+canvas.addEventListener("pointerup",()=>{
+
+    draggingText = null;
+});
+
+canvas.addEventListener("pointerleave",()=>{
+
+    draggingText = null;
+});
 
 function updateLayerButtons(){
 
     const buttons =
         layerPanel.querySelectorAll("button");
 
-    regions.forEach((region,index) => {
+    regions.forEach((region,index)=>{
 
         buttons[index].textContent =
             region.visible
             ? "表示中"
             : "非表示";
-
     });
 }
 
-function saveCurrentImage(){
+function saveImage(){
 
     const a =
         document.createElement("a");
@@ -766,7 +896,7 @@ function saveCurrentImage(){
         canvas.toDataURL("image/png");
 
     a.download =
-        "panel_state.png";
+        "panel.png";
 
     a.click();
 }
