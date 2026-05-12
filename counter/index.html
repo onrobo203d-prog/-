@@ -24,10 +24,8 @@ body{
     width:100%;
     height:100%;
     overflow:hidden;
-
     background:#111;
     color:white;
-
     font-family:
     "Noto Sans JP",
     sans-serif;
@@ -78,6 +76,8 @@ button{
     border-radius:14px;
 
     font-size:15px;
+
+    cursor:pointer;
 }
 
 button:active,
@@ -250,6 +250,10 @@ textarea{
     padding:0;
 }
 
+#clearStorageBtn{
+    background:#7a2f2f;
+}
+
 #helpPopup{
 
     position:fixed;
@@ -326,8 +330,11 @@ accept=".zip">
 保存
 </button>
 
-<button id="helpBtn">？
+<button id="clearStorageBtn">
+データ消去
 </button>
+
+<button id="helpBtn">？</button>
 
 </div>
 
@@ -375,6 +382,145 @@ Alt + ホイール → 回転
 
 <script>
 
+const DB_NAME =
+"panel_editor_db";
+
+const STORE_NAME =
+"autosave";
+
+const SAVE_KEY =
+"project";
+
+let db = null;
+
+async function initDB(){
+
+    return new Promise((resolve,reject)=>{
+
+        const request =
+        indexedDB.open(
+            DB_NAME,
+            1
+        );
+
+        request.onupgradeneeded =
+        e => {
+
+            const db =
+            e.target.result;
+
+            if(
+                !db.objectStoreNames.contains(
+                    STORE_NAME
+                )
+            ){
+
+                db.createObjectStore(
+                    STORE_NAME
+                );
+            }
+        };
+
+        request.onsuccess =
+        e => {
+
+            db =
+            e.target.result;
+
+            resolve();
+        };
+
+        request.onerror =
+        reject;
+    });
+}
+
+async function saveToDB(data){
+
+    return new Promise((resolve,reject)=>{
+
+        const tx =
+        db.transaction(
+            STORE_NAME,
+            "readwrite"
+        );
+
+        const store =
+        tx.objectStore(
+            STORE_NAME
+        );
+
+        store.put(
+            data,
+            SAVE_KEY
+        );
+
+        tx.oncomplete =
+        resolve;
+
+        tx.onerror =
+        reject;
+    });
+}
+
+async function loadFromDB(){
+
+    return new Promise((resolve,reject)=>{
+
+        const tx =
+        db.transaction(
+            STORE_NAME,
+            "readonly"
+        );
+
+        const store =
+        tx.objectStore(
+            STORE_NAME
+        );
+
+        const req =
+        store.get(
+            SAVE_KEY
+        );
+
+        req.onsuccess =
+        () => {
+
+            resolve(
+                req.result
+            );
+        };
+
+        req.onerror =
+        reject;
+    });
+}
+
+async function clearDB(){
+
+    return new Promise((resolve,reject)=>{
+
+        const tx =
+        db.transaction(
+            STORE_NAME,
+            "readwrite"
+        );
+
+        const store =
+        tx.objectStore(
+            STORE_NAME
+        );
+
+        store.clear();
+
+        tx.oncomplete =
+        resolve;
+
+        tx.onerror =
+        reject;
+    });
+}
+
 const canvas =
 document.getElementById("canvas");
 
@@ -404,6 +550,11 @@ document.getElementById("closeHelp");
 
 const canvasWrap =
 document.getElementById("canvasWrap");
+
+const clearStorageBtn =
+document.getElementById(
+    "clearStorageBtn"
+);
 
 const DPR =
 window.devicePixelRatio || 1;
@@ -460,7 +611,8 @@ function adjustCanvasArea(){
     const usableH =
     screenH - topbarH - layersMin;
 
-    let canvasH = usableH;
+    let canvasH =
+    usableH;
 
     if(bgImage){
 
@@ -485,17 +637,11 @@ function resizeCanvas(){
     canvasWrap
     .getBoundingClientRect();
 
-    const targetWidth =
-    rect.width;
-
-    const targetHeight =
-    rect.height;
-
     canvas.width =
-    targetWidth * DPR;
+    rect.width * DPR;
 
     canvas.height =
-    targetHeight * DPR;
+    rect.height * DPR;
 
     ctx.setTransform(
         DPR,
@@ -509,28 +655,198 @@ function resizeCanvas(){
     render();
 }
 
+function fileToDataURL(file){
+
+    return new Promise(resolve=>{
+
+        const reader =
+        new FileReader();
+
+        reader.onload =
+        () => resolve(
+            reader.result
+        );
+
+        reader.readAsDataURL(
+            file
+        );
+    });
+}
+
+function imageFromSrc(src){
+
+    return new Promise(resolve=>{
+
+        const img =
+        new Image();
+
+        img.onload =
+        () => resolve(img);
+
+        img.src = src;
+    });
+}
+
+async function autoSave(){
+
+    const saveData = {
+
+        bgImageSrc:
+        bgImage
+        ? bgImage.src
+        : null,
+
+        layers:
+        layers.map(layer=>({
+
+            name:layer.name,
+
+            imageSrc:
+            layer.image.src,
+
+            thumbnail:
+            layer.thumbnail,
+
+            visible:
+            layer.visible,
+
+            text:
+            layer.text,
+
+            color:
+            layer.color,
+
+            stroke:
+            layer.stroke,
+
+            x:layer.x,
+            y:layer.y,
+
+            scale:
+            layer.scale,
+
+            rotation:
+            layer.rotation,
+
+            baseSize:
+            layer.baseSize
+        }))
+    };
+
+    await saveToDB(
+        saveData
+    );
+}
+
+async function restoreAutoSave(){
+
+    const data =
+    await loadFromDB();
+
+    if(!data)
+        return;
+
+    const restore =
+    confirm(
+        "保存データを復元しますか？"
+    );
+
+    if(!restore)
+        return;
+
+    if(data.bgImageSrc){
+
+        bgImage =
+        await imageFromSrc(
+            data.bgImageSrc
+        );
+    }
+
+    layers = [];
+
+    layersPanel.innerHTML =
+    "";
+
+    for(
+        const saved of
+        data.layers
+    ){
+
+        const img =
+        await imageFromSrc(
+            saved.imageSrc
+        );
+
+        const layer = {
+
+            name:
+            saved.name,
+
+            image:img,
+
+            thumbnail:
+            saved.thumbnail,
+
+            visible:
+            saved.visible,
+
+            text:
+            saved.text,
+
+            color:
+            saved.color,
+
+            stroke:
+            saved.stroke,
+
+            x:saved.x,
+            y:saved.y,
+
+            scale:
+            saved.scale,
+
+            rotation:
+            saved.rotation,
+
+            baseSize:
+            saved.baseSize
+        };
+
+        layers.push(layer);
+
+        createLayerUI(layer);
+    }
+
+    adjustCanvasArea();
+
+    resizeCanvas();
+
+    render();
+}
+
 bgUpload.addEventListener(
     "change",
-    e => {
+    async e => {
 
     const file =
     e.target.files[0];
 
-    if(!file) return;
+    if(!file)
+        return;
 
-    const img = new Image();
+    const src =
+    await fileToDataURL(
+        file
+    );
 
-    img.onload = () => {
+    bgImage =
+    await imageFromSrc(src);
 
-        bgImage = img;
+    adjustCanvasArea();
 
-        adjustCanvasArea();
+    resizeCanvas();
 
-        resizeCanvas();
-    };
-
-    img.src =
-    URL.createObjectURL(file);
+    autoSave();
 });
 
 zipUpload.addEventListener(
@@ -540,38 +856,45 @@ zipUpload.addEventListener(
     const file =
     e.target.files[0];
 
-    if(!file) return;
+    if(!file)
+        return;
 
     layers = [];
 
-    layersPanel.innerHTML = "";
+    layersPanel.innerHTML =
+    "";
 
     const zip =
-    await JSZip.loadAsync(file);
+    await JSZip.loadAsync(
+        file
+    );
 
     const entries =
     Object.values(zip.files)
-    .filter(f =>
-        f.name.endsWith(".png")
+    .filter(f=>
+        f.name.endsWith(
+            ".png"
+        )
     );
 
-    for(const entry of entries){
+    for(
+        const entry of entries
+    ){
 
         const blob =
-        await entry.async("blob");
+        await entry.async(
+            "blob"
+        );
 
-        const url =
-        URL.createObjectURL(blob);
+        const src =
+        await fileToDataURL(
+            blob
+        );
 
         const img =
-        new Image();
-
-        await new Promise(resolve=>{
-
-            img.onload = resolve;
-
-            img.src = url;
-        });
+        await imageFromSrc(
+            src
+        );
 
         const thumbCanvas =
         document.createElement(
@@ -582,9 +905,9 @@ zipUpload.addEventListener(
         thumbCanvas.height = 64;
 
         const tctx =
-        thumbCanvas.getContext("2d");
-
-        tctx.clearRect(0,0,64,64);
+        thumbCanvas.getContext(
+            "2d"
+        );
 
         const scale =
         Math.min(
@@ -646,6 +969,8 @@ zipUpload.addEventListener(
     }
 
     render();
+
+    autoSave();
 });
 
 function createLayerUI(layer){
@@ -668,7 +993,9 @@ function createLayerUI(layer){
     );
 
     visibleBtn.textContent =
-    "表示";
+    layer.visible
+    ? "表示"
+    : "非表示";
 
     visibleBtn.onclick = () => {
 
@@ -681,10 +1008,14 @@ function createLayerUI(layer){
         : "非表示";
 
         render();
+
+        autoSave();
     };
 
     const thumb =
-    document.createElement("img");
+    document.createElement(
+        "img"
+    );
 
     thumb.className =
     "thumb";
@@ -693,7 +1024,9 @@ function createLayerUI(layer){
     layer.thumbnail;
 
     const title =
-    document.createElement("div");
+    document.createElement(
+        "div"
+    );
 
     title.className =
     "layerTitle";
@@ -714,7 +1047,9 @@ function createLayerUI(layer){
     );
 
     const controls =
-    document.createElement("div");
+    document.createElement(
+        "div"
+    );
 
     controls.className =
     "layerControls";
@@ -723,6 +1058,9 @@ function createLayerUI(layer){
     document.createElement(
         "textarea"
     );
+
+    textarea.value =
+    layer.text;
 
     textarea.placeholder =
     "文字入力";
@@ -733,25 +1071,31 @@ function createLayerUI(layer){
         textarea.value;
 
         render();
+
+        autoSave();
     };
 
     const row =
-    document.createElement("div");
+    document.createElement(
+        "div"
+    );
 
-    row.className = "row";
+    row.className =
+    "row";
 
     const color =
     document.createElement(
         "input"
     );
 
-    color.type = "color";
+    color.type =
+    "color";
 
     color.className =
     "color";
 
     color.value =
-    "#ffffff";
+    layer.color;
 
     color.oninput = () => {
 
@@ -759,6 +1103,8 @@ function createLayerUI(layer){
         color.value;
 
         render();
+
+        autoSave();
     };
 
     const stroke =
@@ -766,13 +1112,14 @@ function createLayerUI(layer){
         "input"
     );
 
-    stroke.type = "color";
+    stroke.type =
+    "color";
 
     stroke.className =
     "color";
 
     stroke.value =
-    "#000000";
+    layer.stroke;
 
     stroke.oninput = () => {
 
@@ -780,6 +1127,8 @@ function createLayerUI(layer){
         stroke.value;
 
         render();
+
+        autoSave();
     };
 
     row.appendChild(color);
@@ -794,7 +1143,9 @@ function createLayerUI(layer){
         row
     );
 
-    card.appendChild(header);
+    card.appendChild(
+        header
+    );
 
     card.appendChild(
         controls
@@ -808,19 +1159,19 @@ function createLayerUI(layer){
         .querySelectorAll(
             ".layerCard"
         )
-        .forEach(v => {
+        .forEach(v=>{
 
             v.classList.remove(
                 "activeLayer"
             );
-
         });
 
         card.classList.add(
             "activeLayer"
         );
 
-        activeLayer = layer;
+        activeLayer =
+        layer;
 
         render();
     });
@@ -844,13 +1195,17 @@ function render(){
         fitDraw(bgImage);
     }
 
-    for(const layer of layers){
+    for(
+        const layer of layers
+    ){
 
-        if(layer === activeLayer)
-            continue;
+        if(
+            !layer.visible
+        ) continue;
 
-        if(!layer.visible)
-            continue;
+        if(
+            layer === activeLayer
+        ) continue;
 
         drawLayer(layer);
     }
@@ -860,7 +1215,9 @@ function render(){
         activeLayer.visible
     ){
 
-        drawLayer(activeLayer);
+        drawLayer(
+            activeLayer
+        );
     }
 }
 
@@ -883,21 +1240,32 @@ function fitDraw(img){
     let drawX;
     let drawY;
 
-    if(imgRatio > canvasRatio){
+    if(
+        imgRatio >
+        canvasRatio
+    ){
 
         drawW = cw;
-        drawH = cw / imgRatio;
+
+        drawH =
+        cw / imgRatio;
 
         drawX = 0;
-        drawY = (ch - drawH) / 2;
+
+        drawY =
+        (ch - drawH)/2;
 
     }else{
 
         drawH = ch;
-        drawW = ch * imgRatio;
+
+        drawW =
+        ch * imgRatio;
 
         drawY = 0;
-        drawX = (cw - drawW) / 2;
+
+        drawX =
+        (cw - drawW)/2;
     }
 
     bgFit = {
@@ -954,7 +1322,6 @@ function drawLayerText(layer){
     );
 
     const size =
-
     layer.baseSize *
     layer.scale;
 
@@ -1011,7 +1378,6 @@ function drawLayerText(layer){
         );
 
         const height =
-
         lines.length *
         size *
         1.2;
@@ -1121,6 +1487,8 @@ canvas.addEventListener(
         activeLayer.y += dy;
 
         render();
+
+        autoSave();
     }
 
     if(
@@ -1170,6 +1538,8 @@ canvas.addEventListener(
         );
 
         render();
+
+        autoSave();
     }
 });
 
@@ -1190,20 +1560,17 @@ canvas.addEventListener(
 
     e.preventDefault();
 
-    if(
-        !activeLayer
-    ) return;
+    if(!activeLayer)
+        return;
 
     if(e.altKey){
 
         activeLayer.rotation +=
-
         e.deltaY * 0.005;
 
     }else{
 
         activeLayer.scale -=
-
         e.deltaY * 0.001;
 
         activeLayer.scale =
@@ -1217,6 +1584,8 @@ canvas.addEventListener(
     }
 
     render();
+
+    autoSave();
 
 },{
     passive:false
@@ -1249,21 +1618,26 @@ saveBtn.addEventListener(
 
 function saveImage(){
 
-    // 保存用canvas
     const exportCanvas =
-    document.createElement("canvas");
+    document.createElement(
+        "canvas"
+    );
 
     const exportCtx =
-    exportCanvas.getContext("2d");
+    exportCanvas.getContext(
+        "2d"
+    );
 
     let exportW;
     let exportH;
 
-    // 背景画像サイズで保存
     if(bgImage){
 
-        exportW = bgImage.width;
-        exportH = bgImage.height;
+        exportW =
+        bgImage.width;
+
+        exportH =
+        bgImage.height;
 
     }else{
 
@@ -1280,7 +1654,6 @@ function saveImage(){
     exportCanvas.height =
     exportH;
 
-    // 背景描画
     if(bgImage){
 
         exportCtx.drawImage(
@@ -1292,14 +1665,12 @@ function saveImage(){
         );
     }
 
-    // レイヤー描画
-    for(const layer of layers){
+    for(
+        const layer of layers
+    ){
 
         if(!layer.visible)
             continue;
-
-        // 背景基準位置を
-        // 保存サイズへ変換
 
         const scaleX =
         exportW / bgFit.w;
@@ -1307,7 +1678,6 @@ function saveImage(){
         const scaleY =
         exportH / bgFit.h;
 
-        // PNGレイヤー
         exportCtx.drawImage(
 
             layer.image,
@@ -1319,7 +1689,6 @@ function saveImage(){
             exportH
         );
 
-        // テキスト
         if(layer.text){
 
             exportCtx.save();
@@ -1386,7 +1755,7 @@ function saveImage(){
         }
     }
 
-    exportCanvas.toBlob(blob => {
+    exportCanvas.toBlob(blob=>{
 
         const url =
         URL.createObjectURL(
@@ -1394,7 +1763,9 @@ function saveImage(){
         );
 
         const a =
-        document.createElement("a");
+        document.createElement(
+            "a"
+        );
 
         a.href = url;
 
@@ -1413,6 +1784,22 @@ function saveImage(){
 
     },"image/png");
 }
+
+clearStorageBtn.onclick =
+async () => {
+
+    const ok =
+    confirm(
+        "保存データを完全に削除しますか？"
+    );
+
+    if(!ok)
+        return;
+
+    await clearDB();
+
+    location.reload();
+};
 
 helpBtn.onclick = () => {
 
@@ -1436,6 +1823,14 @@ helpPopup.onclick = e => {
         "none";
     }
 };
+
+(async()=>{
+
+    await initDB();
+
+    await restoreAutoSave();
+
+})();
 
 </script>
 </body>
