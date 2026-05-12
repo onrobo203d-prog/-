@@ -2,176 +2,245 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>パネルレイヤーエディタ</title>
 
-<title>パネル開放ツール Ultimate</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
 
 *{
     box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
 }
 
 body{
     margin:0;
-    background:#f0f0f0;
-    font-family:sans-serif;
+    background:#111;
+    color:white;
+    font-family:"Noto Sans JP",sans-serif;
+    overflow:hidden;
 }
 
-.wrapper{
-    max-width:1200px;
-    margin:auto;
-    padding:20px;
-}
+#topbar{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:20;
 
-.toolbar{
     display:flex;
-    flex-wrap:wrap;
     gap:10px;
-    margin-bottom:20px;
-    align-items:center;
+    padding:10px;
+    background:#1b1b1b;
+    border-bottom:1px solid #333;
+}
+
+button,
+input,
+textarea{
+    font:inherit;
 }
 
 button{
     border:none;
-    background:black;
+    background:#333;
     color:white;
-    padding:10px 16px;
-    border-radius:10px;
-    cursor:pointer;
-    font-size:16px;
+    border-radius:12px;
+    padding:10px 14px;
 }
 
-button:hover{
-    opacity:0.8;
+button:active{
+    transform:scale(0.98);
+}
+
+input[type=file]{
+    display:none;
+}
+
+.fileBtn{
+    border:none;
+    background:#444;
+    color:white;
+    border-radius:12px;
+    padding:10px 14px;
+}
+
+#canvasWrap{
+    position:fixed;
+    top:60px;
+    left:0;
+    right:0;
+    bottom:300px;
+    overflow:hidden;
+    background:#222;
+    touch-action:none;
 }
 
 canvas{
     width:100%;
-    border:2px solid black;
-    background:white;
+    height:100%;
+    display:block;
     touch-action:none;
 }
 
-.layerEditor{
-    margin-top:20px;
-    background:white;
-    border-radius:12px;
-    padding:15px;
+#layersPanel{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    height:300px;
+    overflow:auto;
+    background:#181818;
+    border-top:1px solid #333;
+    padding:10px;
 }
 
-#layerPanel{
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-}
-
-.layerItem{
-    background:#fafafa;
-    border:1px solid #ccc;
-    border-radius:12px;
-    padding:12px;
-}
-
-.layerHeader{
-    display:flex;
-    gap:12px;
-    align-items:center;
+.layerCard{
+    background:#242424;
+    border-radius:14px;
+    padding:10px;
     margin-bottom:10px;
 }
 
-.layerThumb{
-    width:70px;
-    height:70px;
-    object-fit:contain;
-    border:1px solid #ccc;
-    background:white;
-}
-
-textarea{
-    width:100%;
-    resize:vertical;
-    min-height:80px;
-    padding:10px;
-    font-size:16px;
-}
-
-label{
-    display:block;
-    margin-top:10px;
-}
-
-.rangeWrap{
+.layerHeader{
     display:flex;
     align-items:center;
     gap:10px;
 }
 
-.info{
-    margin-top:10px;
+.thumb{
+    width:64px;
+    height:64px;
+    object-fit:contain;
+    background:white;
+    border-radius:8px;
 }
 
-@media(max-width:768px){
+.layerControls{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
 
-    .toolbar{
-        flex-direction:column;
-        align-items:stretch;
-    }
+textarea{
+    width:100%;
+    min-height:70px;
+    resize:none;
+    border:none;
+    border-radius:10px;
+    padding:10px;
+    background:#333;
+    color:white;
+}
 
-    button{
-        width:100%;
-    }
+.row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.color{
+    width:50px;
+    height:40px;
+    padding:0;
+    border:none;
+}
+
+#helpBtn{
+    position:fixed;
+    right:14px;
+    bottom:320px;
+    z-index:30;
+
+    width:54px;
+    height:54px;
+    border-radius:50%;
+    background:#ff4d4d;
+    font-size:24px;
+}
+
+#helpPopup{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.85);
+    z-index:100;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+}
+
+#helpContent{
+    background:#222;
+    border-radius:20px;
+    max-width:500px;
+    width:100%;
+    padding:20px;
+    line-height:1.8;
+}
+
+#helpContent h2{
+    margin-top:0;
+}
+
+.activeLayer{
+    outline:3px solid #4da3ff;
 }
 
 </style>
 </head>
 <body>
 
-<div class="wrapper">
+<div id="topbar">
 
-<h1>パネル開放ツール Ultimate</h1>
-
-<div class="toolbar">
-
-<div>
-線画PNG
-<input type="file" id="lineUpload" accept="image/png">
-</div>
-
-<div>
-元画像
-<input type="file" id="baseUpload" accept="image/*">
-</div>
-
-<label>
-パネル色
-<input type="color" id="panelColor" value="#ff0000">
+<label class="fileBtn">
+背景
+<input type="file" id="bgUpload" accept="image/*">
 </label>
 
-<button id="generateBtn">
-パネル生成
-</button>
+<label class="fileBtn">
+ZIP
+<input type="file" id="zipUpload" accept=".zip">
+</label>
 
-<button id="saveBtn">
-PNG保存
-</button>
+<button id="saveBtn">保存</button>
 
 </div>
 
+<div id="canvasWrap">
 <canvas id="canvas"></canvas>
-
-<div class="info" id="info">
-画像未読み込み
 </div>
 
-<div class="layerEditor">
+<div id="layersPanel"></div>
 
-<h2>レイヤー編集</h2>
+<button id="helpBtn">？</button>
 
-<div id="layerPanel"></div>
+<div id="helpPopup">
+<div id="helpContent">
+
+<h2>操作説明</h2>
+
+<h3>スマホ</h3>
+
+<p>
+1本指ドラッグ → 移動<br>
+2本指ピンチ → サイズ変更<br>
+2本指回転 → 回転
+</p>
+
+<h3>PC</h3>
+
+<p>
+ドラッグ → 移動<br>
+ホイール → サイズ変更<br>
+Alt + ホイール → 回転
+</p>
+
+<button id="closeHelp">閉じる</button>
 
 </div>
-
 </div>
 
 <script>
@@ -179,367 +248,268 @@ PNG保存
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-const lineUpload = document.getElementById("lineUpload");
-const baseUpload = document.getElementById("baseUpload");
+const bgUpload = document.getElementById("bgUpload");
+const zipUpload = document.getElementById("zipUpload");
+const layersPanel = document.getElementById("layersPanel");
 
-const generateBtn = document.getElementById("generateBtn");
+const helpBtn = document.getElementById("helpBtn");
+const helpPopup = document.getElementById("helpPopup");
+const closeHelp = document.getElementById("closeHelp");
+
 const saveBtn = document.getElementById("saveBtn");
 
-const panelColor = document.getElementById("panelColor");
+let bgImage = null;
+let layers = [];
 
-const layerPanel = document.getElementById("layerPanel");
-const info = document.getElementById("info");
+let activeLayer = null;
 
-let lineImage = null;
-let baseImage = null;
+let dragging = false;
 
-let regions = [];
+let pointers = new Map();
 
-let hitMap = null;
+let pinchStartDistance = 0;
+let pinchStartScale = 1;
 
-let draggingRegion = null;
+let rotateStartAngle = 0;
+let rotateStartRotation = 0;
 
-let dragOffsetX = 0;
-let dragOffsetY = 0;
+const DPR = window.devicePixelRatio || 1;
 
-let renderPending = false;
+resizeCanvas();
 
-lineUpload.addEventListener("change", e => {
+window.addEventListener("resize", resizeCanvas);
+
+function resizeCanvas(){
+
+    const rect =
+        canvas.parentElement.getBoundingClientRect();
+
+    canvas.width = rect.width * DPR;
+    canvas.height = rect.height * DPR;
+
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    render();
+}
+
+bgUpload.addEventListener("change", async e => {
 
     const file = e.target.files[0];
-
     if(!file) return;
 
     const img = new Image();
 
     img.onload = () => {
 
-        lineImage = img;
-
-        setupCanvas();
-
+        bgImage = img;
+        render();
     };
 
     img.src = URL.createObjectURL(file);
 });
 
-baseUpload.addEventListener("change", e => {
+zipUpload.addEventListener("change", async e => {
 
     const file = e.target.files[0];
-
     if(!file) return;
 
-    const img = new Image();
+    layers = [];
+    layersPanel.innerHTML = "";
 
-    img.onload = () => {
+    const zip = await JSZip.loadAsync(file);
 
-        baseImage = img;
+    const entries =
+        Object.values(zip.files)
+        .filter(f => f.name.endsWith(".png"));
 
-        setupCanvas();
+    for(const entry of entries){
 
-    };
+        const blob =
+            await entry.async("blob");
 
-    img.src = URL.createObjectURL(file);
+        const url =
+            URL.createObjectURL(blob);
+
+        const img = new Image();
+
+        await new Promise(resolve => {
+
+            img.onload = resolve;
+            img.src = url;
+        });
+
+        const thumbCanvas =
+            document.createElement("canvas");
+
+        thumbCanvas.width = 64;
+        thumbCanvas.height = 64;
+
+        const tctx =
+            thumbCanvas.getContext("2d");
+
+        tctx.drawImage(
+            img,
+            0,
+            0,
+            64,
+            64
+        );
+
+        const layer = {
+
+            name:entry.name,
+
+            image:img,
+
+            visible:true,
+
+            text:"",
+
+            color:"#ffffff",
+
+            stroke:"#000000",
+
+            x:200,
+
+            y:200,
+
+            scale:1,
+
+            rotation:0,
+
+            baseSize:48,
+
+            thumbnail:
+                thumbCanvas.toDataURL()
+        };
+
+        layers.push(layer);
+
+        createLayerUI(layer);
+    }
+
+    render();
 });
 
-function setupCanvas(){
+function createLayerUI(layer){
 
-    const ref = lineImage || baseImage;
+    const card =
+        document.createElement("div");
 
-    if(!ref) return;
+    card.className = "layerCard";
 
-    canvas.width = ref.width;
-    canvas.height = ref.height;
+    const header =
+        document.createElement("div");
 
-    requestRender();
-}
+    header.className = "layerHeader";
 
-generateBtn.addEventListener("click", processPanels);
+    const visible =
+        document.createElement("input");
 
-panelColor.addEventListener("input", requestRender);
+    visible.type = "checkbox";
+    visible.checked = true;
 
-saveBtn.addEventListener("click", saveImage);
+    visible.oninput = () => {
 
-function processPanels(){
-
-    if(!lineImage){
-
-        alert("線画PNGをアップロードしてください");
-
-        return;
-    }
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    ctx.drawImage(lineImage,0,0);
-
-    const imageData = ctx.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    const binary = createBinaryMap(imageData);
-
-    regions = detectRegions(binary);
-
-    buildLayerUI();
-
-    requestRender();
-
-    info.innerHTML =
-        "パネル数 : " + regions.length;
-}
-
-function createBinaryMap(imageData){
-
-    const width = imageData.width;
-    const height = imageData.height;
-
-    const map = new Uint8Array(width * height);
-
-    for(let i=0;i<width*height;i++){
-
-        const alpha =
-            imageData.data[i*4+3];
-
-        map[i] =
-            alpha > 10 ? 1 : 0;
-    }
-
-    for(let x=0;x<width;x++){
-
-        map[x] = 1;
-        map[(height-1)*width+x] = 1;
-    }
-
-    for(let y=0;y<height;y++){
-
-        map[y*width] = 1;
-        map[y*width+width-1] = 1;
-    }
-
-    return {
-        data:map,
-        width,
-        height
+        layer.visible = visible.checked;
+        render();
     };
-}
 
-function detectRegions(binary){
+    const thumb =
+        document.createElement("img");
 
-    const data = binary.data;
-    const width = binary.width;
-    const height = binary.height;
+    thumb.className = "thumb";
+    thumb.src = layer.thumbnail;
 
-    const visited =
-        new Uint8Array(width*height);
+    const title =
+        document.createElement("div");
 
-    hitMap =
-        new Uint16Array(width*height);
+    title.textContent = layer.name;
 
-    const found = [];
+    header.appendChild(visible);
+    header.appendChild(thumb);
+    header.appendChild(title);
 
-    let regionId = 0;
+    const controls =
+        document.createElement("div");
 
-    for(let y=0;y<height;y++){
+    controls.className = "layerControls";
 
-        for(let x=0;x<width;x++){
+    const textarea =
+        document.createElement("textarea");
 
-            const idx = y*width+x;
+    textarea.placeholder =
+        "文字入力";
 
-            if(
-                data[idx]===0 &&
-                !visited[idx]
-            ){
+    textarea.oninput = () => {
 
-                const pixels =
-                    floodFill(
-                        x,
-                        y,
-                        data,
-                        visited,
-                        width,
-                        height
-                    );
+        layer.text = textarea.value;
+        render();
+    };
 
-                if(pixels.length > 300){
+    const row =
+        document.createElement("div");
 
-                    let minX = Infinity;
-                    let maxX = -Infinity;
-                    let minY = Infinity;
-                    let maxY = -Infinity;
+    row.className = "row";
 
-                    for(const p of pixels){
+    const color =
+        document.createElement("input");
 
-                        if(p.x < minX) minX = p.x;
-                        if(p.x > maxX) maxX = p.x;
-                        if(p.y < minY) minY = p.y;
-                        if(p.y > maxY) maxY = p.y;
+    color.type = "color";
+    color.className = "color";
 
-                        hitMap[
-                            p.y*width+p.x
-                        ] = regionId+1;
-                    }
+    color.value = "#ffffff";
 
-                    const path =
-                        new Path2D();
+    color.oninput = () => {
 
-                    for(const p of pixels){
+        layer.color = color.value;
+        render();
+    };
 
-                        path.rect(
-                            p.x,
-                            p.y,
-                            1,
-                            1
-                        );
-                    }
+    const stroke =
+        document.createElement("input");
 
-                    const thumb =
-                        createThumbnail(
-                            minX,
-                            minY,
-                            maxX,
-                            maxY
-                        );
+    stroke.type = "color";
+    stroke.className = "color";
 
-                    found.push({
+    stroke.value = "#000000";
 
-                        id:regionId,
+    stroke.oninput = () => {
 
-                        visible:true,
+        layer.stroke = stroke.value;
+        render();
+    };
 
-                        pixels,
+    row.appendChild(color);
+    row.appendChild(stroke);
 
-                        path,
+    controls.appendChild(textarea);
+    controls.appendChild(row);
 
-                        thumbnail:thumb,
+    card.appendChild(header);
+    card.appendChild(controls);
 
-                        text:"",
+    card.addEventListener("click", () => {
 
-                        textColor:"#ffffff",
+        document
+            .querySelectorAll(".layerCard")
+            .forEach(v =>
+                v.classList.remove(
+                    "activeLayer"
+                )
+            );
 
-                        fontSize:48,
+        card.classList.add("activeLayer");
 
-                        textX:(minX+maxX)/2,
+        activeLayer = layer;
 
-                        textY:(minY+maxY)/2
-                    });
-
-                    regionId++;
-                }
-            }
-        }
-    }
-
-    return found;
-}
-
-function floodFill(
-    startX,
-    startY,
-    data,
-    visited,
-    width,
-    height
-){
-
-    const stack = [[startX,startY]];
-
-    const pixels = [];
-
-    while(stack.length){
-
-        const [x,y] = stack.pop();
-
-        if(
-            x<0 ||
-            y<0 ||
-            x>=width ||
-            y>=height
-        ){
-            continue;
-        }
-
-        const idx = y*width+x;
-
-        if(visited[idx]) continue;
-
-        visited[idx] = 1;
-
-        if(data[idx]===1) continue;
-
-        pixels.push({x,y});
-
-        stack.push([x+1,y]);
-        stack.push([x-1,y]);
-        stack.push([x,y+1]);
-        stack.push([x,y-1]);
-    }
-
-    return pixels;
-}
-
-function createThumbnail(
-    minX,
-    minY,
-    maxX,
-    maxY
-){
-
-    const size = 70;
-
-    const c =
-        document.createElement("canvas");
-
-    c.width = size;
-    c.height = size;
-
-    const tctx =
-        c.getContext("2d");
-
-    tctx.fillStyle = "#fff";
-
-    tctx.fillRect(0,0,size,size);
-
-    const w = maxX-minX;
-    const h = maxY-minY;
-
-    const scale =
-        Math.min(size/w,size/h);
-
-    tctx.drawImage(
-        lineImage,
-        minX,
-        minY,
-        w,
-        h,
-        0,
-        0,
-        w*scale,
-        h*scale
-    );
-
-    return c.toDataURL();
-}
-
-function requestRender(){
-
-    if(renderPending) return;
-
-    renderPending = true;
-
-    requestAnimationFrame(()=>{
-
-        renderPending = false;
-
-        renderAll();
-
+        render();
     });
+
+    layersPanel.appendChild(card);
 }
 
-function renderAll(){
+function render(){
 
     ctx.clearRect(
         0,
@@ -548,422 +518,312 @@ function renderAll(){
         canvas.height
     );
 
-    if(baseImage){
+    if(bgImage){
+
+        fitDraw(bgImage);
+    }
+
+    for(const layer of layers){
+
+        if(!layer.visible) continue;
 
         ctx.drawImage(
-            baseImage,
+            layer.image,
             0,
             0,
-            canvas.width,
-            canvas.height
+            canvas.width / DPR,
+            canvas.height / DPR
         );
-    }
 
-    for(const region of regions){
-
-        if(!region.visible) continue;
-
-        ctx.save();
-
-        ctx.fillStyle =
-            panelColor.value;
-
-        ctx.fill(region.path);
-
-        ctx.restore();
-    }
-
-    for(const region of regions){
-
-        if(!region.visible) continue;
-
-        drawRegionText(region);
-    }
-
-    if(lineImage){
-
-        ctx.drawImage(
-            lineImage,
-            0,
-            0
-        );
+        drawLayerText(layer);
     }
 }
 
-function drawRegionText(region){
+function fitDraw(img){
+
+    const cw = canvas.width / DPR;
+    const ch = canvas.height / DPR;
+
+    const scale = Math.min(
+        cw / img.width,
+        ch / img.height
+    );
+
+    const w = img.width * scale;
+    const h = img.height * scale;
+
+    const x = (cw - w)/2;
+    const y = (ch - h)/2;
+
+    ctx.drawImage(img,x,y,w,h);
+}
+
+function drawLayerText(layer){
+
+    if(!layer.text) return;
 
     ctx.save();
 
-    ctx.clip(region.path);
+    ctx.translate(layer.x,layer.y);
 
-    ctx.fillStyle =
-        region.textColor;
+    ctx.rotate(layer.rotation);
+
+    const size =
+        layer.baseSize * layer.scale;
 
     ctx.font =
-        `${region.fontSize}px sans-serif`;
+        `${size}px sans-serif`;
 
-    ctx.textAlign =
-        "center";
+    ctx.textBaseline = "top";
 
-    ctx.textBaseline =
-        "middle";
+    ctx.lineWidth =
+        Math.max(2,size*0.08);
+
+    ctx.fillStyle = layer.color;
+    ctx.strokeStyle = layer.stroke;
 
     const lines =
-        region.text.split("\n");
+        layer.text.split("\n");
 
-    const lineHeight =
-        region.fontSize * 1.2;
+    lines.forEach((line,i)=>{
 
-    const totalHeight =
-        lines.length * lineHeight;
+        const yy = i * size * 1.2;
 
-    const startY =
-        region.textY -
-        totalHeight/2 +
-        lineHeight/2;
-
-    lines.forEach((line,index)=>{
-
-        ctx.fillText(
-            line,
-            region.textX,
-            startY + index*lineHeight
-        );
+        ctx.strokeText(line,0,yy);
+        ctx.fillText(line,0,yy);
     });
+
+    if(layer === activeLayer){
+
+        const width =
+            Math.max(
+                ...lines.map(
+                    l =>
+                        ctx.measureText(l).width
+                )
+            );
+
+        const height =
+            lines.length *
+            size *
+            1.2;
+
+        ctx.strokeStyle = "#4da3ff";
+
+        ctx.strokeRect(
+            -10,
+            -10,
+            width+20,
+            height+20
+        );
+    }
 
     ctx.restore();
 }
 
-function buildLayerUI(){
-
-    layerPanel.innerHTML = "";
-
-    for(const region of regions){
-
-        const div =
-            document.createElement("div");
-
-        div.className =
-            "layerItem";
-
-        const header =
-            document.createElement("div");
-
-        header.className =
-            "layerHeader";
-
-        const thumb =
-            document.createElement("img");
-
-        thumb.src =
-            region.thumbnail;
-
-        thumb.className =
-            "layerThumb";
-
-        header.appendChild(thumb);
-
-        const title =
-            document.createElement("h3");
-
-        title.textContent =
-            "パネル " + region.id;
-
-        header.appendChild(title);
-
-        div.appendChild(header);
-
-        const toggle =
-            document.createElement("button");
-
-        toggle.textContent =
-            region.visible
-            ? "表示中"
-            : "非表示";
-
-        toggle.addEventListener("click",()=>{
-
-            region.visible =
-                !region.visible;
-
-            toggle.textContent =
-                region.visible
-                ? "表示中"
-                : "非表示";
-
-            requestRender();
-        });
-
-        div.appendChild(toggle);
-
-        const textLabel =
-            document.createElement("label");
-
-        textLabel.textContent =
-            "文字";
-
-        div.appendChild(textLabel);
-
-        const textarea =
-            document.createElement("textarea");
-
-        textarea.value =
-            region.text;
-
-        textarea.addEventListener("input",e=>{
-
-            region.text =
-                e.target.value;
-
-            requestRender();
-        });
-
-        div.appendChild(textarea);
-
-        const colorLabel =
-            document.createElement("label");
-
-        colorLabel.textContent =
-            "文字色";
-
-        div.appendChild(colorLabel);
-
-        const colorInput =
-            document.createElement("input");
-
-        colorInput.type =
-            "color";
-
-        colorInput.value =
-            region.textColor;
-
-        colorInput.addEventListener("input",e=>{
-
-            region.textColor =
-                e.target.value;
-
-            requestRender();
-        });
-
-        div.appendChild(colorInput);
-
-        const sizeLabel =
-            document.createElement("label");
-
-        sizeLabel.textContent =
-            "文字サイズ";
-
-        div.appendChild(sizeLabel);
-
-        const rangeWrap =
-            document.createElement("div");
-
-        rangeWrap.className =
-            "rangeWrap";
-
-        const sizeInput =
-            document.createElement("input");
-
-        sizeInput.type =
-            "range";
-
-        sizeInput.min = 12;
-        sizeInput.max = 200;
-
-        sizeInput.value =
-            region.fontSize;
-
-        const sizeValue =
-            document.createElement("span");
-
-        sizeValue.textContent =
-            region.fontSize;
-
-        sizeInput.addEventListener("input",e=>{
-
-            region.fontSize =
-                Number(e.target.value);
-
-            sizeValue.textContent =
-                region.fontSize;
-
-            requestRender();
-        });
-
-        rangeWrap.appendChild(sizeInput);
-        rangeWrap.appendChild(sizeValue);
-
-        div.appendChild(rangeWrap);
-
-        const info =
-            document.createElement("div");
-
-        info.style.marginTop =
-            "10px";
-
-        info.innerHTML =
-            "文字をドラッグして移動";
-
-        div.appendChild(info);
-
-        layerPanel.appendChild(div);
-    }
-}
-
-function getMousePos(e){
-
-    const rect =
-        canvas.getBoundingClientRect();
-
-    const scaleX =
-        canvas.width / rect.width;
-
-    const scaleY =
-        canvas.height / rect.height;
-
-    return {
-
-        x:(e.clientX-rect.left)*scaleX,
-        y:(e.clientY-rect.top)*scaleY
-    };
-}
-
-canvas.addEventListener("pointerdown",e=>{
-
-    const pos =
-        getMousePos(e);
-
-    for(let i=regions.length-1;i>=0;i--){
-
-        const region =
-            regions[i];
-
-        ctx.font =
-            `${region.fontSize}px sans-serif`;
-
-        const lines =
-            region.text.split("\n");
-
-        const lineHeight =
-            region.fontSize * 1.2;
-
-        let maxWidth = 0;
-
-        for(const line of lines){
-
-            const w =
-                ctx.measureText(line).width;
-
-            if(w > maxWidth){
-
-                maxWidth = w;
+canvas.addEventListener(
+    "pointerdown",
+    e => {
+
+        canvas.setPointerCapture(
+            e.pointerId
+        );
+
+        pointers.set(
+            e.pointerId,
+            {
+                x:e.clientX,
+                y:e.clientY
             }
+        );
+
+        if(activeLayer){
+
+            dragging = true;
         }
 
-        const totalHeight =
-            lines.length * lineHeight;
+        if(pointers.size === 2){
 
-        if(
-            pos.x >
-            region.textX - maxWidth/2 &&
-            pos.x <
-            region.textX + maxWidth/2 &&
-            pos.y >
-            region.textY - totalHeight/2 &&
-            pos.y <
-            region.textY + totalHeight/2
-        ){
+            const arr =
+                [...pointers.values()];
 
-            draggingRegion =
-                region;
+            pinchStartDistance =
+                distance(arr[0],arr[1]);
 
-            dragOffsetX =
-                pos.x - region.textX;
+            pinchStartScale =
+                activeLayer?.scale || 1;
 
-            dragOffsetY =
-                pos.y - region.textY;
+            rotateStartAngle =
+                angle(arr[0],arr[1]);
 
+            rotateStartRotation =
+                activeLayer?.rotation || 0;
+        }
+    }
+);
+
+canvas.addEventListener(
+    "pointermove",
+    e => {
+
+        if(!activeLayer) return;
+
+        if(!pointers.has(e.pointerId))
             return;
+
+        const prev =
+            pointers.get(e.pointerId);
+
+        pointers.set(
+            e.pointerId,
+            {
+                x:e.clientX,
+                y:e.clientY
+            }
+        );
+
+        if(pointers.size === 1 && dragging){
+
+            const dx =
+                e.clientX - prev.x;
+
+            const dy =
+                e.clientY - prev.y;
+
+            activeLayer.x += dx;
+            activeLayer.y += dy;
+
+            render();
+        }
+
+        if(pointers.size === 2){
+
+            const arr =
+                [...pointers.values()];
+
+            const dist =
+                distance(arr[0],arr[1]);
+
+            activeLayer.scale =
+                pinchStartScale *
+                (dist / pinchStartDistance);
+
+            const ang =
+                angle(arr[0],arr[1]);
+
+            activeLayer.rotation =
+                rotateStartRotation +
+                (ang - rotateStartAngle);
+
+            render();
         }
     }
+);
 
-    const x =
-        Math.floor(pos.x);
+canvas.addEventListener(
+    "pointerup",
+    e => {
 
-    const y =
-        Math.floor(pos.y);
+        pointers.delete(e.pointerId);
 
-    const id =
-        hitMap[
-            y*canvas.width+x
-        ] - 1;
-
-    if(id >= 0){
-
-        regions[id].visible =
-            !regions[id].visible;
-
-        updateButtons();
-
-        requestRender();
+        dragging = false;
     }
-});
+);
 
-canvas.addEventListener("pointermove",e=>{
+canvas.addEventListener(
+    "wheel",
+    e => {
 
-    if(!draggingRegion) return;
+        e.preventDefault();
 
-    const pos =
-        getMousePos(e);
+        if(!activeLayer) return;
 
-    draggingRegion.textX =
-        pos.x - dragOffsetX;
+        if(e.altKey){
 
-    draggingRegion.textY =
-        pos.y - dragOffsetY;
+            activeLayer.rotation +=
+                e.deltaY * 0.005;
 
-    requestRender();
-});
+        }else{
 
-canvas.addEventListener("pointerup",()=>{
+            activeLayer.scale -=
+                e.deltaY * 0.001;
 
-    draggingRegion = null;
-});
+            activeLayer.scale =
+                Math.max(
+                    0.2,
+                    Math.min(
+                        10,
+                        activeLayer.scale
+                    )
+                );
+        }
 
-canvas.addEventListener("pointerleave",()=>{
+        render();
 
-    draggingRegion = null;
-});
+    },
+    { passive:false }
+);
 
-function updateButtons(){
+function distance(a,b){
 
-    const buttons =
-        layerPanel.querySelectorAll("button");
-
-    regions.forEach((region,index)=>{
-
-        buttons[index].textContent =
-            region.visible
-            ? "表示中"
-            : "非表示";
-    });
+    return Math.hypot(
+        b.x-a.x,
+        b.y-a.y
+    );
 }
+
+function angle(a,b){
+
+    return Math.atan2(
+        b.y-a.y,
+        b.x-a.x
+    );
+}
+
+saveBtn.addEventListener("click", saveImage);
 
 function saveImage(){
 
-    const a =
-        document.createElement("a");
+    canvas.toBlob(blob => {
 
-    a.href =
-        canvas.toDataURL("image/png");
+        const url =
+            URL.createObjectURL(blob);
 
-    a.download =
-        "panel.png";
+        const a =
+            document.createElement("a");
 
-    a.click();
+        a.href = url;
+        a.download = "panel_edit.png";
+
+        a.click();
+
+        setTimeout(() => {
+
+            URL.revokeObjectURL(url);
+
+        },1000);
+
+    },"image/png");
 }
 
-</script>
+helpBtn.onclick = () => {
 
+    helpPopup.style.display = "flex";
+};
+
+closeHelp.onclick = () => {
+
+    helpPopup.style.display = "none";
+};
+
+helpPopup.onclick = e => {
+
+    if(e.target === helpPopup){
+
+        helpPopup.style.display = "none";
+    }
+};
+
+</script>
 </body>
 </html>
