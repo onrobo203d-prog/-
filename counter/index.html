@@ -271,6 +271,8 @@ textarea{
     rgba(0,0,0,0.85);
 
     padding:20px;
+
+    overflow-y:auto; /* 追加 */
 }
 
 #helpContent{
@@ -285,6 +287,11 @@ textarea{
     padding:20px;
 
     line-height:1.8;
+
+    max-height:90vh; /* 追加 */
+    overflow-y:auto; /* 追加 */
+
+    -webkit-overflow-scrolling:touch; /* iPhone用 */
 }
 
 #helpContent h2{
