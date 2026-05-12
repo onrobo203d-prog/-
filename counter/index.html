@@ -21,22 +21,9 @@ body{
 }
 
 .wrapper{
-    display:flex;
-    gap:20px;
     padding:20px;
-}
-
-.left{
-    flex:1;
-}
-
-.right{
-    width:320px;
-    background:white;
-    padding:15px;
-    border-radius:12px;
-    overflow:auto;
-    max-height:95vh;
+    max-width:1000px;
+    margin:auto;
 }
 
 .toolbar{
@@ -54,6 +41,7 @@ button{
     padding:10px 16px;
     border-radius:10px;
     cursor:pointer;
+    font-size:16px;
 }
 
 button:hover{
@@ -63,15 +51,34 @@ button:hover{
 canvas{
     border:2px solid black;
     background:white;
+    width:100%;
+    height:auto;
     max-width:100%;
     touch-action:none;
+    image-rendering:auto;
+}
+
+.info{
+    margin-top:10px;
+}
+
+.layerEditor{
+    margin-top:20px;
+    background:white;
+    padding:15px;
+    border-radius:12px;
+}
+
+#layerPanel{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
 }
 
 .layerItem{
     border:1px solid #ccc;
-    padding:10px;
+    padding:12px;
     border-radius:10px;
-    margin-bottom:10px;
     background:#fafafa;
 }
 
@@ -82,18 +89,40 @@ canvas{
 
 .layerItem input[type="text"]{
     width:100%;
-    padding:8px;
-    margin-bottom:8px;
+    padding:10px;
+    margin-top:5px;
+    margin-bottom:10px;
+    font-size:16px;
 }
 
 .layerItem label{
     display:block;
-    margin-top:8px;
-    font-size:13px;
+    margin-top:10px;
+    font-size:14px;
 }
 
-.info{
-    margin-top:10px;
+.layerItem input[type="range"]{
+    width:100%;
+}
+
+@media (max-width:768px){
+
+    .toolbar{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    button{
+        width:100%;
+    }
+
+    .layerItem{
+        padding:15px;
+    }
+
+    .layerItem input[type="text"]{
+        font-size:16px;
+    }
 }
 
 </style>
@@ -101,8 +130,6 @@ canvas{
 <body>
 
 <div class="wrapper">
-
-<div class="left">
 
 <h1>パネル開放ツール</h1>
 
@@ -139,9 +166,7 @@ canvas{
 画像未読み込み
 </div>
 
-</div>
-
-<div class="right">
+<div class="layerEditor">
 
 <h2>レイヤー編集</h2>
 
@@ -685,9 +710,13 @@ function onCanvasClick(e){
             * scaleY
         );
 
-    for(const region of regions){
+    /*
+    上から順に判定
+    */
 
-        if(!region.visible) continue;
+    for(let i = regions.length - 1; i >= 0; i--){
+
+        const region = regions[i];
 
         for(const p of region.pixels){
 
@@ -696,7 +725,14 @@ function onCanvasClick(e){
                 p.y === y
             ){
 
-                region.visible = false;
+                /*
+                表示⇔非表示切替
+                */
+
+                region.visible =
+                    !region.visible;
+
+                updateLayerButtons();
 
                 renderAll();
 
@@ -704,6 +740,21 @@ function onCanvasClick(e){
             }
         }
     }
+}
+
+function updateLayerButtons(){
+
+    const buttons =
+        layerPanel.querySelectorAll("button");
+
+    regions.forEach((region,index) => {
+
+        buttons[index].textContent =
+            region.visible
+            ? "表示中"
+            : "非表示";
+
+    });
 }
 
 function saveCurrentImage(){
