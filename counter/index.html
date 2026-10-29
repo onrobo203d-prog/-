@@ -630,8 +630,6 @@ function importJSON(){
       stats=data.stats||{};playerStats=data.playerStats||{};playerCounts=data.playerCounts||{};
     totalPlayCount=Number.isFinite(data.totalPlayCount)?data.totalPlayCount:Object.values(stats).reduce((a,n)=>a+(Number(n)||0),0);
     playerPlayCounts=data.playerPlayCounts||Object.fromEntries(Object.entries(playerStats).map(([p,items])=>[p,Object.values(items||{}).reduce((a,n)=>a+(Number(n)||0),0)]));
-      totalPlayCount=Number.isFinite(data.totalPlayCount)?data.totalPlayCount:Object.values(stats).reduce((a,n)=>a+(Number(n)||0),0);
-      playerPlayCounts=data.playerPlayCounts||Object.fromEntries(Object.entries(playerStats).map(([p,items])=>[p,Object.values(items||{}).reduce((a,n)=>a+(Number(n)||0),0)]));
       $("pityEnabled").checked=!!data.pityEnabled;
       $("guaranteeEnabled").checked=!!data.guaranteeEnabled;
       $("pityCount").value=data.pityCount||30;
