@@ -152,4 +152,272 @@ style="width:80px;"
 
 </div>
 
-<div class="section
+<div class="section">
+
+<h2>リスナー一覧</h2>
+
+<div id="listenerList"></div>
+
+</div>
+
+<div class="section">
+
+<h2>抽選履歴</h2>
+
+<div class="history" id="history"></div>
+
+</div>
+
+<div class="section">
+
+<button class="reset-btn" onclick="resetAll()">
+すべてリセット
+</button>
+
+</div>
+
+<script>
+
+let listeners =
+JSON.parse(localStorage.getItem("listeners")) || [];
+
+function saveData(){
+    localStorage.setItem(
+        "listeners",
+        JSON.stringify(listeners)
+    );
+}
+
+function addListener(){
+
+    const input =
+    document.getElementById("listenerName");
+
+    const name =
+    input.value.trim();
+
+    if(!name) return;
+
+    if(listeners.some(l=>l.name===name)){
+        alert("既に登録されています");
+        return;
+    }
+
+    listeners.push({
+        name:name,
+        plus:0,
+        minus:0
+    });
+
+    saveData();
+    render();
+
+    input.value="";
+}
+
+function deleteListener(index){
+
+    if(!confirm("削除しますか？"))
+    return;
+
+    listeners.splice(index,1);
+
+    saveData();
+    render();
+}
+
+function addPlus(index){
+
+    listeners[index].plus++;
+
+    saveData();
+    render();
+}
+
+function addMinus(index){
+
+    listeners[index].minus++;
+
+    saveData();
+    render();
+}
+
+function render(){
+
+    const list =
+    document.getElementById("listenerList");
+
+    list.innerHTML="";
+
+    listeners.forEach((listener,index)=>{
+
+        const total =
+        listener.plus - listener.minus;
+
+        const div =
+        document.createElement("div");
+
+        div.className="listener";
+
+        div.innerHTML=`
+
+            <div class="listener-name">
+                ${listener.name}
+            </div>
+
+            <div class="counter-group">
+
+                <span class="plus">
+                    ＋ ${listener.plus}
+                </span>
+
+                <button
+                class="small-btn"
+                onclick="addPlus(${index})">
+                ＋1
+                </button>
+
+                <span class="minus">
+                    － ${listener.minus}
+                </span>
+
+                <button
+                class="small-btn"
+                onclick="addMinus(${index})">
+                －1
+                </button>
+
+                <span class="total">
+                    合計: ${total}
+                </span>
+
+                <button
+                class="reset-btn small-btn"
+                onclick="deleteListener(${index})">
+                削除
+                </button>
+
+            </div>
+        `;
+
+        list.appendChild(div);
+
+    });
+
+}
+
+function drawOne(){
+
+    if(listeners.length===0){
+        alert("リスナーを登録してください");
+        return;
+    }
+
+    const winner =
+    listeners[
+        Math.floor(
+            Math.random()*listeners.length
+        )
+    ];
+
+    winner.minus++;
+
+    saveData();
+
+    document.getElementById(
+        "result"
+    ).textContent =
+    `🎉 ${winner.name} が当選`;
+
+    addHistory(
+        `${winner.name} が当選`
+    );
+
+    render();
+}
+
+function drawMultiple(){
+
+    const count =
+    parseInt(
+        document.getElementById("drawCount").value
+    );
+
+    if(listeners.length===0){
+        alert("リスナーを登録してください");
+        return;
+    }
+
+    if(count<=0) return;
+
+    const results=[];
+
+    for(let i=0;i<count;i++){
+
+        const winner =
+        listeners[
+            Math.floor(
+                Math.random()*listeners.length
+            )
+        ];
+
+        winner.minus++;
+
+        results.push(winner.name);
+    }
+
+    saveData();
+
+    document.getElementById(
+        "result"
+    ).textContent =
+    `🎉 ${count}回抽選完了`;
+
+    addHistory(
+        `${count}回抽選 → ${results.join(" / ")}`
+    );
+
+    render();
+}
+
+function addHistory(text){
+
+    const history =
+    document.getElementById("history");
+
+    const div =
+    document.createElement("div");
+
+    div.textContent=
+    `[${new Date().toLocaleTimeString()}] ${text}`;
+
+    history.prepend(div);
+}
+
+function resetAll(){
+
+    if(!confirm("すべて消去しますか？"))
+    return;
+
+    listeners=[];
+
+    saveData();
+
+    document.getElementById(
+        "result"
+    ).textContent =
+    "抽選待機中";
+
+    document.getElementById(
+        "history"
+    ).innerHTML = "";
+
+    render();
+}
+
+render();
+
+</script>
+
+</body>
+</html>
