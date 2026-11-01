@@ -671,12 +671,12 @@ async function generateCanvasImage(list) {
   ctx.rotate(-Math.PI / 6);
 
 ctx.fillStyle = "#f5f5f5";  
-  ctx.font = "bold 10px sans-serif";
+  ctx.font = "bold 25px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  for (let y = -900; y <= 900; y += 220) {
-    for (let x = -1400; x <= 1400; x += 550) {
+  for (let y = -900; y <= 900; y += 100) {
+    for (let x = -1400; x <= 1400; x += 250) {
 
       ctx.fillText(
         "おんろぼの物置き",
