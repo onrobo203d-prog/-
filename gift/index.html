@@ -2,9 +2,9 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>IRIAM向けギフト耐久企画ツール | スマホ対応</title>
-<meta name="description" content="IRIAM配信者向けギフト耐久企画ツール。スマホで使えるブラウザ型管理ツール。耐久企画や配信イベントの進行をサポートします。">
-<meta name="keywords" content="IRIAM ギフト耐久, IRIAM 企画ツール, 配信 耐久 管理, スマホ 配信ツール">
+<title>おんろぼの物置き | IRIAM（イリアム）向け全ギフト耐久支援ツール | 全ギフト一覧 | ギフト名検索</title>
+<meta name="description" content="IRIAM（イリアム）配信者向け全ギフト耐久支援ツール。全ギフト一覧、斜線入れ、ギフト名検索など、スマホからも使えるブラウザ型管理ツールです。">
+<meta name="keywords" content="IRIAM ギフト耐久, IRIAM 全ギフト, ギフト名, スマホ 配信ツール">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -256,6 +256,7 @@ header { padding: 10px; }
 
   <div id="messageRow">
     <div id="messageText">
+     イリアムの常設ギフトのみに対応しています。<br>
       画像をタップすると斜線が入ります<br>
       画像出力は表示されるまで少し時間がかかります
     </div>
@@ -687,7 +688,20 @@ async function generateCanvasImage(list) {
      描画
      ========================= */
   loadedImages.forEach((data, i) => {
+  /* =========================
+     クレジット表記
+     ========================= */
 
+  ctx.fillStyle = "#999999";
+  ctx.font = "28px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+
+  ctx.fillText(
+    "おんろぼの物置きより出力",
+    W / 2,
+    H - 15
+  );
     const { img, item } = data;
 
     const col = i % cols;
