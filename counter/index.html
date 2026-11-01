@@ -3,15 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>リスナー抽選カウンター</title>
+
+<title>リスナー抽選ランキング</title>
 
 <style>
+*{
+    box-sizing:border-box;
+}
+
 body{
-    font-family:sans-serif;
-    max-width:1000px;
-    margin:20px auto;
+    font-family:"Yu Gothic",sans-serif;
+    background:#f4f6f9;
+    margin:0;
     padding:20px;
-    background:#f5f5f5;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
 }
 
 h1{
@@ -19,208 +28,278 @@ h1{
 }
 
 .section{
-    background:white;
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:20px;
-    box-shadow:0 2px 5px rgba(0,0,0,.1);
+    background:#fff;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:16px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-input,button{
-    padding:8px;
-    font-size:16px;
+input{
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
 }
 
 button{
-    cursor:pointer;
     border:none;
-    border-radius:6px;
-    margin:2px;
+    border-radius:8px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:bold;
 }
 
-.add-btn{
+button:hover{
+    opacity:0.9;
+}
+
+.green{
     background:#4caf50;
     color:white;
 }
 
-.draw-btn{
+.blue{
     background:#2196f3;
     color:white;
 }
 
-.reset-btn{
+.red{
     background:#f44336;
     color:white;
 }
 
+.result{
+    text-align:center;
+    font-size:32px;
+    font-weight:bold;
+    min-height:60px;
+}
+
 .listener{
     display:flex;
-    align-items:center;
     justify-content:space-between;
-    background:#fff;
-    padding:10px;
-    margin:8px 0;
-    border-radius:8px;
-}
-
-.listener-name{
-    font-weight:bold;
-    min-width:150px;
-}
-
-.counter-group{
-    display:flex;
-    gap:8px;
     align-items:center;
+    gap:10px;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:10px;
+    background:#fafafa;
+}
+
+.rank1{
+    background:#fff8d6;
+}
+
+.rank2{
+    background:#eeeeee;
+}
+
+.rank3{
+    background:#ffe7d1;
+}
+
+.counter{
+    display:flex;
+    align-items:center;
+    gap:10px;
     flex-wrap:wrap;
 }
 
 .plus{
-    color:#0a8f00;
+    color:green;
     font-weight:bold;
 }
 
 .minus{
-    color:#d60000;
+    color:red;
     font-weight:bold;
 }
 
 .total{
-    color:#333;
     font-weight:bold;
-}
-
-.result{
-    font-size:20px;
-    font-weight:bold;
-    text-align:center;
-    margin-top:10px;
 }
 
 .history{
     max-height:250px;
     overflow-y:auto;
-    padding:10px;
-    background:#fafafa;
-    border-radius:8px;
 }
 
-.small-btn{
-    padding:5px 10px;
+.history div{
+    margin-bottom:6px;
+}
+
+.small{
+    padding:6px 10px;
 }
 </style>
 </head>
+
 <body>
 
-<h1>🎲 リスナー抽選カウンター</h1>
+<div class="container">
 
+<h1>🎲 リスナー抽選ランキング</h1>
+
+<!-- 登録 -->
 <div class="section">
 
 <h2>リスナー登録</h2>
 
-<input id="listenerName" placeholder="リスナー名">
+<input
+id="listenerInput"
+placeholder="リスナー名"
+>
 
-<button class="add-btn" onclick="addListener()">
+<button
+class="green"
+onclick="addListener()">
 登録
 </button>
 
 </div>
 
+<!-- 抽選 -->
+
 <div class="section">
 
 <h2>抽選</h2>
 
-<button class="draw-btn" onclick="drawOne()">
+<button
+id="drawBtn"
+class="blue"
+onclick="drawOne()">
 1回抽選
 </button>
 
 <input
+id="multiCount"
 type="number"
-id="drawCount"
 value="5"
 min="1"
 style="width:80px;"
 >
 
-<button class="draw-btn" onclick="drawMultiple()">
+<button
+id="multiBtn"
+class="blue"
+onclick="drawMultiple()">
 任意数抽選
 </button>
 
-<div class="result" id="result">
-抽選待機中
 </div>
 
-</div>
+<!-- 結果 -->
 
 <div class="section">
 
-<h2>リスナー一覧</h2>
+<h2>抽選結果</h2>
+
+<div
+id="result"
+class="result">
+待機中
+</div>
+
+</div>
+
+<!-- ランキング -->
+
+<div class="section">
+
+<h2>ランキング</h2>
 
 <div id="listenerList"></div>
 
 </div>
 
+<!-- 履歴 -->
+
 <div class="section">
 
 <h2>抽選履歴</h2>
 
-<div class="history" id="history"></div>
+<div
+class="history"
+id="history">
+</div>
 
 </div>
 
+<!-- リセット -->
+
 <div class="section">
 
-<button class="reset-btn" onclick="resetAll()">
+<button
+class="red"
+onclick="resetAll()">
 すべてリセット
 </button>
+
+</div>
 
 </div>
 
 <script>
 
 let listeners =
-JSON.parse(localStorage.getItem("listeners")) || [];
+JSON.parse(
+localStorage.getItem("listeners")
+) || [];
+
+let historyData =
+JSON.parse(
+localStorage.getItem("historyData")
+) || [];
 
 function saveData(){
+
     localStorage.setItem(
         "listeners",
         JSON.stringify(listeners)
     );
+
+    localStorage.setItem(
+        "historyData",
+        JSON.stringify(historyData)
+    );
 }
+
+document
+.getElementById("listenerInput")
+.addEventListener("keydown",(e)=>{
+
+    if(e.key==="Enter"){
+        addListener();
+    }
+
+});
 
 function addListener(){
 
     const input =
-    document.getElementById("listenerName");
+    document.getElementById("listenerInput");
 
     const name =
     input.value.trim();
 
     if(!name) return;
 
-    if(listeners.some(l=>l.name===name)){
+    if(
+        listeners.some(
+            l=>l.name===name
+        )
+    ){
         alert("既に登録されています");
         return;
     }
 
     listeners.push({
-        name:name,
+        name,
         plus:0,
         minus:0
     });
 
-    saveData();
-    render();
-
     input.value="";
-}
-
-function deleteListener(index){
-
-    if(!confirm("削除しますか？"))
-    return;
-
-    listeners.splice(index,1);
 
     saveData();
     render();
@@ -242,6 +321,70 @@ function addMinus(index){
     render();
 }
 
+function deleteListener(index){
+
+    if(!confirm("削除しますか？"))
+    return;
+
+    listeners.splice(index,1);
+
+    saveData();
+    render();
+}
+
+function addHistory(text){
+
+    const time =
+    new Date().toLocaleTimeString();
+
+    historyData.unshift(
+        `[${time}] ${text}`
+    );
+
+    saveData();
+
+    renderHistory();
+}
+
+function renderHistory(){
+
+    const area =
+    document.getElementById("history");
+
+    area.innerHTML="";
+
+    historyData.forEach(item=>{
+
+        const div =
+        document.createElement("div");
+
+        div.textContent=item;
+
+        area.appendChild(div);
+
+    });
+}
+
+function getSortedListeners(){
+
+    return [...listeners].sort((a,b)=>{
+
+        const totalA =
+        a.plus-a.minus;
+
+        const totalB =
+        b.plus-b.minus;
+
+        if(totalB!==totalA){
+
+            return totalB-totalA;
+        }
+
+        return b.plus-a.plus;
+    });
+
+}
+
 function render(){
 
     const list =
@@ -249,55 +392,87 @@ function render(){
 
     list.innerHTML="";
 
-    listeners.forEach((listener,index)=>{
+    const sorted =
+    getSortedListeners();
+
+    sorted.forEach((listener,rank)=>{
+
+        const originalIndex =
+        listeners.indexOf(listener);
 
         const total =
-        listener.plus - listener.minus;
+        listener.plus-listener.minus;
+
+        let medal =
+        `${rank+1}位`;
+
+        let rankClass = "";
+
+        if(rank===0){
+            medal="🥇";
+            rankClass="rank1";
+        }
+
+        if(rank===1){
+            medal="🥈";
+            rankClass="rank2";
+        }
+
+        if(rank===2){
+            medal="🥉";
+            rankClass="rank3";
+        }
 
         const div =
         document.createElement("div");
 
-        div.className="listener";
+        div.className=
+        `listener ${rankClass}`;
 
         div.innerHTML=`
 
-            <div class="listener-name">
-                ${listener.name}
-            </div>
+        <div>
 
-            <div class="counter-group">
+        <strong>
+        ${medal}
+        ${listener.name}
+        </strong>
 
-                <span class="plus">
-                    ＋ ${listener.plus}
-                </span>
+        </div>
 
-                <button
-                class="small-btn"
-                onclick="addPlus(${index})">
-                ＋1
-                </button>
+        <div class="counter">
 
-                <span class="minus">
-                    － ${listener.minus}
-                </span>
+            <span class="plus">
+            + ${listener.plus}
+            </span>
 
-                <button
-                class="small-btn"
-                onclick="addMinus(${index})">
-                －1
-                </button>
+            <button
+            class="small"
+            onclick="addPlus(${originalIndex})">
+            ＋1
+            </button>
 
-                <span class="total">
-                    合計: ${total}
-                </span>
+            <span class="minus">
+            - ${listener.minus}
+            </span>
 
-                <button
-                class="reset-btn small-btn"
-                onclick="deleteListener(${index})">
-                削除
-                </button>
+            <button
+            class="small"
+            onclick="addMinus(${originalIndex})">
+            －1
+            </button>
 
-            </div>
+            <span class="total">
+            合計 ${total}
+            </span>
+
+            <button
+            class="red small"
+            onclick="deleteListener(${originalIndex})">
+            削除
+            </button>
+
+        </div>
         `;
 
         list.appendChild(div);
@@ -306,51 +481,99 @@ function render(){
 
 }
 
-function drawOne(){
+async function roulette(){
+
+    return new Promise(resolve=>{
+
+        const result =
+        document.getElementById("result");
+
+        let count=0;
+
+        const interval =
+        setInterval(()=>{
+
+            const random =
+            listeners[
+                Math.floor(
+                    Math.random()
+                    * listeners.length
+                )
+            ];
+
+            result.textContent =
+            `🎲 ${random.name}`;
+
+            count++;
+
+        },80);
+
+        setTimeout(()=>{
+
+            clearInterval(interval);
+
+            const winner =
+            listeners[
+                Math.floor(
+                    Math.random()
+                    * listeners.length
+                )
+            ];
+
+            resolve(winner);
+
+        },2000);
+
+    });
+
+}
+
+async function drawOne(){
 
     if(listeners.length===0){
+
         alert("リスナーを登録してください");
         return;
     }
 
+    disableButtons(true);
+
     const winner =
-    listeners[
-        Math.floor(
-            Math.random()*listeners.length
-        )
-    ];
+    await roulette();
 
     winner.minus++;
 
-    saveData();
-
     document.getElementById(
         "result"
-    ).textContent =
-    `🎉 ${winner.name} が当選`;
+    ).innerHTML =
+    `🎉 ${winner.name}`;
 
     addHistory(
         `${winner.name} が当選`
     );
 
+    saveData();
     render();
+
+    disableButtons(false);
 }
 
-function drawMultiple(){
-
-    const count =
-    parseInt(
-        document.getElementById("drawCount").value
-    );
+async function drawMultiple(){
 
     if(listeners.length===0){
+
         alert("リスナーを登録してください");
         return;
     }
 
-    if(count<=0) return;
+    const count =
+    parseInt(
+        document.getElementById("multiCount").value
+    );
 
-    const results=[];
+    disableButtons(true);
+
+    const resultCount = {};
 
     for(let i=0;i<count;i++){
 
@@ -363,59 +586,71 @@ function drawMultiple(){
 
         winner.minus++;
 
-        results.push(winner.name);
+        resultCount[winner.name] =
+        (resultCount[winner.name]||0)+1;
     }
 
-    saveData();
+    let text =
+    `🎉 ${count}回抽選<br><br>`;
+
+    Object.entries(resultCount)
+    .sort((a,b)=>b[1]-a[1])
+    .forEach(([name,num])=>{
+
+        text +=
+        `${name} × ${num}<br>`;
+    });
 
     document.getElementById(
         "result"
-    ).textContent =
-    `🎉 ${count}回抽選完了`;
+    ).innerHTML=text;
 
     addHistory(
-        `${count}回抽選 → ${results.join(" / ")}`
+        `${count}回抽選実施`
     );
 
+    saveData();
     render();
+
+    disableButtons(false);
 }
 
-function addHistory(text){
+function disableButtons(flag){
 
-    const history =
-    document.getElementById("history");
+    document.getElementById(
+        "drawBtn"
+    ).disabled=flag;
 
-    const div =
-    document.createElement("div");
-
-    div.textContent=
-    `[${new Date().toLocaleTimeString()}] ${text}`;
-
-    history.prepend(div);
+    document.getElementById(
+        "multiBtn"
+    ).disabled=flag;
 }
 
 function resetAll(){
 
-    if(!confirm("すべて消去しますか？"))
-    return;
+    if(
+        !confirm(
+            "すべて削除しますか？"
+        )
+    ){
+        return;
+    }
 
     listeners=[];
+    historyData=[];
 
     saveData();
 
     document.getElementById(
         "result"
-    ).textContent =
-    "抽選待機中";
-
-    document.getElementById(
-        "history"
-    ).innerHTML = "";
+    ).textContent="待機中";
 
     render();
+    renderHistory();
 }
 
 render();
+renderHistory();
 
 </script>
 
