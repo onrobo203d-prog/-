@@ -20,10 +20,11 @@ button,input,select{touch-action:manipulation}button{cursor:pointer;transition:f
 .overlay{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:20;padding:16px}.dialog{background:#fff;border-radius:14px;padding:20px;width:min(420px,100%);max-height:90vh;overflow:auto}.dialog h2{font-size:18px;margin:0 0 10px}.dialog p{font-size:13px;color:#555;line-height:1.6}.dialog input[type=text]{width:100%;padding:10px;border:1px solid #ccc;border-radius:7px;font:inherit}.dialog .actions{display:flex;gap:8px;margin-top:14px}.dialog .actions button{flex:1;padding:10px;border:0;border-radius:8px;font:inherit}
 #previewInner{position:relative;background:#fff;padding:10px;max-width:96vw;max-height:95vh;text-align:center}#previewImg{max-width:92vw;max-height:82vh;display:block}#pageInfo{font-size:12px;margin-bottom:6px}#closePreview{position:absolute;right:4px;top:4px;border:0;background:#fff;font-size:24px;z-index:2}#prevImg,#nextImg{position:absolute;top:50%;transform:translateY(-50%);border:0;border-radius:50%;width:44px;height:44px;background:#222b;color:#fff;font-size:22px;z-index:2}#prevImg{left:8px}#nextImg{right:8px}
 #fileInput{display:none}.smallnote{font-size:11px;color:#777}
-#modeSwitch{display:flex;gap:6px;margin:0 0 8px;padding:4px;background:#eef1f4;border-radius:10px}
-#modeSwitch button{flex:1;border:0;border-radius:7px;padding:9px 6px;background:transparent;font-weight:700;color:#555}
+#topControls{display:flex;align-items:stretch;gap:7px;margin:0 0 6px}
+#modeSwitch{display:flex;gap:4px;flex:1;min-width:0;margin:0;padding:3px;background:#eef1f4;border-radius:10px}
+#modeSwitch button{flex:1;min-width:0;border:0;border-radius:7px;padding:8px 5px;background:transparent;font-weight:700;color:#555;font-size:13px;white-space:nowrap}
 #modeSwitch button.active{background:#fff;color:#176b9e;box-shadow:0 1px 4px #0002}
-#toolsToggle{width:100%;border:1px solid #cbd2d9;border-radius:9px;background:#f5f7f9;padding:10px;font-weight:700;color:#344454;margin:0 0 6px}
+#toolsToggle{flex:0 0 auto;border:1px solid #cbd2d9;border-radius:9px;background:#f5f7f9;padding:8px 10px;font-weight:700;color:#344454;margin:0;white-space:nowrap}
 #toolsPanel[hidden]{display:none}#toolsPanel{padding-bottom:4px}
 #tabs{position:static;top:auto;z-index:auto;background:#fff;border-top:1px solid #eee;padding:7px 0;margin:5px 0 0;scrollbar-width:none}#tabs::-webkit-scrollbar{display:none}
 #status{position:static;top:auto;z-index:auto;background:#fff;padding:4px 0 6px;border-bottom:1px solid #e8e8e8;font-weight:600;flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
@@ -32,9 +33,9 @@ button,input,select{touch-action:manipulation}button{cursor:pointer;transition:f
 .popupHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:16px}.popupHead button{border:0;background:#edf0f3;border-radius:8px;width:34px;height:34px;font-size:23px;line-height:1}
 #toolsPanel:not([hidden]){display:block;position:fixed;z-index:31;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 28px));max-height:82dvh;overflow:auto;background:#fff;padding:16px;border-radius:16px;box-shadow:0 12px 50px #0005,0 0 0 100vmax #0008}
 #toolsPanel:not([hidden]):before{content:none}
-#toolsToggle{margin:0 0 5px;padding:8px 10px;width:auto;min-width:132px;font-size:12px}
+#toolsToggle{margin:0;padding:7px 9px;min-width:0;font-size:11px}
 #filterPopup .dialog{max-width:360px}#filterPopup .filterrow{margin:8px 0}
-@media(max-width:520px){header{padding:8px 9px}h1{font-size:15px;margin:0 0 5px}.help{display:none}#modeSwitch{margin:0 0 5px;padding:3px}#modeSwitch button{padding:6px 5px;font-size:12px}.searchrow input{padding:9px 10px;font-size:14px}.searchrow{gap:6px}#filterToggle{padding:9px 8px;font-size:12px}#tabs{padding:6px 0;gap:5px}#tabs button{padding:7px 11px;font-size:12px}#status{padding:4px 0 5px}#statusText{font-size:10px}#selectionText{font-size:10px}#toolsToggle{padding:7px 9px;font-size:11px;min-width:0;margin:0}#grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:6px} .card{padding:4px}.name{font-size:11px}.point{font-size:10px}.goalrow{font-size:10px}.goalrow input{width:43px;padding:3px} }
+@media(max-width:520px){header{padding:8px 9px}h1{font-size:15px;margin:0 0 5px}.help{display:none}#modeSwitch{margin:0;padding:3px}#modeSwitch button{padding:6px 3px;font-size:11px}#toolsToggle{font-size:10px;padding:6px 7px}.searchrow input{padding:9px 10px;font-size:14px}.searchrow{gap:6px}#filterToggle{padding:9px 8px;font-size:12px}#tabs{padding:6px 0;gap:5px}#tabs button{padding:7px 11px;font-size:12px}#status{padding:4px 0 5px}#statusText{font-size:10px}#selectionText{font-size:10px}#toolsToggle{padding:7px 9px;font-size:11px;min-width:0;margin:0}#grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:6px} .card{padding:4px}.name{font-size:11px}.point{font-size:10px}.goalrow{font-size:10px}.goalrow input{width:43px;padding:3px} }
 @media(min-width:521px){header{padding:10px 14px}#toolsToggle{margin-top:2px}}
 @media(max-width:650px){.toolbar-group{min-width:100%;}.toolbar-group-label{min-width:42px}.toolbar-group .toolbar-actions button{font-size:12px;padding:9px 7px}}
 @media(max-width:520px){:root{--card-size:calc((100vw - 38px)/3)}header{padding:10px}.toolbar button{font-size:12px;padding:8px 5px}.toolbar-group{padding:6px;gap:5px}.toolbar-group .toolbar-actions{gap:5px}.toolbar-group .toolbar-actions button{font-size:11px;padding:9px 5px;line-height:1.25}#grid{gap:7px;padding:7px}.card{padding:5px}.goalrow input{width:48px}}
@@ -44,9 +45,8 @@ button,input,select{touch-action:manipulation}button{cursor:pointer;transition:f
 <header>
 <h1>IRIAM ギフトカウント管理ツール</h1>
 <div class="help" id="modeHelp">カウントモード：ギフトをタップすると回数が増え、目標数に達すると斜線が表示されます。</div>
-<div id="modeSwitch" aria-label="操作モード"><button id="slashModeBtn" type="button">斜線モード</button><button id="countModeBtn" class="active" type="button">カウントモード</button></div>
-<button id="toolsToggle" type="button" aria-expanded="false">＋ 操作メニューを開く</button>
-<div id="toolsPanel" hidden role="dialog" aria-modal="true" aria-label="操作メニュー"><div class="popupHead"><strong>操作メニュー</strong><button id="closeTools" type="button" aria-label="閉じる">×</button></div>
+<div id="topControls"><div id="modeSwitch" aria-label="操作モード"><button id="slashModeBtn" type="button">斜線モード</button><button id="countModeBtn" class="active" type="button">カウントモード</button></div><button id="toolsToggle" type="button" aria-expanded="false">⚙ 操作メニュー</button></div>
+<div id="toolsPanel" hidden role="dialog" aria-modal="true" aria-label="操作メニュー"><div class="popupHead"><strong>操作メニュー</strong><div style="display:flex;gap:6px;align-items:center"><button id="helpBtn" type="button" class="subtle" style="width:auto;padding:5px 10px;font-size:13px">？ ヘルプ</button><button id="closeTools" type="button" aria-label="閉じる">×</button></div></div>
 <div class="toolbar">
 <button id="selectModeBtn" class="subtle">ギフト選択モード</button>
 <button id="createCategoryBtn" class="primary" disabled>選択したギフトでカテゴリ作成</button>
@@ -72,6 +72,12 @@ button,input,select{touch-action:manipulation}button{cursor:pointer;transition:f
 <div id="status"><span id="statusText">ギフトデータを読み込み中...</span><span id="selectionText"></span></div>
 </header>
 <main id="grid"></main>
+<div id="helpModal" class="overlay"><div class="dialog"><div class="popupHead"><strong>操作ヘルプ</strong><button id="closeHelp" type="button" aria-label="閉じる">×</button></div>
+<h2>基本の使い方</h2><p><b>カウントモード：</b>ギフトをタップするとカウントが1増えます。各ギフトの「目標」に設定した回数に達すると赤い斜線が表示されます。目標を0にするとカウントだけ行います。</p>
+<p><b>斜線モード：</b>ギフトをタップするたびに赤い斜線の表示・非表示が切り替わります。カウント数や目標数は変更されません。</p>
+<h2>検索・絞り込み</h2><p>検索欄にギフト名を入力すると絞り込めます。フィルターアイコンから最低pt・最高ptを指定できます。カテゴリは横にスライドして切り替えられます。</p>
+<h2>操作メニュー</h2><p><b>ギフト選択モード：</b>ギフトを複数選び、カスタムカテゴリを作成・編集します。</p><p><b>カスタム管理・編集：</b>作成済みカテゴリの名前や登録ギフトを変更したり、削除できます。</p><p><b>カスタム保存／JSON追加：</b>カスタムカテゴリをJSONファイルとして保存したり、保存済みJSONを追加読み込みできます。</p><p><b>画像出力：</b>現在表示中のギフトを画像として出力します。</p><p><b>カウントリセット：</b>カウント・目標・斜線状態をリセットします。</p>
+<div class="actions"><button id="closeHelpBottom" class="primary">閉じる</button></div></div></div>
 <div id="startupModal" class="overlay"><div class="dialog"><h2>前回のカウントデータ</h2><p>前回のカウントデータが保存されています。続きから再開するか、新しく始めるか選んでください。</p><div class="actions"><button id="restoreBtn" class="primary">前回の状態を復旧</button><button id="freshBtn" class="danger">新しく開始</button></div></div></div>
 <div id="nameModal" class="overlay"><div class="dialog"><h2>カスタムカテゴリ作成</h2><p>選択したギフトを登録するカテゴリ名を入力してください。</p><input id="categoryName" type="text" maxlength="40" placeholder="例：誕生日耐久"><div class="actions"><button id="cancelName" class="subtle">キャンセル</button><button id="confirmName" class="primary">作成する</button></div></div></div>
 <div id="customManagerModal" class="overlay"><div class="dialog"><h2>カスタムカテゴリ管理</h2><p>作成済みカテゴリの内容を編集したり、不要なカテゴリを削除できます。</p><div id="customManagerList"></div><div class="actions"><button id="closeCustomManager" class="subtle">閉じる</button></div></div></div>
@@ -101,8 +107,9 @@ function closeTools(){ $('toolsPanel').hidden=true;$('toolsToggle').textContent=
 $('toolsToggle').onclick=openTools;$('closeTools').onclick=closeTools;
 $('toolsPanel').addEventListener('click',e=>{if(e.target=== $('toolsPanel'))closeTools()});
 $('filterToggle').onclick=()=>{$('filterPopup').style.display='flex';$('filterToggle').setAttribute('aria-expanded','true')};
+$('helpBtn').onclick=()=>{$('helpModal').style.display='flex'};function closeHelp(){$('helpModal').style.display='none'}$('closeHelp').onclick=closeHelp;$('closeHelpBottom').onclick=closeHelp;$('helpModal').onclick=e=>{if(e.target.id==='helpModal')closeHelp()};
 function closeFilter(){$('filterPopup').style.display='none';$('filterToggle').setAttribute('aria-expanded','false')}
-$('closeFilter').onclick=closeFilter;$('applyFilter').onclick=()=>{render();closeFilter()};$('clearFilter').onclick=()=>{$('minPoint').value='';$('maxPoint').value='';render();closeFilter()};$('filterPopup').onclick=e=>{if(e.target.id==='filterPopup')closeFilter()};document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTools();closeFilter()}});
+$('closeFilter').onclick=closeFilter;$('applyFilter').onclick=()=>{render();closeFilter()};$('clearFilter').onclick=()=>{$('minPoint').value='';$('maxPoint').value='';render();closeFilter()};$('filterPopup').onclick=e=>{if(e.target.id==='filterPopup')closeFilter()};document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTools();closeFilter();closeHelp()}});
 
 function updateSelectionUI(){$('selectModeBtn').textContent=selectionMode?'選択モードを終了':'ギフト選択モード';$('selectModeBtn').classList.toggle('primary',selectionMode);$('createCategoryBtn').disabled=!selectionMode||selectedIds.size===0;$('createCategoryBtn').textContent=editingCategoryIndex>=0?'編集内容を保存':'選択したギフトでカテゴリ作成';$('selectionText').textContent=selectionMode?`選択中：${selectedIds.size} 件`:''}
 $('selectModeBtn').onclick=()=>{selectionMode=!selectionMode;selectedIds.clear();if(!selectionMode)editingCategoryIndex=-1;updateSelectionUI();render();closeTools()};$('createCategoryBtn').onclick=()=>{if(!selectedIds.size)return;closeTools();$('categoryName').value=editingCategoryIndex>=0?customCategories[editingCategoryIndex].name:'';$('nameModal').style.display='flex';$('categoryName').focus()};$('cancelName').onclick=()=>$('nameModal').style.display='none';$('confirmName').onclick=()=>{const name=$('categoryName').value.trim();if(!name){alert('カテゴリ名を入力してください');return}if(editingCategoryIndex>=0){customCategories[editingCategoryIndex]={name,giftIds:[...selectedIds]};activeTab='custom:'+editingCategoryIndex}else{customCategories.push({name,giftIds:[...selectedIds]});activeTab='custom:'+(customCategories.length-1)}editingCategoryIndex=-1;selectionMode=false;selectedIds.clear();$('nameModal').style.display='none';renderTabs();render()};
